@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../shared/widgets/rally_header.dart';
+import '../../shared/widgets/rally_header.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});

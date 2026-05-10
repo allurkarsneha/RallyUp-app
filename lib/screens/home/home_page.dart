@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../shared/widgets/rally_header.dart';
-import '../../../shared/widgets/sports_card.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_text_styles.dart';
+import '../../shared/widgets/rally_header.dart';
+import '../../shared/widgets/sports_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
