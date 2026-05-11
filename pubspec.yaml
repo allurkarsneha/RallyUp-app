@@ -27,3 +27,4 @@ flutter:
   assets:
     - assets/images/
     - assets/images/sports/
+    - assets/images/login/
