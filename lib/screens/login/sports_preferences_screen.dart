@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/primary_button.dart';
-import '../home/home_page.dart';
+import '../../main.dart';
 
 class SportsPreferencesScreen extends StatefulWidget {
   const SportsPreferencesScreen({super.key});
@@ -30,7 +30,7 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
   void finishOnboarding() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
+      MaterialPageRoute(builder: (context) => const MainShell(initialIndex: 0)),
     );
   }
 

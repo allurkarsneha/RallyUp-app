@@ -20,6 +20,9 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
   final String actionLabel;
   final double rating;
   final bool online;
+  final String? avatarImagePath;
+  final VoidCallback? onViewProfileTap;
+  final VoidCallback? onActionTap;
 
   const PlayerDetailsPlayerCard({
     super.key,
@@ -34,6 +37,9 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
     this.actionLabel = 'Connect',
     this.rating = 4.8,
     this.online = false,
+    this.avatarImagePath,
+    this.onViewProfileTap,
+    this.onActionTap,
   });
 
   @override
@@ -47,7 +53,11 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PlayerDetailsAvatar(initials: initials, online: online),
+                PlayerDetailsAvatar(
+                  initials: initials,
+                  online: online,
+                  imagePath: avatarImagePath,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
@@ -125,6 +135,7 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
                   child: PlayerDetailsPrimaryButton(
                     label: 'View Profile',
                     outlined: true,
+                    onPressed: onViewProfileTap,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
@@ -134,13 +145,8 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
                     icon: actionLabel == 'Invite'
                         ? Icons.mail_outline_rounded
                         : Icons.person_add_alt_1_rounded,
+                    onPressed: onActionTap,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                IconButton.filledTonal(
-                  onPressed: () {},
-                  icon: const Icon(Icons.chat_bubble_outline_rounded),
-                  tooltip: 'Message',
                 ),
               ],
             ),

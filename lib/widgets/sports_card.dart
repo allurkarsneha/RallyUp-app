@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 
 class SportsCard extends StatelessWidget {
   final String? imagePath;
@@ -25,7 +25,7 @@ class SportsCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        width: 118,
+        width: 100,
         padding: const EdgeInsets.all(AppSpacing.sm),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -62,11 +62,11 @@ class _AllSportsCardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Column(
       children: [
-        SizedBox(height: 30),
+        SizedBox(height: 18),
         _AllSportsIcon(),
         Spacer(),
         Padding(
-          padding: EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.only(bottom: 8),
           child: Text(
             'All',
             textAlign: TextAlign.center,
@@ -91,20 +91,27 @@ class _AllSportsIcon extends StatelessWidget {
     return SizedBox(
       width: 52,
       height: 52,
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: List.generate(
-          4,
-          (_) => Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: AppColors.textPrimary,
-                width: 2,
+      child: Center(
+        child: SizedBox(
+          width: 46,
+          height: 46,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            children: List.generate(
+              4,
+              (_) => Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: AppColors.textPrimary,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                ),
               ),
-              borderRadius: BorderRadius.circular(6),
             ),
           ),
         ),

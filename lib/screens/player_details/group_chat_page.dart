@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/main_bottom_nav.dart';
+import '../../widgets/main_bottom_nav.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/player_details/group_chat/group_chat_widgets.dart';
 import '../../widgets/player_details/message/message_input_bar.dart';

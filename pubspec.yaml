@@ -11,6 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  intl: ^0.19.0
 
   cupertino_icons: ^1.0.8
 
@@ -25,6 +26,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/sports/
+    - assets/images/courts/
     - assets/images/player_details/open_matches/
     - assets/images/player_details/player_profile/
     - assets/images/player_details/message_chat/
