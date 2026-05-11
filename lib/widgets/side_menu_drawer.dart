@@ -3,6 +3,8 @@ import 'package:rallyup/main.dart';
 import 'package:rallyup/screens/courts_page.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
 import 'package:rallyup/screens/player_details/nearby_players_page.dart';
+import 'package:rallyup/screens/player_details/open_matches_page.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
@@ -27,6 +29,22 @@ class SideMenuDrawer extends StatelessWidget {
       context,
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => const NearbyPlayersPage(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
+  void _openOpenMatches(BuildContext context) {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const OpenMatchesPage(),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(
             opacity: animation,
@@ -97,9 +115,10 @@ class SideMenuDrawer extends StatelessWidget {
                     title: 'Nearby Players',
                     onTap: () => _openNearbyPlayers(context),
                   ),
-                  const _MenuItem(
+                  _MenuItem(
                     icon: Icons.sports_tennis_rounded,
                     title: 'Open Matches',
+                    onTap: () => _openOpenMatches(context),
                   ),
                   _MenuItem(
                     icon: Icons.location_on_outlined,

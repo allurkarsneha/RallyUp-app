@@ -5,12 +5,14 @@ class CourtSearchBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
   final VoidCallback? onFilterTap;
+  final String hintText;
 
   const CourtSearchBar({
     super.key,
     required this.controller,
     this.onChanged,
     this.onFilterTap,
+    this.hintText = 'Search courts, venues or sports',
   });
 
   @override
@@ -28,32 +30,33 @@ class CourtSearchBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               onChanged: onChanged,
-              decoration: const InputDecoration(
-                hintText: 'Search courts, venues or sports',
-                hintStyle: TextStyle(
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 14,
                 ),
                 border: InputBorder.none,
-                prefixIcon: Icon(
+                prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: AppColors.textPrimary,
                   size: 28,
                 ),
-                contentPadding: EdgeInsets.symmetric(vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
         ),
         const SizedBox(width: 10),
-        IconButton(
-          onPressed: onFilterTap,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          icon: const Icon(
-            Icons.tune_rounded,
-            size: 30,
-            color: AppColors.textPrimary,
+        GestureDetector(
+          onTap: onFilterTap,
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(
+              Icons.tune_rounded,
+              size: 30,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       ],
