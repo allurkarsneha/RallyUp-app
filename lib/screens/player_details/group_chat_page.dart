@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../shared/widgets/main_bottom_nav.dart';
 import '../../theme/app_spacing.dart';
-import '../../widgets/answeeta_ui/group_chat/group_chat_widgets.dart';
-import '../../widgets/answeeta_ui/message/message_input_bar.dart';
+import '../../widgets/player_details/group_chat/group_chat_widgets.dart';
+import '../../widgets/player_details/message/message_input_bar.dart';
 
 class GroupChatPage extends StatelessWidget {
   const GroupChatPage({super.key});
 
   static const String _courtImagePath =
-      'assets/images/answeeta_ui/open_matches/tennis_court.png';
+      'assets/images/player_details/open_matches/tennis_court.png';
   static const String _alexAvatarPath =
-      'assets/images/answeeta_ui/message_chat/alex_johnson.png';
+      'assets/images/player_details/message_chat/alex_johnson.png';
   static const String _priyaAvatarPath =
-      'assets/images/answeeta_ui/open_matches/priya_avatar.png';
+      'assets/images/player_details/open_matches/priya_avatar.png';
 
   @override
   Widget build(BuildContext context) {

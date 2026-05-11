@@ -4,15 +4,15 @@ import '../../shared/widgets/main_bottom_nav.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/answeeta_ui/answeeta_ui_components.dart';
+import '../../widgets/player_details/player_details_components.dart';
 
 class PlayerProfilePage extends StatelessWidget {
   const PlayerProfilePage({super.key});
 
   static const String _heroImagePath =
-      'assets/images/answeeta_ui/player_profile/player_profile_hero.png';
+      'assets/images/player_details/player_profile/player_profile_hero.png';
   static const String _avatarImagePath =
-      'assets/images/answeeta_ui/player_profile/alex_johnson.png';
+      'assets/images/player_details/player_profile/alex_johnson.png';
 
   @override
   Widget build(BuildContext context) {

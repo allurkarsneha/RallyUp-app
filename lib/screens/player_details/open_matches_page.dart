@@ -6,7 +6,7 @@ import '../../shared/widgets/side_menu_drawer.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/answeeta_ui/answeeta_ui_components.dart';
+import '../../widgets/player_details/player_details_components.dart';
 
 class OpenMatchesPage extends StatelessWidget {
   const OpenMatchesPage({super.key});
@@ -23,8 +23,9 @@ class OpenMatchesPage extends StatelessWidget {
       host: 'Alex',
       spotLabel: '1 spot left',
       spotColor: AppColors.primary,
-      imagePath: 'assets/images/answeeta_ui/open_matches/tennis_court.png',
-      hostAvatarPath: 'assets/images/answeeta_ui/open_matches/alex_avatar.png',
+      imagePath: 'assets/images/player_details/open_matches/tennis_court.png',
+      hostAvatarPath:
+          'assets/images/player_details/open_matches/alex_avatar.png',
     ),
     (
       title: 'Bay Badminton Doubles',
@@ -37,8 +38,10 @@ class OpenMatchesPage extends StatelessWidget {
       host: 'Priya',
       spotLabel: '2 spots left',
       spotColor: Color(0xFFD97706),
-      imagePath: 'assets/images/answeeta_ui/open_matches/badminton_court.png',
-      hostAvatarPath: 'assets/images/answeeta_ui/open_matches/priya_avatar.png',
+      imagePath:
+          'assets/images/player_details/open_matches/badminton_court.png',
+      hostAvatarPath:
+          'assets/images/player_details/open_matches/priya_avatar.png',
     ),
     (
       title: 'Weekend Basketball Run',
@@ -51,8 +54,10 @@ class OpenMatchesPage extends StatelessWidget {
       host: 'Kevin',
       spotLabel: '3 spots left',
       spotColor: AppColors.warning,
-      imagePath: 'assets/images/answeeta_ui/open_matches/basketball_court.png',
-      hostAvatarPath: 'assets/images/answeeta_ui/open_matches/kevin_avatar.png',
+      imagePath:
+          'assets/images/player_details/open_matches/basketball_court.png',
+      hostAvatarPath:
+          'assets/images/player_details/open_matches/kevin_avatar.png',
     ),
     (
       title: 'Bay Badminton Doubles',
@@ -65,8 +70,10 @@ class OpenMatchesPage extends StatelessWidget {
       host: 'Priya',
       spotLabel: '2 spots left',
       spotColor: Color(0xFFEA580C),
-      imagePath: 'assets/images/answeeta_ui/open_matches/badminton_court.png',
-      hostAvatarPath: 'assets/images/answeeta_ui/open_matches/priya_avatar.png',
+      imagePath:
+          'assets/images/player_details/open_matches/badminton_court.png',
+      hostAvatarPath:
+          'assets/images/player_details/open_matches/priya_avatar.png',
     ),
   ];
 

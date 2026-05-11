@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/answeeta_ui/messages/messages_widgets.dart';
+import '../../widgets/player_details/messages/messages_widgets.dart';
 
 class MessagesPage extends StatelessWidget {
   const MessagesPage({super.key});
 
   static const String _alexAvatarPath =
-      'assets/images/answeeta_ui/message_chat/alex_johnson.png';
+      'assets/images/player_details/message_chat/alex_johnson.png';
 
   static const List<_MessageThread> _threads = [
     _MessageThread(

@@ -4,13 +4,13 @@ import '../../shared/widgets/main_bottom_nav.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/answeeta_ui/answeeta_ui_components.dart';
+import '../../widgets/player_details/player_details_components.dart';
 
 class InviteSentPage extends StatelessWidget {
   const InviteSentPage({super.key});
 
   static const String _alexAvatarPath =
-      'assets/images/answeeta_ui/message_chat/alex_johnson.png';
+      'assets/images/player_details/message_chat/alex_johnson.png';
 
   @override
   Widget build(BuildContext context) {

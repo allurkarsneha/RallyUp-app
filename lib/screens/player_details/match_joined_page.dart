@@ -4,7 +4,7 @@ import '../../shared/widgets/main_bottom_nav.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/answeeta_ui/match_joined/match_joined_widgets.dart';
+import '../../widgets/player_details/match_joined/match_joined_widgets.dart';
 
 class MatchJoinedPage extends StatelessWidget {
   const MatchJoinedPage({super.key});

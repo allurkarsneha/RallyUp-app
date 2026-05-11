@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/answeeta_ui/answeeta_ui_components.dart';
+import '../../widgets/player_details/player_details_components.dart';
 
 class JoinMatchPage extends StatelessWidget {
   const JoinMatchPage({super.key});
