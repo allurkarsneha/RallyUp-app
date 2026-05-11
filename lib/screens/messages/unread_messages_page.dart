@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/messages/messages_widgets.dart';
 import 'group_messages_page.dart';
-import 'unread_messages_page.dart';
 
-class MessagesPage extends StatelessWidget {
-  const MessagesPage({super.key});
+class UnreadMessagesPage extends StatelessWidget {
+  const UnreadMessagesPage({super.key});
 
   static const String _alexAvatarPath =
       'assets/images/player_details/message_chat/alex_johnson.png';
 
-  static const List<_MessageThread> _threads = [
-    _MessageThread(
+  static const List<_UnreadMessageThread> _threads = [
+    _UnreadMessageThread(
       name: 'Alex Johnson',
       message: 'Sounds good 👍',
       time: '10:34 AM',
@@ -28,7 +28,7 @@ class MessagesPage extends StatelessWidget {
         ),
       ],
     ),
-    _MessageThread(
+    _UnreadMessageThread(
       name: 'Priya Shah',
       message: 'Are we still playing badminton today?',
       time: 'Yesterday',
@@ -36,49 +36,6 @@ class MessagesPage extends StatelessWidget {
       unreadCount: 1,
       avatars: [
         MessageAvatarData(initials: 'PS', backgroundColor: Color(0xFF7C3AED)),
-      ],
-    ),
-    _MessageThread(
-      name: 'Kevin Chen',
-      message: 'I can join the basketball run at 4 PM.',
-      time: 'Mon',
-      status: 'Offline',
-      avatars: [
-        MessageAvatarData(initials: 'KC', backgroundColor: Color(0xFFEA580C)),
-      ],
-    ),
-    _MessageThread(
-      name: 'Maya Patel',
-      message: 'Court booking is confirmed.',
-      time: 'Sun',
-      status: 'Online',
-      online: true,
-      avatars: [
-        MessageAvatarData(initials: 'MP', backgroundColor: Color(0xFF0EA5E9)),
-      ],
-    ),
-    _MessageThread(
-      name: 'Jordan Lee',
-      message: 'Let me know if you need one more player.',
-      time: 'Sat',
-      status: 'Offline',
-      avatars: [
-        MessageAvatarData(initials: 'JL', backgroundColor: Color(0xFF475569)),
-      ],
-    ),
-    _MessageThread(
-      name: 'SCU Tennis Group',
-      message: 'Alex: See you at the court!',
-      time: 'Fri',
-      status: 'Group chat',
-      isGroup: true,
-      avatars: [
-        MessageAvatarData(
-          initials: 'AJ',
-          backgroundColor: AppColors.primary,
-          imagePath: _alexAvatarPath,
-        ),
-        MessageAvatarData(initials: 'MP', backgroundColor: Color(0xFF0EA5E9)),
       ],
     ),
   ];
@@ -90,7 +47,10 @@ class MessagesPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const MessagesHeader(),
+            const MessagesHeader(
+              title: 'Unread Messages',
+              showBackButton: true,
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -103,16 +63,11 @@ class MessagesPage extends StatelessWidget {
                   const MessageSearchBar(),
                   const SizedBox(height: AppSpacing.md),
                   MessageFilterTabs(
-                    onAllTap: () {},
-                    onUnreadTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const UnreadMessagesPage(),
-                        ),
-                      );
-                    },
+                    selectedFilter: 'Unread',
+                    onAllTap: () => Navigator.of(context).maybePop(),
+                    onUnreadTap: () {},
                     onGroupsTap: () {
-                      Navigator.of(context).push(
+                      Navigator.of(context).pushReplacement(
                         MaterialPageRoute<void>(
                           builder: (_) => const GroupMessagesPage(),
                         ),
@@ -121,7 +76,7 @@ class MessagesPage extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Text(
-                    'Recent conversations',
+                    'Unread conversations',
                     style: AppTextStyles.sectionTitle.copyWith(fontSize: 18),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -133,7 +88,6 @@ class MessagesPage extends StatelessWidget {
                       status: thread.status,
                       unreadCount: thread.unreadCount,
                       online: thread.online,
-                      isGroup: thread.isGroup,
                       avatars: thread.avatars,
                     ),
                 ],
@@ -146,24 +100,22 @@ class MessagesPage extends StatelessWidget {
   }
 }
 
-class _MessageThread {
+class _UnreadMessageThread {
   final String name;
   final String message;
   final String time;
   final String status;
   final int unreadCount;
   final bool online;
-  final bool isGroup;
   final List<MessageAvatarData> avatars;
 
-  const _MessageThread({
+  const _UnreadMessageThread({
     required this.name,
     required this.message,
     required this.time,
     required this.status,
+    required this.unreadCount,
     required this.avatars,
-    this.unreadCount = 0,
     this.online = false,
-    this.isGroup = false,
   });
 }
