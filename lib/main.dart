@@ -30,16 +30,20 @@ class RallyUpApp extends StatelessWidget {
   }
 }
 
-// This keeps the 3 main tabs in one place once the user enters the app.
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final int initialIndex;
+
+  const MainShell({
+    super.key,
+    this.initialIndex = 0,
+  });
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  late int _currentIndex;
 
   final List<Widget> _pages = const [
     HomePage(),
@@ -47,11 +51,24 @@ class _MainShellState extends State<MainShell> {
     ProfilePage(),
   ];
 
-  // Updates the selected bottom nav tab.
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
+
   void _onTabSelected(int index) {
     setState(() {
       _currentIndex = index;
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      _currentIndex = widget.initialIndex;
+    }
   }
 
   @override

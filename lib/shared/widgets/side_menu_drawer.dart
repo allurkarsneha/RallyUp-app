@@ -1,10 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:rallyup/main.dart';
+import 'package:rallyup/screens/my_bookings_page.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 
 class SideMenuDrawer extends StatelessWidget {
   const SideMenuDrawer({super.key});
+
+  void _openHome(BuildContext context) {
+    Navigator.pop(context);
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MainShell(initialIndex: 0),
+      ),
+      (route) => false,
+    );
+  }
+
+  void _openMyBookings(BuildContext context) {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MyBookingsPage(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,15 +46,41 @@ class SideMenuDrawer extends StatelessWidget {
                   horizontal: AppSpacing.md,
                   vertical: AppSpacing.md,
                 ),
-                children: const [
-                  _MenuItem(icon: Icons.home_outlined, title: 'Home'),
-                  _MenuItem(icon: Icons.people_outline_rounded, title: 'Nearby Players'),
-                  _MenuItem(icon: Icons.sports_tennis_rounded, title: 'Open Matches'),
-                  _MenuItem(icon: Icons.location_on_outlined, title: 'Courts'),
-                  _MenuItem(icon: Icons.mail_outline_rounded, title: 'Invites'),
-                  _MenuItem(icon: Icons.calendar_month_outlined, title: 'My Bookings'),
-                  _MenuItem(icon: Icons.notifications_none_rounded, title: 'Notifications'),
-                  _MenuItem(icon: Icons.settings_outlined, title: 'Settings'),
+                children: [
+                  _MenuItem(
+                    icon: Icons.home_outlined,
+                    title: 'Home',
+                    onTap: () => _openHome(context),
+                  ),
+                  const _MenuItem(
+                    icon: Icons.people_outline_rounded,
+                    title: 'Nearby Players',
+                  ),
+                  const _MenuItem(
+                    icon: Icons.sports_tennis_rounded,
+                    title: 'Open Matches',
+                  ),
+                  const _MenuItem(
+                    icon: Icons.location_on_outlined,
+                    title: 'Courts',
+                  ),
+                  const _MenuItem(
+                    icon: Icons.mail_outline_rounded,
+                    title: 'Invites',
+                  ),
+                  _MenuItem(
+                    icon: Icons.calendar_month_outlined,
+                    title: 'My Bookings',
+                    onTap: () => _openMyBookings(context),
+                  ),
+                  const _MenuItem(
+                    icon: Icons.notifications_none_rounded,
+                    title: 'Notifications',
+                  ),
+                  const _MenuItem(
+                    icon: Icons.settings_outlined,
+                    title: 'Settings',
+                  ),
                 ],
               ),
             ),
@@ -98,11 +147,13 @@ class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final bool isDanger;
+  final VoidCallback? onTap;
 
   const _MenuItem({
     required this.icon,
     required this.title,
     this.isDanger = false,
+    this.onTap,
   });
 
   @override
@@ -124,9 +175,7 @@ class _MenuItem extends StatelessWidget {
           title,
           style: AppTextStyles.body.copyWith(color: color),
         ),
-        onTap: () {
-          // We’ll wire actual navigation later once the main shell is ready.
-        },
+        onTap: onTap,
       ),
     );
   }
