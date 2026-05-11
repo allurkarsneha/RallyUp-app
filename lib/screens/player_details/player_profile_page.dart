@@ -5,6 +5,9 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/player_details_components.dart';
+import 'invite_to_match_page.dart';
+import 'message_page.dart';
+import 'nearby_players_page.dart';
 
 class PlayerProfilePage extends StatelessWidget {
   final String playerName;
@@ -35,15 +38,33 @@ class PlayerProfilePage extends StatelessWidget {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            MainShell(initialIndex: index),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
       (route) => false,
+    );
+  }
+
+  void _openMessage(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const MessagePage()));
+  }
+
+  void _openInviteToMatch(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const InviteToMatchPage()));
+  }
+
+  void _goBackToPlayers(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.maybePop(context);
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      _fadeRoute<void>(const NearbyPlayersPage()),
     );
   }
 
@@ -62,7 +83,7 @@ class PlayerProfilePage extends StatelessWidget {
               child: PlayerProfileHero(
                 heroImagePath: _heroImagePath,
                 avatarImagePath: _avatarImagePath,
-                onBackTap: () => Navigator.pop(context),
+                onBackTap: () => _goBackToPlayers(context),
               ),
             ),
             SliverToBoxAdapter(
@@ -98,7 +119,10 @@ class PlayerProfilePage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 28),
-                  const PlayerProfileActionButtons(),
+                  PlayerProfileActionButtons(
+                    onConnectTap: () => _openMessage(context),
+                    onInviteTap: () => _openInviteToMatch(context),
+                  ),
                   const SizedBox(height: AppSpacing.xxl),
                   const PlayerProfileAboutSection(),
                   const SizedBox(height: AppSpacing.xl),
@@ -112,4 +136,15 @@ class PlayerProfilePage extends StatelessWidget {
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }

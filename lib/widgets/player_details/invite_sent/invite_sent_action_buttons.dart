@@ -5,7 +5,14 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
 class InviteSentActionButtons extends StatelessWidget {
-  const InviteSentActionButtons({super.key});
+  final VoidCallback? onViewInvitesTap;
+  final VoidCallback? onBackToPlayersTap;
+
+  const InviteSentActionButtons({
+    super.key,
+    this.onViewInvitesTap,
+    this.onBackToPlayersTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +22,7 @@ class InviteSentActionButtons extends StatelessWidget {
           width: double.infinity,
           height: 50,
           child: FilledButton(
-            onPressed: () {},
+            onPressed: onViewInvitesTap ?? () {},
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.white,
@@ -36,7 +43,7 @@ class InviteSentActionButtons extends StatelessWidget {
           width: double.infinity,
           height: 50,
           child: OutlinedButton(
-            onPressed: () {},
+            onPressed: onBackToPlayersTap ?? () {},
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.textPrimary,
               side: const BorderSide(color: AppColors.border),

@@ -5,9 +5,19 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/match_joined/match_joined_widgets.dart';
+import '../my_bookings_page.dart';
+import 'group_chat_page.dart';
 
 class MatchJoinedPage extends StatelessWidget {
   const MatchJoinedPage({super.key});
+
+  void _openGroupChat(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const GroupChatPage()));
+  }
+
+  void _openMyBookings(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const MyBookingsPage()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +47,27 @@ class MatchJoinedPage extends StatelessWidget {
               const SizedBox(height: AppSpacing.lg),
               const MatchJoinedPaymentCard(),
               const SizedBox(height: AppSpacing.xl),
-              const MatchJoinedActionButtons(),
+              MatchJoinedActionButtons(
+                onGroupChatTap: () => _openGroupChat(context),
+                onViewBookingsTap: () => _openMyBookings(context),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }
 
 class _MatchJoinedSummaryRow extends StatelessWidget {

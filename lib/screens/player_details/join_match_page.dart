@@ -4,6 +4,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/player_details_components.dart';
+import 'match_joined_page.dart';
 
 class JoinMatchPage extends StatelessWidget {
   const JoinMatchPage({super.key});
@@ -51,11 +52,42 @@ class JoinMatchPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSpacing.xl),
-                    const PlayerDetailsPrimaryButton(label: 'Yes, Join'),
+                    PlayerDetailsPrimaryButton(
+                      label: 'Yes, Join',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder<void>(
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const MatchJoinedPage(),
+                            transitionsBuilder:
+                                (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: child,
+                                  );
+                                },
+                            transitionDuration: const Duration(
+                              milliseconds: 220,
+                            ),
+                            reverseTransitionDuration: const Duration(
+                              milliseconds: 180,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     const SizedBox(height: AppSpacing.sm),
-                    const PlayerDetailsPrimaryButton(
+                    PlayerDetailsPrimaryButton(
                       label: 'Cancel',
                       outlined: true,
+                      onPressed: () => Navigator.maybePop(context),
                     ),
                   ],
                 ),

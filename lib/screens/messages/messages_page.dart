@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/side_menu_drawer.dart';
 import '../player_details/message_page.dart';
 import '../../widgets/player_details/messages/messages_widgets.dart';
 import 'group_messages_page.dart';
@@ -116,10 +117,18 @@ class _MessagesPageState extends State<MessagesPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      drawer: const SideMenuDrawer(),
       body: SafeArea(
         child: Column(
           children: [
-            const MessagesHeader(),
+            Builder(
+              builder: (context) {
+                return MessagesHeader(
+                  showMenuButton: true,
+                  onMenuTap: () => Scaffold.of(context).openDrawer(),
+                );
+              },
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
