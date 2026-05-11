@@ -3,6 +3,11 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import 'profile_settings_screen.dart';
 import 'subscription_screen.dart';
+import 'account_settings_page.dart';
+import 'block_list_page.dart';
+import 'notifications_page.dart';
+import 'feedback_suggestions_page.dart';
+import 'legal_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -147,6 +152,14 @@ class ProfilePage extends StatelessWidget {
                       context: context,
                       title: 'Account settings',
                       subtitle: 'ID Verification, Profile visibility',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AccountSettingsPage(),
+                          ),
+                        );
+                      },
                     ),
                     _settingsItem(
                       context: context,
@@ -165,21 +178,51 @@ class ProfilePage extends StatelessWidget {
                       context: context,
                       title: 'Block List',
                       subtitle: 'People you have blocked',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const BlockListPage(),
+                          ),
+                        );
+                      },
                     ),
                     _settingsItem(
                       context: context,
                       title: 'Notifications',
                       subtitle: 'Manage notifications',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsPage(),
+                          ),
+                        );
+                      },
                     ),
                     _settingsItem(
                       context: context,
                       title: 'Feedback & Suggestions',
                       subtitle: 'Help and support',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FeedbackSuggestionsPage(),
+                          ),
+                        );
+                      },
                     ),
                     _settingsItem(
                       context: context,
                       title: 'Legal',
                       subtitle: 'Privacy policy, Terms of Service',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LegalPage()),
+                        );
+                      },
                     ),
                   ],
                 ),
