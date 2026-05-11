@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../widgets/primary_button.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/primary_button.dart';
 
 class SignupScreen extends StatelessWidget {
   const SignupScreen({super.key});
