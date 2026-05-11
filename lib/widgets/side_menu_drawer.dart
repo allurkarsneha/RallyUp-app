@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rallyup/main.dart';
 import 'package:rallyup/screens/courts_page.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
+import 'package:rallyup/screens/player_details/nearby_players_page.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
@@ -20,13 +21,29 @@ class SideMenuDrawer extends StatelessWidget {
     );
   }
 
+  void _openNearbyPlayers(BuildContext context) {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const NearbyPlayersPage(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
   void _openMyBookings(BuildContext context) {
     Navigator.pop(context);
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => const MyBookingsPage(),
-        transitionsBuilder: (_, animation, _, child) {
+        pageBuilder: (_, __, ___) => const MyBookingsPage(),
+        transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(
             opacity: animation,
             child: child,
@@ -41,8 +58,8 @@ class SideMenuDrawer extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => const CourtsPage(),
-        transitionsBuilder: (_, animation, _, child) {
+        pageBuilder: (_, __, ___) => const CourtsPage(),
+        transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(
             opacity: animation,
             child: child,
@@ -75,9 +92,10 @@ class SideMenuDrawer extends StatelessWidget {
                     title: 'Home',
                     onTap: () => _openHome(context),
                   ),
-                  const _MenuItem(
+                  _MenuItem(
                     icon: Icons.people_outline_rounded,
                     title: 'Nearby Players',
+                    onTap: () => _openNearbyPlayers(context),
                   ),
                   const _MenuItem(
                     icon: Icons.sports_tennis_rounded,

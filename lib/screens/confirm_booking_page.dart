@@ -52,8 +52,8 @@ class ConfirmBookingPage extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const NotificationsPage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -64,7 +64,7 @@ class ConfirmBookingPage extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => BookingConfirmedPage(
+        pageBuilder: (_, _, _) => BookingConfirmedPage(
           courtName: courtName,
           sport: sport,
           sportEmoji: sportEmoji,
@@ -76,7 +76,7 @@ class ConfirmBookingPage extends StatelessWidget {
           playersNeeded: playersNeeded,
           totalAmount: '\$${totalAmount.toStringAsFixed(2)}',
         ),
-        transitionsBuilder: (_, animation, __, child) {
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -87,8 +87,8 @@ class ConfirmBookingPage extends StatelessWidget {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
