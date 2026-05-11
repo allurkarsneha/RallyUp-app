@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'screens/signup_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/login/signup_screen.dart';
+import 'screens/login/login_screen.dart';
 import 'screens/home/home_page.dart';
 import 'screens/messages/messages_page.dart';
 import 'screens/profile/profile_page.dart';
@@ -20,7 +20,7 @@ class RallyUpApp extends StatelessWidget {
       title: 'RallyUp',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      initialRoute: '/main',
+      initialRoute: '/',
       routes: {
         '/': (context) => const SignupScreen(),
         '/login': (context) => const LoginScreen(),
@@ -41,11 +41,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    MessagesPage(),
-    ProfilePage(),
-  ];
+  final List<Widget> _pages = const [HomePage(), MessagesPage(), ProfilePage()];
 
   // Updates the selected bottom nav tab.
   void _onTabSelected(int index) {

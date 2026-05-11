@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../widgets/primary_button.dart';
+import 'package:rallyup/screens/login/phone_screen.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/primary_button.dart';
 
 class SignupScreen extends StatelessWidget {
   const SignupScreen({super.key});
@@ -61,7 +62,14 @@ class SignupScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 52),
                       child: PrimaryButton(
                         text: 'Get Started Now',
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PhoneScreen(),
+                            ),
+                          );
+                        },
                         backgroundColor: AppColors.darkGreen,
                       ),
                     ),
