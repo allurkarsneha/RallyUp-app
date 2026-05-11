@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../shared/widgets/sports_card.dart';
+import '../../../widgets/sports_card.dart';
 import '../../../theme/app_spacing.dart';
 
 class OpenMatchesSportsSelector extends StatelessWidget {

@@ -5,9 +5,10 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
 class OpenMatchCard extends StatelessWidget {
+  final String imagePath;
   final String title;
   final String sport;
-  final String sportIcon;
+  final String sportEmoji;
   final String when;
   final String location;
   final String players;
@@ -15,14 +16,17 @@ class OpenMatchCard extends StatelessWidget {
   final String host;
   final String spotLabel;
   final Color spotColor;
-  final String imagePath;
   final String hostAvatarPath;
+  final bool isFavorite;
+  final VoidCallback? onJoinTap;
+  final VoidCallback? onFavoriteTap;
 
   const OpenMatchCard({
     super.key,
+    required this.imagePath,
     required this.title,
     required this.sport,
-    required this.sportIcon,
+    required this.sportEmoji,
     required this.when,
     required this.location,
     required this.players,
@@ -30,228 +34,216 @@ class OpenMatchCard extends StatelessWidget {
     required this.host,
     required this.spotLabel,
     required this.spotColor,
-    required this.imagePath,
     required this.hostAvatarPath,
+    required this.isFavorite,
+    this.onJoinTap,
+    this.onFavoriteTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 366),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pageHorizontal,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromARGB(18, 0, 0, 0),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(22),
+                ),
+                child: Image.asset(
+                  imagePath,
+                  width: double.infinity,
+                  height: 210,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: spotColor.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    spotLabel,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: onFavoriteTap,
+                  child: Icon(
+                    isFavorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _OpenMatchImageBanner(
-                  imagePath: imagePath,
-                  spotLabel: spotLabel,
-                  spotColor: spotColor,
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          height: 1.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      _OpenMatchMetaRow(
-                        icon: Text(
-                          sportIcon,
-                          style: const TextStyle(fontSize: 11, height: 1),
-                        ),
-                        text: '$sport - $when',
-                      ),
-                      const SizedBox(height: 5),
-                      _OpenMatchMetaRow(
-                        icon: const Icon(
-                          Icons.location_on_outlined,
-                          color: AppColors.primary,
-                          size: 12,
-                        ),
-                        text: location,
-                      ),
-                      const SizedBox(height: 5),
-                      _OpenMatchMetaRow(
-                        icon: const Icon(
-                          Icons.groups_2_outlined,
-                          color: AppColors.primary,
-                          size: 12,
-                        ),
-                        text: '$players players - $level',
-                      ),
-                      const SizedBox(height: 11),
-                      Row(
-                        children: [
-                          ClipOval(
-                            child: Image.asset(
-                              hostAvatarPath,
-                              width: 20,
-                              height: 20,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              'Hosted by $host',
-                              style: AppTextStyles.caption.copyWith(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                                height: 1.2,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          SizedBox(
-                            height: 32,
-                            width: 92,
-                            child: FilledButton(
-                              onPressed: () {},
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: AppColors.white,
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                textStyle: AppTextStyles.caption.copyWith(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              child: const Text('Join Match'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    title,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '$sportEmoji  $sport • $when',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        location,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.groups_2_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        '$players players • $level',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ClipOval(
+                      child: Image.asset(
+                        hostAvatarPath,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Hosted by $host',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 132,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: onJoinTap,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: Text(
+                              'Join Match',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OpenMatchImageBanner extends StatelessWidget {
-  final String imagePath;
-  final String spotLabel;
-  final Color spotColor;
-
-  const _OpenMatchImageBanner({
-    required this.imagePath,
-    required this.spotLabel,
-    required this.spotColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 80,
-      width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset(imagePath, fit: BoxFit.cover),
-          Positioned(
-            left: 8,
-            top: 8,
-            child: Container(
-              height: 23,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: spotColor,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                spotLabel,
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 8,
-            top: 8,
-            child: Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: AppColors.white.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.favorite_border_rounded,
-                color: AppColors.primary,
-                size: 16,
-              ),
-            ),
-          ),
         ],
       ),
-    );
-  }
-}
-
-class _OpenMatchMetaRow extends StatelessWidget {
-  final Widget icon;
-  final String text;
-
-  const _OpenMatchMetaRow({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(width: 12, height: 13, child: Center(child: icon)),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              height: 1.2,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }

@@ -7,16 +7,20 @@ class PlayerDetailsAvatar extends StatelessWidget {
   final String initials;
   final double size;
   final bool online;
+  final String? imagePath;
 
   const PlayerDetailsAvatar({
     super.key,
     required this.initials,
     this.size = 56,
     this.online = false,
+    this.imagePath,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = imagePath != null && imagePath!.isNotEmpty;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -27,16 +31,24 @@ class PlayerDetailsAvatar extends StatelessWidget {
             color: AppColors.primaryLight,
             shape: BoxShape.circle,
             border: Border.all(color: AppColors.border),
+            image: hasImage
+                ? DecorationImage(
+                    image: AssetImage(imagePath!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
-          child: Center(
-            child: Text(
-              initials,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
+          child: hasImage
+              ? null
+              : Center(
+                  child: Text(
+                    initials,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
         ),
         if (online)
           Positioned(

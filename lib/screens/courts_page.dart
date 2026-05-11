@@ -1,32 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:rallyup/main.dart';
+import 'package:rallyup/screens/court_details_page.dart';
 import 'package:rallyup/screens/notifications_page.dart';
-import 'package:rallyup/screens/player_details/match_details_page.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_text_styles.dart';
+import '../widgets/courts/court_listing_card.dart';
+import '../widgets/courts/court_search_bar.dart';
+import '../widgets/location_picker_sheet.dart';
+import '../widgets/main_bottom_nav.dart';
+import '../widgets/side_menu_drawer.dart';
+import '../widgets/sports_card.dart';
 
-import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
-import '../../theme/app_text_styles.dart';
-import '../../widgets/courts/court_search_bar.dart';
-import '../../widgets/location_picker_sheet.dart';
-import '../../widgets/main_bottom_nav.dart';
-import '../../widgets/side_menu_drawer.dart';
-import '../../widgets/sports_card.dart';
-import '../../widgets/player_details/open_matches/open_match_card.dart';
-
-class OpenMatchesPage extends StatefulWidget {
-  const OpenMatchesPage({super.key});
+class CourtsPage extends StatefulWidget {
+  const CourtsPage({super.key});
 
   @override
-  State<OpenMatchesPage> createState() => _OpenMatchesPageState();
+  State<CourtsPage> createState() => _CourtsPageState();
 }
 
-class _OpenMatchesPageState extends State<OpenMatchesPage> {
+class _CourtsPageState extends State<CourtsPage> {
   String _selectedSport = 'All';
   String _selectedSort = 'default';
   String _selectedLocation = 'Santa Clara, CA';
   final TextEditingController _searchController = TextEditingController();
 
-  final Set<String> _favoriteMatches = {};
+  final Set<String> _favoriteCourts = {};
 
   final List<String> _sports = const [
     'Tennis',
@@ -41,128 +40,106 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
     'Swimming',
   ];
 
-  final List<Map<String, String>> _allMatches = const [
+  final List<Map<String, String>> _allCourts = const [
     {
-      'id': 'match_tennis_1',
-      'title': 'SCU Evening Tennis Match',
+      'title': 'SCU Tennis Court A',
       'sport': 'Tennis',
       'emoji': '🎾',
-      'image': 'assets/images/player_details/open_matches/tennis_court.png',
-      'when': 'Today, 6:00 PM',
-      'location': 'SCU Tennis Court A',
-      'address': '500 El Camino Real, Santa Clara, CA',
-      'players': '3 / 4',
-      'level': 'Intermediate',
-      'host': 'Alex',
-      'spots': '1 spot left',
-      'hostAvatar': 'assets/images/player_details/open_matches/alex_avatar.png',
-      'about':
-          'Looking for 1 more player for a fun evening doubles match. Let us have a great game!',
+      'image': 'assets/images/courts/tenniscourt.png',
+      'distance': '0.8 mi away',
+      'rating': '4.9',
+      'price': '\$22/hr',
+      'slots': '2 slots today',
     },
     {
-      'id': 'match_badminton_1',
-      'title': 'Bay Badminton Doubles',
+      'title': 'Bay Badminton Arena',
       'sport': 'Badminton',
       'emoji': '🏸',
-      'image': 'assets/images/player_details/open_matches/badminton_court.png',
-      'when': 'Tomorrow, 7:00 PM',
-      'location': 'Bay Badminton Arena',
-      'address': '123 Lawrence Expwy, Sunnyvale, CA',
-      'players': '2 / 4',
-      'level': 'Beginner',
-      'host': 'Priya',
-      'spots': '2 spots left',
-      'hostAvatar':
-          'assets/images/player_details/open_matches/priya_avatar.png',
-      'about':
-          'Beginner-friendly doubles game. Looking for two more players to join and have a relaxed match.',
+      'image': 'assets/images/courts/badmintoncourt.png',
+      'distance': '2.6 mi away',
+      'rating': '4.4',
+      'price': '\$16/hr',
+      'slots': '6 slots today',
     },
     {
-      'id': 'match_basketball_1',
-      'title': 'Weekend Basketball Run',
+      'title': 'Downtown Basketball Court',
       'sport': 'Basketball',
       'emoji': '🏀',
-      'image': 'assets/images/player_details/open_matches/basketball_court.png',
-      'when': 'Sun, 4:00 PM',
-      'location': 'Downtown Basketball Court',
-      'address': '456 Market St, San Jose, CA',
-      'players': '7 / 10',
-      'level': 'Casual',
-      'host': 'Kevin',
-      'spots': '3 spots left',
-      'hostAvatar':
-          'assets/images/player_details/open_matches/kevin_avatar.png',
-      'about':
-          'Weekend basketball run with a casual group. Open to all players who want to join.',
+      'image': 'assets/images/courts/basketballcourt.png',
+      'distance': '3.9 mi away',
+      'rating': '4.2',
+      'price': '\$20/hr',
+      'slots': '3 slots today',
     },
     {
-      'id': 'match_badminton_2',
-      'title': 'Late Night Badminton Rally',
-      'sport': 'Badminton',
-      'emoji': '🏸',
-      'image': 'assets/images/player_details/open_matches/badminton_court.png',
-      'when': 'Fri, 8:30 PM',
-      'location': 'Bay Badminton Arena',
-      'address': '123 Lawrence Expwy, Sunnyvale, CA',
-      'players': '2 / 4',
-      'level': 'Intermediate',
-      'host': 'Priya',
-      'spots': '2 spots left',
-      'hostAvatar':
-          'assets/images/player_details/open_matches/priya_avatar.png',
-      'about':
-          'Intermediate badminton doubles session with a fun competitive vibe.',
+      'title': 'Sunnyvale Pickleball Courts',
+      'sport': 'Pickleball',
+      'emoji': '🎾',
+      'image': 'assets/images/courts/pickleballcourt.png',
+      'distance': '1.4 mi away',
+      'rating': '4.8',
+      'price': '\$14/hr',
+      'slots': '8 slots today',
+    },
+    {
+      'title': 'SCU Volleyball Arena',
+      'sport': 'Volleyball',
+      'emoji': '🏐',
+      'image': 'assets/images/courts/volleyballcourt.png',
+      'distance': '2.1 mi away',
+      'rating': '4.6',
+      'price': '\$18/hr',
+      'slots': '4 slots today',
     },
   ];
 
-  List<Map<String, String>> get _filteredMatches {
+  List<Map<String, String>> get _filteredCourts {
     final query = _searchController.text.trim().toLowerCase();
 
-    final filtered = _allMatches.where((match) {
+    final filtered = _allCourts.where((court) {
       final matchesSport =
-          _selectedSport == 'All' || match['sport'] == _selectedSport;
+          _selectedSport == 'All' || court['sport'] == _selectedSport;
 
-      final title = match['title']!.toLowerCase();
-      final sport = match['sport']!.toLowerCase();
-      final location = match['location']!.toLowerCase();
-      final host = match['host']!.toLowerCase();
+      final title = court['title']!.toLowerCase();
+      final sport = court['sport']!.toLowerCase();
 
       final matchesSearch =
-          query.isEmpty ||
-          title.contains(query) ||
-          sport.contains(query) ||
-          location.contains(query) ||
-          host.contains(query);
+          query.isEmpty || title.contains(query) || sport.contains(query);
 
       return matchesSport && matchesSearch;
     }).toList();
 
     if (_selectedSort == 'distance') {
-      filtered.sort((a, b) => _extractSpotsNumber(a['spots']!).compareTo(
-            _extractSpotsNumber(b['spots']!),
-          ));
+      filtered.sort(
+        (a, b) => _extractNumber(a['distance']!).compareTo(
+          _extractNumber(b['distance']!),
+        ),
+      );
     } else if (_selectedSort == 'rating') {
-      filtered.sort((a, b) => _extractPlayersJoined(b['players']!).compareTo(
-            _extractPlayersJoined(a['players']!),
-          ));
+      filtered.sort(
+        (a, b) => _extractNumber(b['rating']!).compareTo(
+          _extractNumber(a['rating']!),
+        ),
+      );
     } else if (_selectedSort == 'price_low') {
-      filtered.sort((a, b) => a['title']!.compareTo(b['title']!));
+      filtered.sort(
+        (a, b) => _extractNumber(a['price']!).compareTo(
+          _extractNumber(b['price']!),
+        ),
+      );
     } else if (_selectedSort == 'slots') {
-      filtered.sort((a, b) => _extractSpotsNumber(b['spots']!).compareTo(
-            _extractSpotsNumber(a['spots']!),
-          ));
+      filtered.sort(
+        (a, b) => _extractNumber(b['slots']!).compareTo(
+          _extractNumber(a['slots']!),
+        ),
+      );
     }
 
     return filtered;
   }
 
-  double _extractSpotsNumber(String text) {
+  double _extractNumber(String text) {
     final match = RegExp(r'(\d+(\.\d+)?)').firstMatch(text);
-    return double.tryParse(match?.group(1) ?? '0') ?? 0;
-  }
-
-  double _extractPlayersJoined(String text) {
-    final match = RegExp(r'(\d+)\s*/').firstMatch(text);
     return double.tryParse(match?.group(1) ?? '0') ?? 0;
   }
 
@@ -191,13 +168,6 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
       default:
         return '';
     }
-  }
-
-  Color _getSpotColor(String label) {
-    if (label.contains('1')) return AppColors.primary;
-    if (label.contains('2')) return const Color(0xFFD97706);
-    if (label.contains('3')) return AppColors.warning;
-    return AppColors.primary;
   }
 
   void _openNotificationsPage() {
@@ -309,34 +279,29 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
     );
   }
 
-  void _toggleFavorite(String matchId) {
+  void _toggleFavorite(String courtTitle) {
     setState(() {
-      if (_favoriteMatches.contains(matchId)) {
-        _favoriteMatches.remove(matchId);
+      if (_favoriteCourts.contains(courtTitle)) {
+        _favoriteCourts.remove(courtTitle);
       } else {
-        _favoriteMatches.add(matchId);
+        _favoriteCourts.add(courtTitle);
       }
     });
   }
 
-  void _openMatchDetails(Map<String, String> match) {
+  void _openCourtDetails(Map<String, String> court) {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => MatchDetailsPage(
-          title: match['title']!,
-          sport: match['sport']!,
-          sportEmoji: match['emoji']!,
-          when: match['when']!,
-          location: match['location']!,
-          address: match['address']!,
-          players: match['players']!,
-          level: match['level']!,
-          host: match['host']!,
-          imagePath: match['image']!,
-          hostAvatarPath: match['hostAvatar']!,
-          about: match['about']!,
-          spotsLeftLabel: match['spots']!,
+        pageBuilder: (_, _, _) => CourtDetailsPage(
+          courtName: court['title']!,
+          sport: court['sport']!,
+          sportEmoji: court['emoji']!,
+          imagePath: court['image']!,
+          distanceText: court['distance']!,
+          ratingText: court['rating']!,
+          priceText: court['price']!,
+          locationText: _selectedLocation,
         ),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -366,7 +331,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final matches = _filteredMatches;
+    final courts = _filteredCourts;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -401,7 +366,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
                       ),
                       const SizedBox(width: 18),
                       Text(
-                        'Open Matches',
+                        'Courts',
                         style: AppTextStyles.pageTitle.copyWith(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -454,7 +419,6 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
                   const SizedBox(height: 14),
                   CourtSearchBar(
                     controller: _searchController,
-                    hintText: 'Search open matches',
                     onChanged: (_) => setState(() {}),
                     onFilterTap: _openFilterSheet,
                   ),
@@ -509,12 +473,12 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
                       horizontal: AppSpacing.pageHorizontal,
                     ),
                     child: Text(
-                      'Open Matches Near You',
+                      'Nearby Courts',
                       style: AppTextStyles.sectionTitle,
                     ),
                   ),
                   const SizedBox(height: 14),
-                  if (matches.isEmpty)
+                  if (courts.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.pageHorizontal,
@@ -530,7 +494,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
                           child: Column(
                             children: [
                               Text(
-                                'No open matches found',
+                                'No courts found',
                                 style: AppTextStyles.bodyMedium.copyWith(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -550,25 +514,21 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
                       ),
                     )
                   else
-                    ...matches.map(
-                      (match) => Padding(
+                    ...courts.map(
+                      (court) => Padding(
                         padding: const EdgeInsets.only(bottom: 18),
-                        child: OpenMatchCard(
-                          imagePath: match['image']!,
-                          title: match['title']!,
-                          sport: match['sport']!,
-                          sportEmoji: match['emoji']!,
-                          when: match['when']!,
-                          location: match['location']!,
-                          players: match['players']!,
-                          level: match['level']!,
-                          host: match['host']!,
-                          spotLabel: match['spots']!,
-                          spotColor: _getSpotColor(match['spots']!),
-                          hostAvatarPath: match['hostAvatar']!,
-                          isFavorite: _favoriteMatches.contains(match['id']!),
-                          onJoinTap: () => _openMatchDetails(match),
-                          onFavoriteTap: () => _toggleFavorite(match['id']!),
+                        child: CourtListingCard(
+                          imagePath: court['image']!,
+                          title: court['title']!,
+                          sport: court['sport']!,
+                          sportEmoji: court['emoji']!,
+                          distanceText: court['distance']!,
+                          ratingText: court['rating']!,
+                          priceText: court['price']!,
+                          slotsText: court['slots']!,
+                          isFavorite: _favoriteCourts.contains(court['title']!),
+                          onViewDetailsTap: () => _openCourtDetails(court),
+                          onFavoriteTap: () => _toggleFavorite(court['title']!),
                         ),
                       ),
                     ),
