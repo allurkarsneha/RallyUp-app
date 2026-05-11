@@ -5,12 +5,100 @@ import 'profile_settings_screen.dart';
 import 'subscription_screen.dart';
 import 'account_settings_page.dart';
 import 'block_list_page.dart';
+import 'legal_page.dart';
 import 'notifications_page.dart';
 import 'feedback_suggestions_page.dart';
-import 'legal_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
+
+  void _goToSignup(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF4A4A4A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: Text(
+            'Log out?',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.white,
+              fontSize: 16,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want\nto logout of your\naccount?',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption.copyWith(color: AppColors.white),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _goToSignup(context);
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF4A4A4A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: Text(
+            'Delete Account?',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.white,
+              fontSize: 16,
+            ),
+          ),
+          content: Text(
+            'This action is permanent\nand cannot be undone.\nAll data will be lost.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption.copyWith(color: AppColors.white),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _goToSignup(context);
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _settingsItem({
     required BuildContext context,
@@ -42,6 +130,33 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
+  Widget _actionRow({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(width: 28),
+            Text(
+              text,
+              style: AppTextStyles.sectionTitle.copyWith(
+                color: color,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,19 +165,14 @@ class ProfilePage extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
             children: [
               const SizedBox(height: 28),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Profile & Preferences',
-                    textAlign: TextAlign.left,
-                    style: AppTextStyles.pageTitle,
-                  ),
+                  Text('Profile & Preferences', style: AppTextStyles.pageTitle),
                   IconButton(
                     onPressed: () {},
                     icon: const Icon(
@@ -98,9 +208,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 24),
-
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -132,101 +240,117 @@ class ProfilePage extends StatelessWidget {
 
               const SizedBox(height: 42),
 
-              Expanded(
-                child: ListView(
-                  children: [
-                    _settingsItem(
-                      context: context,
-                      title: 'Player profile settings',
-                      subtitle: 'Player Details, Sports, Availability',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ProfileSettingsScreen(),
-                          ),
-                        );
-                      },
+              _settingsItem(
+                context: context,
+                title: 'Player profile settings',
+                subtitle: 'Player Details, Sports, Availability',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProfileSettingsScreen(),
                     ),
-                    _settingsItem(
-                      context: context,
-                      title: 'Account settings',
-                      subtitle: 'ID Verification, Profile visibility',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AccountSettingsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _settingsItem(
-                      context: context,
-                      title: 'Subscription',
-                      subtitle: 'Manage Plans',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SubscriptionScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _settingsItem(
-                      context: context,
-                      title: 'Block List',
-                      subtitle: 'People you have blocked',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const BlockListPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _settingsItem(
-                      context: context,
-                      title: 'Notifications',
-                      subtitle: 'Manage notifications',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NotificationsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _settingsItem(
-                      context: context,
-                      title: 'Feedback & Suggestions',
-                      subtitle: 'Help and support',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const FeedbackSuggestionsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _settingsItem(
-                      context: context,
-                      title: 'Legal',
-                      subtitle: 'Privacy policy, Terms of Service',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LegalPage()),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
+
+              _settingsItem(
+                context: context,
+                title: 'Account settings',
+                subtitle: 'ID Verification, Profile visibility',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AccountSettingsPage(),
+                    ),
+                  );
+                },
+              ),
+
+              _settingsItem(
+                context: context,
+                title: 'Subscription',
+                subtitle: 'Manage Plans',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SubscriptionScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              _settingsItem(
+                context: context,
+                title: 'Block List',
+                subtitle: 'People you have blocked',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BlockListPage()),
+                  );
+                },
+              ),
+
+              _settingsItem(
+                context: context,
+                title: 'Notifications',
+                subtitle: 'Manage notifications',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsPage(),
+                    ),
+                  );
+                },
+              ),
+
+              _settingsItem(
+                context: context,
+                title: 'Feedback & Suggestions',
+                subtitle: 'Help and support',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const FeedbackSuggestionsPage(),
+                    ),
+                  );
+                },
+              ),
+
+              _settingsItem(
+                context: context,
+                title: 'Legal',
+                subtitle: 'Privacy policy, Terms of Service',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LegalPage()),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              _actionRow(
+                icon: Icons.logout_rounded,
+                text: 'Logout',
+                color: const Color(0xFFFF4B2B),
+                onTap: () => _showLogoutDialog(context),
+              ),
+
+              _actionRow(
+                icon: Icons.delete_outline_rounded,
+                text: 'Delete Account',
+                color: AppColors.textSecondary,
+                onTap: () => _showDeleteDialog(context),
+              ),
+
+              const SizedBox(height: 28),
             ],
           ),
         ),

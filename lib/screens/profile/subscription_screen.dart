@@ -117,7 +117,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const SizedBox(height: 10),
 
               Text(
-                'Get access to exclusive features and get\nthe most out of your experience on\nRallyUp.',
+                'Get access to exclusive features and get the most out of your \nexperience on RallyUp.',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.body.copyWith(
                   color: AppColors.textSecondary,
