@@ -5,9 +5,9 @@ import 'notifications_page.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
-import '../shared/widgets/main_bottom_nav.dart';
-import '../shared/widgets/side_menu_drawer.dart';
-import '../shared/widgets/my_booking_list_card.dart';
+import '../widgets/main_bottom_nav.dart';
+import '../widgets/side_menu_drawer.dart';
+import '../widgets/my_booking_list_card.dart';
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -82,8 +82,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const NotificationsPage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -133,7 +133,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => BookingConfirmedPage(
+        pageBuilder: (_, _, _) => BookingConfirmedPage(
           courtName: booking['title']!,
           sport: booking['sport']!,
           sportEmoji: booking['emoji']!,
@@ -145,7 +145,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
           playersNeeded: _showUpcoming ? 3 : 0,
           totalAmount: '\$21.80',
         ),
-        transitionsBuilder: (_, animation, __, child) {
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -156,8 +156,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -375,7 +375,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   24,
                 ),
                 itemCount: _currentBookings.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 18),
+                separatorBuilder: (_, _) => const SizedBox(height: 18),
                 itemBuilder: (context, index) {
                   final booking = _currentBookings[index];
 

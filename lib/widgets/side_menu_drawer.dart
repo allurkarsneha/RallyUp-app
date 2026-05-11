@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:rallyup/main.dart';
+import 'package:rallyup/screens/courts_page.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
-import '../../theme/app_text_styles.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_text_styles.dart';
 
 class SideMenuDrawer extends StatelessWidget {
   const SideMenuDrawer({super.key});
@@ -23,8 +24,30 @@ class SideMenuDrawer extends StatelessWidget {
     Navigator.pop(context);
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const MyBookingsPage(),
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const MyBookingsPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
+  void _openCourts(BuildContext context) {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const CourtsPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
       ),
     );
   }
@@ -60,9 +83,10 @@ class SideMenuDrawer extends StatelessWidget {
                     icon: Icons.sports_tennis_rounded,
                     title: 'Open Matches',
                   ),
-                  const _MenuItem(
+                  _MenuItem(
                     icon: Icons.location_on_outlined,
                     title: 'Courts',
+                    onTap: () => _openCourts(context),
                   ),
                   const _MenuItem(
                     icon: Icons.mail_outline_rounded,

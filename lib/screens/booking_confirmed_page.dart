@@ -5,7 +5,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/primary_button.dart';
-import '../shared/widgets/main_bottom_nav.dart';
+import '../widgets/main_bottom_nav.dart';
 
 class BookingConfirmedPage extends StatelessWidget {
   final String courtName;
@@ -79,8 +79,8 @@ class BookingConfirmedPage extends StatelessWidget {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const MyBookingsPage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const MyBookingsPage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(
             opacity: animation,
             child: child,
@@ -94,8 +94,8 @@ class BookingConfirmedPage extends StatelessWidget {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(
             opacity: animation,
             child: child,

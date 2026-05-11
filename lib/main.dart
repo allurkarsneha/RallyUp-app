@@ -5,7 +5,7 @@ import 'screens/login_screen.dart';
 import 'screens/home/home_page.dart';
 import 'screens/messages/messages_page.dart';
 import 'screens/profile/profile_page.dart';
-import 'shared/widgets/main_bottom_nav.dart';
+import 'widgets/main_bottom_nav.dart';
 
 void main() {
   runApp(const RallyUpApp());

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../shared/widgets/rally_header.dart';
+import '../../widgets/rally_header.dart';
 
 class MessagesPage extends StatelessWidget {
   const MessagesPage({super.key});

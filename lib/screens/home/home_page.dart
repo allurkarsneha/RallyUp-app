@@ -5,9 +5,10 @@ import 'package:rallyup/screens/notifications_page.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../shared/widgets/booking_preview_card.dart';
-import '../../shared/widgets/home_top_header.dart';
-import '../../shared/widgets/sports_card.dart';
+import '../../widgets/booking_preview_card.dart';
+import '../../widgets/home_top_header.dart';
+import '../../widgets/location_picker_sheet.dart';
+import '../../widgets/sports_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,6 +19,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String _selectedSport = 'All';
+  String _selectedLocation = 'Santa Clara, CA';
 
   final List<String> _sports = const [
     'Tennis',
@@ -128,8 +130,8 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const NotificationsPage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -139,86 +141,81 @@ class _HomePageState extends State<HomePage> {
   void _openProfileOptionsOverlay() {
     showDialog(
       context: context,
+      barrierColor: Colors.black26,
       builder: (context) {
-        return Dialog(
-          alignment: Alignment.topRight,
-          insetPadding: const EdgeInsets.only(top: 115, right: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: SizedBox(
-            width: 180,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  _ProfileOptionTile(
-                    icon: Icons.person_outline_rounded,
-                    title: 'Profile',
+        return Stack(
+          children: [
+            Positioned(
+              top: 82,
+              right: 16,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: 158,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color.fromARGB(18, 0, 0, 0),
+                        blurRadius: 16,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  _ProfileOptionTile(
-                    icon: Icons.card_membership_rounded,
-                    title: 'Membership',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      _ProfileOptionTile(
+                        icon: Icons.person_outline_rounded,
+                        title: 'Profile',
+                      ),
+                      _ProfileOptionTile(
+                        icon: Icons.card_membership_rounded,
+                        title: 'Membership',
+                      ),
+                      Divider(height: 1),
+                      _ProfileOptionTile(
+                        icon: Icons.logout_rounded,
+                        title: 'Sign Out',
+                        isDanger: true,
+                      ),
+                    ],
                   ),
-                  Divider(height: 12),
-                  _ProfileOptionTile(
-                    icon: Icons.logout_rounded,
-                    title: 'Sign Out',
-                    isDanger: true,
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         );
       },
     );
   }
 
-  void _openLocationOverlay() {
-    showModalBottomSheet(
+  Future<void> _openLocationOverlay() async {
+    final pickedLocation = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select location',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              SizedBox(height: 16),
-              Text('Santa Clara, CA'),
-              SizedBox(height: 10),
-              Text('Sunnyvale, CA'),
-              SizedBox(height: 10),
-              Text('San Jose, CA'),
-            ],
-          ),
+        return LocationPickerSheet(
+          selectedLocation: _selectedLocation,
         );
       },
     );
+
+    if (pickedLocation != null) {
+      setState(() {
+        _selectedLocation = pickedLocation;
+      });
+    }
   }
 
   void _openMyBookingsPage() {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const MyBookingsPage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const MyBookingsPage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -229,7 +226,7 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => BookingConfirmedPage(
+        pageBuilder: (_, _, _) => BookingConfirmedPage(
           courtName: booking['title']!,
           sport: booking['sport']!,
           sportEmoji: _getSportEmoji(booking['sport']!),
@@ -241,7 +238,7 @@ class _HomePageState extends State<HomePage> {
           playersNeeded: 3,
           totalAmount: '\$21.80',
         ),
-        transitionsBuilder: (_, animation, __, child) {
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -257,7 +254,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             HomeTopHeader(
               userName: 'Person name',
-              locationText: 'Santa Clara, CA',
+              locationText: _selectedLocation,
               profileImagePath: null,
               onNotificationTap: _openNotificationsPage,
               onProfileTap: _openProfileOptionsOverlay,
@@ -363,8 +360,7 @@ class _HomePageState extends State<HomePage> {
                                   children: [
                                     Text(
                                       'No bookings yet',
-                                      style:
-                                          AppTextStyles.bodyMedium.copyWith(
+                                      style: AppTextStyles.bodyMedium.copyWith(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textPrimary,
@@ -373,8 +369,7 @@ class _HomePageState extends State<HomePage> {
                                     const SizedBox(height: 6),
                                     Text(
                                       'Try booking a court for this sport',
-                                      style:
-                                          AppTextStyles.bodyMedium.copyWith(
+                                      style: AppTextStyles.bodyMedium.copyWith(
                                         fontSize: 13,
                                         color: AppColors.textSecondary,
                                       ),
@@ -390,7 +385,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             scrollDirection: Axis.horizontal,
                             itemCount: _filteredBookings.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(width: 16),
                             itemBuilder: (context, index) {
                               final booking = _filteredBookings[index];
@@ -431,21 +426,29 @@ class _ProfileOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDanger ? Colors.redAccent : Colors.black87;
+    final color = isDanger ? Colors.redAccent : AppColors.textPrimary;
 
-    return ListTile(
-      dense: true,
-      leading: Icon(icon, color: color),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+    return InkWell(
       onTap: () {
         Navigator.pop(context);
       },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 21),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: TextStyle(
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
