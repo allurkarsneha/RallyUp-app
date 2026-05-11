@@ -45,8 +45,8 @@ class MatchDetailsPage extends StatelessWidget {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -58,8 +58,8 @@ class MatchDetailsPage extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const GroupChatPage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const GroupChatPage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -160,19 +160,12 @@ class MatchDetailsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPlayerSlot({
-    required Widget avatar,
-    required String label,
-  }) {
+  Widget _buildPlayerSlot({required Widget avatar, required String label}) {
     return SizedBox(
       width: 84,
       child: Column(
         children: [
-          SizedBox(
-            width: 60,
-            height: 60,
-            child: Center(child: avatar),
-          ),
+          SizedBox(width: 60, height: 60, child: Center(child: avatar)),
           const SizedBox(height: 10),
           SizedBox(
             height: 52,
@@ -228,10 +221,7 @@ class MatchDetailsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    title,
-                    style: AppTextStyles.sectionTitle,
-                  ),
+                  Text(title, style: AppTextStyles.sectionTitle),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     '$sportEmoji  $sport',
@@ -281,10 +271,7 @@ class MatchDetailsPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'About this match',
-                    style: AppTextStyles.bodyMedium,
-                  ),
+                  Text('About this match', style: AppTextStyles.bodyMedium),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     about,
@@ -293,10 +280,7 @@ class MatchDetailsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'Players ($players)',
-                    style: AppTextStyles.bodyMedium,
-                  ),
+                  Text('Players ($players)', style: AppTextStyles.bodyMedium),
                   const SizedBox(height: AppSpacing.md),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
