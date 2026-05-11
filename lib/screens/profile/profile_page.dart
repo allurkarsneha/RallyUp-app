@@ -6,7 +6,7 @@ import 'subscription_screen.dart';
 import 'account_settings_page.dart';
 import 'block_list_page.dart';
 import 'legal_page.dart';
-import 'notifications_page.dart';
+import 'notifications_settings_page.dart';
 import 'feedback_suggestions_page.dart';
 
 class ProfilePage extends StatelessWidget {
