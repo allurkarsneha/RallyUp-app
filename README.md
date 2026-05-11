@@ -53,6 +53,7 @@ lib/
 ├── widgets/
 ├── theme/
 └── main.dart
+```
 
 ---
 
@@ -80,12 +81,14 @@ The UI was designed in Figma and implemented in Flutter with a focus on:
 ```bash
 flutter pub get
 flutter run
+```
 
 ### Run on a Specific Device
 
 ```bash
 flutter devices
 flutter run -d <device_id>
+```
 
 ---
 
@@ -102,8 +105,11 @@ flutter run -d <device_id>
 ---
 
 ## Authors
-Allurkar Sneha, Nirja Basawa, Answeeta Pereira
+
+- Allurkar Sneha
+- Nirja Basawa
+- Answeeta Pereira
 
 ---
 
-Developed as part of a Flutter mobile application project, SCU CSEN268.
+Developed as part of the SCU CSEN268 Flutter mobile application project.
