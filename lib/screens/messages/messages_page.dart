@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/main_bottom_nav.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
@@ -87,7 +86,6 @@ class MessagesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: MainBottomNav(currentIndex: 1, onTap: (_) {}),
       body: SafeArea(
         child: Column(
           children: [
@@ -98,7 +96,7 @@ class MessagesPage extends StatelessWidget {
                   AppSpacing.pageHorizontal,
                   AppSpacing.lg,
                   AppSpacing.pageHorizontal,
-                  AppSpacing.xl,
+                  AppSpacing.xxl,
                 ),
                 children: [
                   const MessageSearchBar(),
