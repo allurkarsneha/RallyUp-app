@@ -124,7 +124,7 @@ class MessageThreadTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isGroup ? 'Group chat' : status,
+                      status,
                       style: AppTextStyles.caption.copyWith(
                         color: online || isGroup
                             ? AppColors.primary
