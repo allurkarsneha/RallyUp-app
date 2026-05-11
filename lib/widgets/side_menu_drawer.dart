@@ -16,9 +16,7 @@ class SideMenuDrawer extends StatelessWidget {
     Navigator.pop(context);
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (_) => const MainShell(initialIndex: 0),
-      ),
+      MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 0)),
       (route) => false,
     );
   }
@@ -28,12 +26,9 @@ class SideMenuDrawer extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const NearbyPlayersPage(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+        pageBuilder: (_, _, _) => const NearbyPlayersPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
@@ -44,12 +39,9 @@ class SideMenuDrawer extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const OpenMatchesPage(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+        pageBuilder: (_, _, _) => const OpenMatchesPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
@@ -60,12 +52,9 @@ class SideMenuDrawer extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const MyBookingsPage(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+        pageBuilder: (_, _, _) => const MyBookingsPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
@@ -76,12 +65,9 @@ class SideMenuDrawer extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const CourtsPage(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+        pageBuilder: (_, _, _) => const CourtsPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
@@ -187,15 +173,9 @@ class _MenuHeader extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: const [
-              Text(
-                'Sneha',
-                style: AppTextStyles.bodyMedium,
-              ),
+              Text('Sneha', style: AppTextStyles.bodyMedium),
               SizedBox(height: 4),
-              Text(
-                'Verified Player',
-                style: AppTextStyles.caption,
-              ),
+              Text('Verified Player', style: AppTextStyles.caption),
             ],
           ),
         ],
@@ -228,14 +208,9 @@ class _MenuItem extends StatelessWidget {
           horizontal: AppSpacing.sm,
           vertical: 2,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         leading: Icon(icon, color: color, size: 22),
-        title: Text(
-          title,
-          style: AppTextStyles.body.copyWith(color: color),
-        ),
+        title: Text(title, style: AppTextStyles.body.copyWith(color: color)),
         onTap: onTap,
       ),
     );

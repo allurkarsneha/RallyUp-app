@@ -35,12 +35,9 @@ class PlayerProfilePage extends StatelessWidget {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
       (route) => false,
