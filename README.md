@@ -53,3 +53,57 @@ lib/
 ├── widgets/
 ├── theme/
 └── main.dart
+
+---
+
+## Design
+
+The UI was designed in Figma and implemented in Flutter with a focus on:
+- Clean modern layouts
+- Consistent typography and spacing
+- Reusable components
+- Accessibility and responsive design
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Flutter SDK installed
+- Xcode (for iOS)
+- Android Studio (for Android)
+- VS Code or Android Studio
+
+### Run the Project
+
+```bash
+flutter pub get
+flutter run
+
+### Run on a Specific Device
+
+```bash
+flutter devices
+flutter run -d <device_id>
+
+---
+
+## Future Improvements
+
+- Real-time chat system
+- Court and facility booking backend
+- Authentication integration
+- Location services and maps
+- Push notifications
+- Database and cloud synchronization
+- Matchmaking and open game invitations
+
+---
+
+## Authors
+Allurkar Sneha, Nirja Basawa, Answeeta Pereira
+
+---
+
+Developed as part of a Flutter mobile application project, SCU CSEN268.
