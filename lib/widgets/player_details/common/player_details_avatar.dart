@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
 
-class AnsweetaAvatar extends StatelessWidget {
+class PlayerDetailsAvatar extends StatelessWidget {
   final String initials;
   final double size;
   final bool online;
 
-  const AnsweetaAvatar({
+  const PlayerDetailsAvatar({
     super.key,
     required this.initials,
     this.size = 56,

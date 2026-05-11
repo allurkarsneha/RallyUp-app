@@ -54,33 +54,33 @@ class MatchDetailsPage extends StatelessWidget {
                     style: AppTextStyles.sectionTitle,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  const AnsweetaChip(
+                  const PlayerDetailsChip(
                     label: 'Tennis',
                     icon: Icons.sports_tennis,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  const AnsweetaInfoRow(
+                  const PlayerDetailsInfoRow(
                     icon: Icons.calendar_today_outlined,
                     title: 'Today, 6:00 PM',
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  const AnsweetaInfoRow(
+                  const PlayerDetailsInfoRow(
                     icon: Icons.location_on_outlined,
                     title: 'SCU Tennis Court A',
                     subtitle: '500 El Camino Real, Santa Clara, CA',
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  const AnsweetaInfoRow(
+                  const PlayerDetailsInfoRow(
                     icon: Icons.groups_2_outlined,
                     title: '3 / 4 players joined',
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  const AnsweetaInfoRow(
+                  const PlayerDetailsInfoRow(
                     icon: Icons.bar_chart_rounded,
                     title: 'Intermediate Level',
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  const AnsweetaInfoRow(
+                  const PlayerDetailsInfoRow(
                     icon: Icons.verified_rounded,
                     title: 'Hosted by Alex',
                   ),
@@ -111,9 +111,9 @@ class MatchDetailsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  const AnsweetaPrimaryButton(label: 'Join Match'),
+                  const PlayerDetailsPrimaryButton(label: 'Join Match'),
                   const SizedBox(height: AppSpacing.sm),
-                  const AnsweetaPrimaryButton(
+                  const PlayerDetailsPrimaryButton(
                     label: 'Message Host',
                     outlined: true,
                   ),
@@ -139,7 +139,7 @@ class _MatchPlayer extends StatelessWidget {
       width: 58,
       child: Column(
         children: [
-          AnsweetaAvatar(initials: initials, size: 48),
+          PlayerDetailsAvatar(initials: initials, size: 48),
           const SizedBox(height: AppSpacing.xs),
           Text(
             label,

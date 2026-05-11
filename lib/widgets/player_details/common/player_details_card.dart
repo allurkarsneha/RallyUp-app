@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 
-class AnsweetaCard extends StatelessWidget {
+class PlayerDetailsCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
 
-  const AnsweetaCard({
+  const PlayerDetailsCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.md),

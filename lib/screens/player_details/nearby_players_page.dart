@@ -133,13 +133,16 @@ class NearbyPlayersPage extends StatelessWidget {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: const [
-                              AnsweetaChip(label: 'All Levels', selected: true),
+                              PlayerDetailsChip(
+                                label: 'All Levels',
+                                selected: true,
+                              ),
                               SizedBox(width: AppSpacing.xs),
-                              AnsweetaChip(label: 'Beginner'),
+                              PlayerDetailsChip(label: 'Beginner'),
                               SizedBox(width: AppSpacing.xs),
-                              AnsweetaChip(label: 'Intermediate'),
+                              PlayerDetailsChip(label: 'Intermediate'),
                               SizedBox(width: AppSpacing.xs),
-                              AnsweetaChip(label: 'Advanced'),
+                              PlayerDetailsChip(label: 'Advanced'),
                             ],
                           ),
                         ),
@@ -160,7 +163,7 @@ class NearbyPlayersPage extends StatelessWidget {
                     child: Column(
                       children: [
                         for (final player in _players) ...[
-                          AnsweetaPlayerCard(
+                          PlayerDetailsPlayerCard(
                             name: player.name,
                             initials: player.initials,
                             sport: player.sport,

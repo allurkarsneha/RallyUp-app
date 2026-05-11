@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
-import 'answeeta_card.dart';
-import 'answeeta_chip.dart';
-import 'answeeta_info_row.dart';
-import 'answeeta_primary_button.dart';
+import 'player_details_card.dart';
+import 'player_details_chip.dart';
+import 'player_details_info_row.dart';
+import 'player_details_primary_button.dart';
 
-class AnsweetaMatchCard extends StatelessWidget {
+class PlayerDetailsMatchCard extends StatelessWidget {
   final String title;
   final String sport;
   final String when;
@@ -19,7 +19,7 @@ class AnsweetaMatchCard extends StatelessWidget {
   final String spots;
   final bool compact;
 
-  const AnsweetaMatchCard({
+  const PlayerDetailsMatchCard({
     super.key,
     required this.title,
     required this.sport,
@@ -34,7 +34,7 @@ class AnsweetaMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnsweetaCard(
+    return PlayerDetailsCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -42,7 +42,7 @@ class AnsweetaMatchCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: Text(title, style: AppTextStyles.bodyMedium)),
-              AnsweetaChip(label: spots, selected: true),
+              PlayerDetailsChip(label: spots, selected: true),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -55,16 +55,16 @@ class AnsweetaMatchCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          AnsweetaInfoRow(icon: Icons.location_on_outlined, title: place),
+          PlayerDetailsInfoRow(icon: Icons.location_on_outlined, title: place),
           const SizedBox(height: AppSpacing.sm),
-          AnsweetaInfoRow(
+          PlayerDetailsInfoRow(
             icon: Icons.groups_2_outlined,
             title: '$players players - $level',
             trailing: Text(host, style: AppTextStyles.caption),
           ),
           if (!compact) ...[
             const SizedBox(height: AppSpacing.md),
-            AnsweetaPrimaryButton(label: 'Join Match'),
+            PlayerDetailsPrimaryButton(label: 'Join Match'),
           ],
         ],
       ),

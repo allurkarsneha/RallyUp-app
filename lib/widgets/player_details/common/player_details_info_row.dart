@@ -4,13 +4,13 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
-class AnsweetaInfoRow extends StatelessWidget {
+class PlayerDetailsInfoRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
   final Widget? trailing;
 
-  const AnsweetaInfoRow({
+  const PlayerDetailsInfoRow({
     super.key,
     required this.icon,
     required this.title,

@@ -1,10 +1,10 @@
-export 'common/answeeta_avatar.dart';
-export 'common/answeeta_card.dart';
-export 'common/answeeta_chip.dart';
-export 'common/answeeta_info_row.dart';
-export 'common/answeeta_match_card.dart';
-export 'common/answeeta_player_card.dart';
-export 'common/answeeta_primary_button.dart';
+export 'common/player_details_avatar.dart';
+export 'common/player_details_card.dart';
+export 'common/player_details_chip.dart';
+export 'common/player_details_info_row.dart';
+export 'common/player_details_match_card.dart';
+export 'common/player_details_player_card.dart';
+export 'common/player_details_primary_button.dart';
 export 'invite_sent/invite_sent_action_buttons.dart';
 export 'invite_sent/invite_sent_success_icon.dart';
 export 'invite_sent/invite_sent_summary_card.dart';

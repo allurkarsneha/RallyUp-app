@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
 
-class AnsweetaPrimaryButton extends StatelessWidget {
+class PlayerDetailsPrimaryButton extends StatelessWidget {
   final String label;
   final IconData? icon;
   final VoidCallback? onPressed;
   final bool outlined;
 
-  const AnsweetaPrimaryButton({
+  const PlayerDetailsPrimaryButton({
     super.key,
     required this.label,
     this.icon,

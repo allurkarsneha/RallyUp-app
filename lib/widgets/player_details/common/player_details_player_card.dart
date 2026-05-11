@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
-import 'answeeta_avatar.dart';
-import 'answeeta_card.dart';
-import 'answeeta_chip.dart';
-import 'answeeta_primary_button.dart';
+import 'player_details_avatar.dart';
+import 'player_details_card.dart';
+import 'player_details_chip.dart';
+import 'player_details_primary_button.dart';
 
-class AnsweetaPlayerCard extends StatelessWidget {
+class PlayerDetailsPlayerCard extends StatelessWidget {
   final String name;
   final String initials;
   final String sport;
@@ -21,7 +21,7 @@ class AnsweetaPlayerCard extends StatelessWidget {
   final double rating;
   final bool online;
 
-  const AnsweetaPlayerCard({
+  const PlayerDetailsPlayerCard({
     super.key,
     required this.name,
     required this.initials,
@@ -38,7 +38,7 @@ class AnsweetaPlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnsweetaCard(
+    return PlayerDetailsCard(
       padding: EdgeInsets.zero,
       child: Column(
         children: [
@@ -47,7 +47,7 @@ class AnsweetaPlayerCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AnsweetaAvatar(initials: initials, online: online),
+                PlayerDetailsAvatar(initials: initials, online: online),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
@@ -80,7 +80,7 @@ class AnsweetaPlayerCard extends StatelessWidget {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           _MetaText(label: sport, icon: Icons.sports_tennis),
-                          AnsweetaChip(label: level),
+                          PlayerDetailsChip(label: level),
                           _MetaText(
                             label: distance,
                             icon: Icons.location_on_outlined,
@@ -104,7 +104,7 @@ class AnsweetaPlayerCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: AnsweetaChip(
+                  child: PlayerDetailsChip(
                     label: availability,
                     icon: Icons.event_available_outlined,
                   ),
@@ -122,14 +122,14 @@ class AnsweetaPlayerCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: AnsweetaPrimaryButton(
+                  child: PlayerDetailsPrimaryButton(
                     label: 'View Profile',
                     outlined: true,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
-                  child: AnsweetaPrimaryButton(
+                  child: PlayerDetailsPrimaryButton(
                     label: actionLabel,
                     icon: actionLabel == 'Invite'
                         ? Icons.mail_outline_rounded

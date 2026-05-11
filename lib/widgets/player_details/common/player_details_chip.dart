@@ -4,12 +4,12 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
-class AnsweetaChip extends StatelessWidget {
+class PlayerDetailsChip extends StatelessWidget {
   final String label;
   final IconData? icon;
   final bool selected;
 
-  const AnsweetaChip({
+  const PlayerDetailsChip({
     super.key,
     required this.label,
     this.icon,

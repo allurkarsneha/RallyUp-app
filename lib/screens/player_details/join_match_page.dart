@@ -18,7 +18,7 @@ class JoinMatchPage extends StatelessWidget {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 340),
-              child: AnsweetaCard(
+              child: PlayerDetailsCard(
                 padding: const EdgeInsets.all(AppSpacing.xl),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -51,9 +51,9 @@ class JoinMatchPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSpacing.xl),
-                    const AnsweetaPrimaryButton(label: 'Yes, Join'),
+                    const PlayerDetailsPrimaryButton(label: 'Yes, Join'),
                     const SizedBox(height: AppSpacing.sm),
-                    const AnsweetaPrimaryButton(
+                    const PlayerDetailsPrimaryButton(
                       label: 'Cancel',
                       outlined: true,
                     ),
