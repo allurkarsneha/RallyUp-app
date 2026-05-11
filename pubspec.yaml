@@ -1,7 +1,7 @@
 name: rallyup
 description: "A new Flutter project."
 
-publish_to: 'none' 
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -21,11 +21,13 @@ dev_dependencies:
 
   flutter_lints: ^6.0.0
 
-
 flutter:
-
   uses-material-design: true
   assets:
     - assets/images/
     - assets/images/sports/
     - assets/images/courts/
+    - assets/images/player_details/open_matches/
+    - assets/images/player_details/player_profile/
+    - assets/images/player_details/message_chat/
+    - assets/images/login/
