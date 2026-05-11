@@ -5,6 +5,7 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import 'player_details_avatar.dart';
 import 'player_details_card.dart';
+import 'player_details_chip.dart';
 import 'player_details_primary_button.dart';
 
 class PlayerDetailsPlayerCard extends StatelessWidget {
@@ -22,7 +23,6 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
   final String? avatarImagePath;
   final VoidCallback? onViewProfileTap;
   final VoidCallback? onActionTap;
-  final VoidCallback? onMessageTap;
 
   const PlayerDetailsPlayerCard({
     super.key,
@@ -40,34 +40,7 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
     this.avatarImagePath,
     this.onViewProfileTap,
     this.onActionTap,
-    this.onMessageTap,
   });
-
-  Color _levelChipColor() {
-    switch (level) {
-      case 'Beginner':
-        return const Color(0xFFF7E8B5);
-      case 'Intermediate':
-        return const Color(0xFFDCE7FF);
-      case 'Advanced':
-        return const Color(0xFFE7D9FF);
-      default:
-        return AppColors.primaryLight;
-    }
-  }
-
-  IconData _sportIcon() {
-    switch (sport) {
-      case 'Tennis':
-        return Icons.sports_tennis;
-      case 'Badminton':
-        return Icons.sports;
-      case 'Table Tennis':
-        return Icons.sports_tennis;
-      default:
-        return Icons.sports;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +57,6 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
                   initials: initials,
                   online: online,
                   imagePath: avatarImagePath,
-                  size: 58,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -94,78 +66,39 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              name,
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                            child: Text(name, style: AppTextStyles.bodyMedium),
                           ),
                           const Icon(
-                            Icons.star_outline_rounded,
+                            Icons.star_rounded,
                             color: Color(0xFFF5A623),
-                            size: 18,
+                            size: 16,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 2),
                           Text(
                             rating.toStringAsFixed(1),
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              fontWeight: FontWeight.w700,
+                            style: AppTextStyles.caption.copyWith(
                               color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: AppSpacing.xs,
+                        runSpacing: 6,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          _MetaText(
-                            label: sport,
-                            icon: _sportIcon(),
-                          ),
-                          const Text(
-                            '•',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _levelChipColor(),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Text(
-                              level,
-                              style: AppTextStyles.caption.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          const Text(
-                            '•',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
+                          _MetaText(label: sport, icon: Icons.sports_tennis),
+                          PlayerDetailsChip(label: level),
                           _MetaText(
                             label: distance,
                             icon: Icons.location_on_outlined,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        bio,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
+                      const SizedBox(height: 8),
+                      Text(bio, style: AppTextStyles.caption),
                     ],
                   ),
                 ),
@@ -181,43 +114,14 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.event_available_outlined,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            availability,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: PlayerDetailsChip(
+                    label: availability,
+                    icon: Icons.event_available_outlined,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
+                const SizedBox(width: AppSpacing.sm),
                 Flexible(
-                  child: _MetaText(
-                    label: time,
-                    icon: Icons.schedule_rounded,
-                  ),
+                  child: _MetaText(label: time, icon: Icons.schedule_rounded),
                 ),
               ],
             ),
@@ -244,21 +148,6 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
                     onPressed: onActionTap,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF15D8CF),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    onPressed: onMessageTap ?? () {},
-                    icon: const Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      color: AppColors.textPrimary,
-                    ),
-                    tooltip: 'Message',
-                  ),
-                ),
               ],
             ),
           ),
@@ -279,15 +168,14 @@ class _MetaText extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: AppColors.primary),
+        Icon(icon, size: 15, color: AppColors.primary),
         const SizedBox(width: 4),
-        Text(
-          label,
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textPrimary,
-            fontSize: 13,
+        Flexible(
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
+            overflow: TextOverflow.ellipsis,
           ),
-          overflow: TextOverflow.ellipsis,
         ),
       ],
     );

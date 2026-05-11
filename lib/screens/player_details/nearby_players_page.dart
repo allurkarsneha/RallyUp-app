@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:rallyup/main.dart';
 import 'package:rallyup/screens/notifications_page.dart';
+import 'package:rallyup/screens/player_details/message_page.dart';
 import 'package:rallyup/screens/player_details/player_profile_page.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/courts/court_search_bar.dart';
+import '../../widgets/location_picker_sheet.dart';
 import '../../widgets/main_bottom_nav.dart';
 import '../../widgets/player_details/player_details_components.dart';
 import '../../widgets/side_menu_drawer.dart';
@@ -25,6 +27,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
   String _selectedLevel = 'All Levels';
   String _selectedSport = 'All';
   String _selectedSort = 'default';
+  String _selectedLocation = 'Santa Clara, CA';
 
   static const List<String> _sports = [
     'Tennis',
@@ -141,6 +144,25 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
     );
   }
 
+  Future<void> _openLocationOverlay() async {
+    final pickedLocation = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return LocationPickerSheet(
+          selectedLocation: _selectedLocation,
+        );
+      },
+    );
+
+    if (pickedLocation != null && pickedLocation.isNotEmpty) {
+      setState(() {
+        _selectedLocation = pickedLocation;
+      });
+    }
+  }
+
   void _openPlayerProfile(_NearbyPlayer player) {
     Navigator.push(
       context,
@@ -154,6 +176,18 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
           rating: player.rating,
           online: player.online,
         ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _openPersonalChat(_NearbyPlayer player) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const MessagePage(),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -356,33 +390,47 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        color: AppColors.primary,
-                        size: 20,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: _openLocationOverlay,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${players.length} players nearby',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _selectedLocation,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.textPrimary,
+                            size: 18,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${players.length} players nearby',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Santa Clara, CA',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 14),
                   CourtSearchBar(
                     controller: _searchController,
+                    hintText: 'Search nearby players',
                     onChanged: (_) => setState(() {}),
                     onFilterTap: _openFilterSheet,
                   ),
@@ -510,6 +558,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
                                   avatarImagePath: player.avatarImagePath,
                                   onViewProfileTap: () =>
                                       _openPlayerProfile(player),
+                                  onActionTap: () => _openPersonalChat(player),
                                 ),
                                 const SizedBox(height: AppSpacing.md),
                               ],
