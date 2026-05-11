@@ -4,6 +4,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/messages/messages_widgets.dart';
+import '../player_details/group_chat_page.dart';
 import 'unread_messages_page.dart';
 
 class GroupMessagesPage extends StatelessWidget {
@@ -72,12 +73,10 @@ class GroupMessagesPage extends StatelessWidget {
                   const SizedBox(height: AppSpacing.md),
                   MessageFilterTabs(
                     selectedFilter: 'Groups',
-                    onAllTap: () => Navigator.of(context).maybePop(),
+                    onAllTap: () => Navigator.maybePop(context),
                     onUnreadTap: () {
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const UnreadMessagesPage(),
-                        ),
+                        _fadeRoute<void>(const UnreadMessagesPage()),
                       );
                     },
                     onGroupsTap: () {},
@@ -97,6 +96,16 @@ class GroupMessagesPage extends StatelessWidget {
                       unreadCount: thread.unreadCount,
                       isGroup: true,
                       avatars: thread.avatars,
+                      onTap: thread.name == 'SCU Evening Tennis Match'
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const GroupChatPage(),
+                                ),
+                              );
+                            }
+                          : null,
                     ),
                 ],
               ),
@@ -106,6 +115,17 @@ class GroupMessagesPage extends StatelessWidget {
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }
 
 class _GroupMessageThread {

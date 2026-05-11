@@ -64,13 +64,11 @@ class UnreadMessagesPage extends StatelessWidget {
                   const SizedBox(height: AppSpacing.md),
                   MessageFilterTabs(
                     selectedFilter: 'Unread',
-                    onAllTap: () => Navigator.of(context).maybePop(),
+                    onAllTap: () => Navigator.maybePop(context),
                     onUnreadTap: () {},
                     onGroupsTap: () {
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const GroupMessagesPage(),
-                        ),
+                        _fadeRoute<void>(const GroupMessagesPage()),
                       );
                     },
                   ),
@@ -98,6 +96,17 @@ class UnreadMessagesPage extends StatelessWidget {
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }
 
 class _UnreadMessageThread {

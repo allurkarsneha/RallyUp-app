@@ -5,7 +5,10 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
 class MessageSearchBar extends StatelessWidget {
-  const MessageSearchBar({super.key});
+  final TextEditingController? controller;
+  final ValueChanged<String>? onChanged;
+
+  const MessageSearchBar({super.key, this.controller, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +25,36 @@ class MessageSearchBar extends StatelessWidget {
           const Icon(Icons.search_rounded, color: AppColors.muted, size: 22),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(
-              'Search messages',
-              style: AppTextStyles.body.copyWith(color: AppColors.muted),
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              cursorColor: AppColors.primary,
+              style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Search messages',
+                hintStyle: AppTextStyles.body.copyWith(color: AppColors.muted),
+              ),
             ),
           ),
+          if (controller != null && (controller?.text.isNotEmpty ?? false))
+            GestureDetector(
+              onTap: () {
+                controller?.clear();
+                onChanged?.call('');
+              },
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.only(left: AppSpacing.xs),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: AppColors.muted,
+                  size: 18,
+                ),
+              ),
+            ),
         ],
       ),
     );
