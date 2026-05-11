@@ -27,3 +27,6 @@ flutter:
   assets:
     - assets/images/
     - assets/images/sports/
+    - assets/images/answeeta_ui/open_matches/
+    - assets/images/answeeta_ui/player_profile/
+    - assets/images/answeeta_ui/message_chat/
