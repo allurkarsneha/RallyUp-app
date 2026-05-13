@@ -84,7 +84,9 @@ class ReceivedInviteCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              _InvitesSkillChip(label: level),
+              Flexible(
+                child: _InvitesSkillChip(label: level),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -104,15 +106,30 @@ class ReceivedInviteCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              InviteStatusChip(label: status),
-              const Spacer(),
-              _InviteActionButton(
-                label: 'Decline',
-                outlined: true,
-                onPressed: () {},
+              Expanded(
+                flex: 4,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InviteStatusChip(label: status),
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              _InviteActionButton(label: 'Accept', onPressed: () {}),
+              Expanded(
+                flex: 3,
+                child: _InviteActionButton(
+                  label: 'Decline',
+                  outlined: true,
+                  onPressed: () {},
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                flex: 3,
+                child: _InviteActionButton(
+                  label: 'Accept',
+                  onPressed: () {},
+                ),
+              ),
             ],
           ),
         ],
@@ -134,23 +151,27 @@ class _InviteActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = Text(
-      label,
-      style: AppTextStyles.bodyMedium.copyWith(
-        fontSize: 14,
-        fontWeight: FontWeight.w800,
+    final child = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        label,
+        style: AppTextStyles.bodyMedium.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
 
     if (outlined) {
       return SizedBox(
         height: 38,
+        width: double.infinity,
         child: OutlinedButton(
           onPressed: onPressed,
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
             side: const BorderSide(color: AppColors.primary, width: 1.3),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -162,13 +183,14 @@ class _InviteActionButton extends StatelessWidget {
 
     return SizedBox(
       height: 38,
+      width: double.infinity,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -196,6 +218,7 @@ class _InvitesSkillChip extends StatelessWidget {
       ),
       child: Text(
         label,
+        overflow: TextOverflow.ellipsis,
         style: AppTextStyles.bodyMedium.copyWith(
           color: const Color(0xFF3B6FD8),
           fontWeight: FontWeight.w700,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../screens/notifications_page.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import 'profile_settings_screen.dart';
@@ -6,7 +7,7 @@ import 'subscription_screen.dart';
 import 'account_settings_page.dart';
 import 'block_list_page.dart';
 import 'legal_page.dart';
-import 'notifications_settings_page.dart';
+import 'notifications_settings_page.dart' as profile_notifications;
 import 'feedback_suggestions_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -16,10 +17,22 @@ class ProfilePage extends StatelessWidget {
     Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
   }
 
+  void _openNotificationsPage(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const NotificationsPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: const Color(0xFF4A4A4A),
@@ -61,7 +74,7 @@ class ProfilePage extends StatelessWidget {
   void _showDeleteDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: const Color(0xFF4A4A4A),
@@ -161,31 +174,36 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
-
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: ListView(
             children: [
-              const SizedBox(height: 28),
-
+              const SizedBox(height: 18),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Profile & Preferences', style: AppTextStyles.pageTitle),
+                  Expanded(
+                    child: Text(
+                      'Profile & Preferences',
+                      style: AppTextStyles.pageTitle.copyWith(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _openNotificationsPage(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     icon: const Icon(
                       Icons.notifications_none_rounded,
                       color: AppColors.textPrimary,
-                      size: 24,
+                      size: 30,
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 48),
-
+              const SizedBox(height: 42),
               Row(
                 children: [
                   Container(
@@ -237,9 +255,7 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: 42),
-
               _settingsItem(
                 context: context,
                 title: 'Player profile settings',
@@ -253,7 +269,6 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-
               _settingsItem(
                 context: context,
                 title: 'Account settings',
@@ -267,7 +282,6 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-
               _settingsItem(
                 context: context,
                 title: 'Subscription',
@@ -281,7 +295,6 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-
               _settingsItem(
                 context: context,
                 title: 'Block List',
@@ -293,7 +306,6 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-
               _settingsItem(
                 context: context,
                 title: 'Notifications',
@@ -302,12 +314,12 @@ class ProfilePage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const NotificationsPage(),
+                      builder: (_) =>
+                          const profile_notifications.NotificationsPage(),
                     ),
                   );
                 },
               ),
-
               _settingsItem(
                 context: context,
                 title: 'Feedback & Suggestions',
@@ -321,7 +333,6 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-
               _settingsItem(
                 context: context,
                 title: 'Legal',
@@ -333,23 +344,19 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-
               const SizedBox(height: 32),
-
               _actionRow(
                 icon: Icons.logout_rounded,
                 text: 'Logout',
                 color: const Color(0xFFFF4B2B),
                 onTap: () => _showLogoutDialog(context),
               ),
-
               _actionRow(
                 icon: Icons.delete_outline_rounded,
                 text: 'Delete Account',
                 color: AppColors.textSecondary,
                 onTap: () => _showDeleteDialog(context),
               ),
-
               const SizedBox(height: 28),
             ],
           ),

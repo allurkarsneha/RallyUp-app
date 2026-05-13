@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rallyup/main.dart';
 
 import '../../widgets/main_bottom_nav.dart';
 import '../../theme/app_spacing.dart';
@@ -11,11 +12,22 @@ class MessagePage extends StatelessWidget {
   static const String _alexAvatarPath =
       'assets/images/player_details/message_chat/alex_johnson.png';
 
+  void _onBottomNavTap(BuildContext context, int index) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      _fadeRoute<void>(MainShell(initialIndex: index)),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFCFAFA),
-      bottomNavigationBar: MainBottomNav(currentIndex: 1, onTap: (_) {}),
+      bottomNavigationBar: MainBottomNav(
+        currentIndex: 1,
+        onTap: (index) => _onBottomNavTap(context, index),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -98,4 +110,15 @@ class MessagePage extends StatelessWidget {
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }
