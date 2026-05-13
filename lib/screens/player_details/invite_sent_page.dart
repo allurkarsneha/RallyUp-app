@@ -5,12 +5,26 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/player_details_components.dart';
+import 'invites_page.dart';
+import 'nearby_players_page.dart';
 
 class InviteSentPage extends StatelessWidget {
   const InviteSentPage({super.key});
 
   static const String _alexAvatarPath =
       'assets/images/player_details/message_chat/alex_johnson.png';
+
+  void _openInvites(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const InvitesPage()));
+  }
+
+  void _backToPlayers(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      _fadeRoute<void>(const NearbyPlayersPage()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +78,10 @@ class InviteSentPage extends StatelessWidget {
                       avatarImagePath: _alexAvatarPath,
                     ),
                     const SizedBox(height: AppSpacing.xxl),
-                    const InviteSentActionButtons(),
+                    InviteSentActionButtons(
+                      onViewInvitesTap: () => _openInvites(context),
+                      onBackToPlayersTap: () => _backToPlayers(context),
+                    ),
                     const SizedBox(height: AppSpacing.xxl),
                     Text(
                       'Invite Sent!',
@@ -85,4 +102,15 @@ class InviteSentPage extends StatelessWidget {
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }

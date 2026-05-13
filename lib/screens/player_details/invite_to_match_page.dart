@@ -5,12 +5,30 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/player_details_components.dart';
+import 'invite_sent_page.dart';
+import 'player_profile_page.dart';
 
 class InviteToMatchPage extends StatelessWidget {
   const InviteToMatchPage({super.key});
 
   static const String _avatarPath =
       'assets/images/player_details/message_chat/alex_johnson.png';
+
+  void _goBackToProfile(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.maybePop(context);
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      _fadeRoute<void>(const PlayerProfilePage()),
+    );
+  }
+
+  void _sendInvite(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const InviteSentPage()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +38,7 @@ class InviteToMatchPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const _InviteHeader(),
+            _InviteHeader(onBackTap: () => _goBackToProfile(context)),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -29,14 +47,14 @@ class InviteToMatchPage extends StatelessWidget {
                   AppSpacing.pageHorizontal,
                   AppSpacing.lg,
                 ),
-                children: const [
-                  InvitePlayerCard(avatarImagePath: _avatarPath),
-                  SizedBox(height: AppSpacing.lg),
-                  InviteDetailCard(),
-                  SizedBox(height: AppSpacing.lg),
-                  InviteMessageCard(),
-                  SizedBox(height: AppSpacing.lg),
-                  PrimaryInviteButton(),
+                children: [
+                  const InvitePlayerCard(avatarImagePath: _avatarPath),
+                  const SizedBox(height: AppSpacing.lg),
+                  const InviteDetailCard(),
+                  const SizedBox(height: AppSpacing.lg),
+                  const InviteMessageCard(),
+                  const SizedBox(height: AppSpacing.lg),
+                  PrimaryInviteButton(onPressed: () => _sendInvite(context)),
                 ],
               ),
             ),
@@ -48,7 +66,9 @@ class InviteToMatchPage extends StatelessWidget {
 }
 
 class _InviteHeader extends StatelessWidget {
-  const _InviteHeader();
+  final VoidCallback? onBackTap;
+
+  const _InviteHeader({this.onBackTap});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +91,7 @@ class _InviteHeader extends StatelessWidget {
           Positioned(
             left: AppSpacing.xs,
             child: IconButton(
-              onPressed: () => Navigator.maybePop(context),
+              onPressed: onBackTap ?? () => Navigator.maybePop(context),
               icon: const Icon(Icons.arrow_back_ios_new_rounded),
               color: AppColors.textPrimary,
               tooltip: 'Back',
@@ -109,4 +129,15 @@ class _InviteHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }

@@ -19,6 +19,7 @@ export 'invites/invite_more_players_card.dart';
 export 'invites/invite_status_chip.dart';
 export 'invites/invites_header.dart';
 export 'invites/invites_tab_bar.dart';
+export 'invites/received_invite_card.dart';
 export 'invites/sent_invite_card.dart';
 export 'message/chat_bubble.dart';
 export 'message/chat_header.dart';

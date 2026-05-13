@@ -4,6 +4,7 @@ import '../../widgets/main_bottom_nav.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/player_details/group_chat/group_chat_widgets.dart';
 import '../../widgets/player_details/message/message_input_bar.dart';
+import 'match_joined_page.dart';
 
 class GroupChatPage extends StatelessWidget {
   const GroupChatPage({super.key});
@@ -15,27 +16,50 @@ class GroupChatPage extends StatelessWidget {
   static const String _priyaAvatarPath =
       'assets/images/player_details/open_matches/priya_avatar.png';
 
+  void _backToMatchJoined(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.maybePop(context);
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      _fadeRoute<void>(const MatchJoinedPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFCFAFA),
       bottomNavigationBar: MainBottomNav(currentIndex: 1, onTap: (_) {}),
-      body: const SafeArea(
+      body: SafeArea(
         child: Column(
           children: [
-            GroupChatHeader(),
-            Expanded(
+            GroupChatHeader(onBackTap: () => _backToMatchJoined(context)),
+            const Expanded(
               child: GroupChatMessageList(
                 courtImagePath: _courtImagePath,
                 alexAvatarPath: _alexAvatarPath,
                 priyaAvatarPath: _priyaAvatarPath,
               ),
             ),
-            MessageInputBar(),
-            SizedBox(height: AppSpacing.xs),
+            const MessageInputBar(),
+            const SizedBox(height: AppSpacing.xs),
           ],
         ),
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }

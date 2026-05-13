@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rallyup/main.dart';
-import 'package:rallyup/screens/player_details/group_chat_page.dart';
+import 'package:rallyup/screens/player_details/match_joined_page.dart';
+import 'package:rallyup/screens/player_details/message_page.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -45,8 +46,9 @@ class MatchDetailsPage extends StatelessWidget {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, _, child) {
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            MainShell(initialIndex: index),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -54,16 +56,12 @@ class MatchDetailsPage extends StatelessWidget {
     );
   }
 
-  void _openGroupChat(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const GroupChatPage(),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
+  void _openMatchJoined(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const MatchJoinedPage()));
+  }
+
+  void _openHostMessage(BuildContext context) {
+    Navigator.push(context, _fadeRoute<void>(const MessagePage()));
   }
 
   void _showJoinDialog(BuildContext context) {
@@ -108,7 +106,7 @@ class MatchDetailsPage extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(dialogContext);
-                      _openGroupChat(context);
+                      _openMatchJoined(context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -362,7 +360,7 @@ class MatchDetailsPage extends StatelessWidget {
                     width: double.infinity,
                     height: 54,
                     child: OutlinedButton(
-                      onPressed: () {},
+                      onPressed: () => _openHostMessage(context),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: AppColors.border),
@@ -388,4 +386,15 @@ class MatchDetailsPage extends StatelessWidget {
       ),
     );
   }
+}
+
+PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+  );
 }

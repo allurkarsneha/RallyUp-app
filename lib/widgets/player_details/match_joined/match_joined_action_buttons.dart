@@ -5,7 +5,14 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
 class MatchJoinedActionButtons extends StatelessWidget {
-  const MatchJoinedActionButtons({super.key});
+  final VoidCallback? onGroupChatTap;
+  final VoidCallback? onViewBookingsTap;
+
+  const MatchJoinedActionButtons({
+    super.key,
+    this.onGroupChatTap,
+    this.onViewBookingsTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +22,7 @@ class MatchJoinedActionButtons extends StatelessWidget {
           width: double.infinity,
           height: 56,
           child: FilledButton.icon(
-            onPressed: () {},
+            onPressed: onGroupChatTap ?? () {},
             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
             label: const Text('Go to Group Chat'),
             style: FilledButton.styleFrom(
@@ -37,7 +44,7 @@ class MatchJoinedActionButtons extends StatelessWidget {
           width: double.infinity,
           height: 56,
           child: OutlinedButton(
-            onPressed: () {},
+            onPressed: onViewBookingsTap ?? () {},
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.primary, width: 1.4),

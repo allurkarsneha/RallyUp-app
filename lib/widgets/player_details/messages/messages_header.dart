@@ -7,11 +7,15 @@ import '../../../theme/app_text_styles.dart';
 class MessagesHeader extends StatelessWidget {
   final String title;
   final bool showBackButton;
+  final bool showMenuButton;
+  final VoidCallback? onMenuTap;
 
   const MessagesHeader({
     super.key,
     this.title = 'Messages',
     this.showBackButton = false,
+    this.showMenuButton = false,
+    this.onMenuTap,
   });
 
   @override
@@ -39,6 +43,15 @@ class MessagesHeader extends StatelessWidget {
             IconButton(
               onPressed: () => Navigator.of(context).maybePop(),
               icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              color: AppColors.textPrimary,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ] else if (showMenuButton) ...[
+            IconButton(
+              onPressed: onMenuTap,
+              icon: const Icon(Icons.menu_rounded),
               color: AppColors.textPrimary,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 40, height: 40),
