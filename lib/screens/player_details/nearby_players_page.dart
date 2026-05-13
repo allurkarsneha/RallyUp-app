@@ -29,11 +29,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
   String _selectedSort = 'default';
   String _selectedLocation = 'Santa Clara, CA';
 
-  static const List<String> _sports = [
-    'Tennis',
-    'Badminton',
-    'Table Tennis',
-  ];
+  static const List<String> _sports = ['Tennis', 'Badminton', 'Table Tennis'];
 
   static const List<_NearbyPlayer> _players = [
     _NearbyPlayer(
@@ -136,8 +132,8 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const NotificationsPage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -150,9 +146,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return LocationPickerSheet(
-          selectedLocation: _selectedLocation,
-        );
+        return LocationPickerSheet(selectedLocation: _selectedLocation);
       },
     );
 
@@ -167,7 +161,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => PlayerProfilePage(
+        pageBuilder: (_, _, _) => PlayerProfilePage(
           playerName: player.name,
           initials: player.initials,
           sport: player.sport,
@@ -176,7 +170,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
           rating: player.rating,
           online: player.online,
         ),
-        transitionsBuilder: (_, animation, __, child) {
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -187,8 +181,8 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const MessagePage(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const MessagePage(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -199,8 +193,8 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -284,18 +278,12 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
               ? const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFF8F9FC),
-                    Color(0xFFEDEFF5),
-                  ],
+                  colors: [Color(0xFFF8F9FC), Color(0xFFEDEFF5)],
                 )
               : const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white,
-                    Color(0xFFF8F8FA),
-                  ],
+                  colors: [Colors.white, Color(0xFFF8F8FA)],
                 ),
           borderRadius: BorderRadius.circular(26),
           border: Border.all(
@@ -446,7 +434,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
                 ),
                 scrollDirection: Axis.horizontal,
                 itemCount: _sports.length + 1,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const SizedBox(width: AppSpacing.sm),
                 itemBuilder: (context, index) {
                   if (index == 0) {

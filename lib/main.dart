@@ -33,10 +33,7 @@ class RallyUpApp extends StatelessWidget {
 class MainShell extends StatefulWidget {
   final int initialIndex;
 
-  const MainShell({
-    super.key,
-    this.initialIndex = 0,
-  });
+  const MainShell({super.key, this.initialIndex = 0});
 
   @override
   State<MainShell> createState() => _MainShellState();
