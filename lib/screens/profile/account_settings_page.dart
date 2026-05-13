@@ -141,7 +141,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
 
                   Switch(
                     value: profileVisible,
-                    activeColor: AppColors.white,
+                    activeThumbColor: AppColors.white,
                     activeTrackColor: AppColors.brightGreen,
                     inactiveThumbColor: AppColors.white,
                     inactiveTrackColor: AppColors.textSecondary,

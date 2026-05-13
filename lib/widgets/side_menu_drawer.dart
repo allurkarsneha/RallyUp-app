@@ -36,13 +36,10 @@ class SideMenuDrawer extends StatelessWidget {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
-  void _goToSignup(BuildContext context) {
-    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-  }
-
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
+      useRootNavigator: true,
       barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (dialogContext) {
         return AlertDialog(
@@ -61,18 +58,24 @@ class SideMenuDrawer extends StatelessWidget {
           content: Text(
             'Are you sure you want\nto logout of your\naccount?',
             textAlign: TextAlign.center,
-            style: AppTextStyles.caption.copyWith(color: AppColors.white),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.white,
+            ),
           ),
           actionsAlignment: MainAxisAlignment.spaceEvenly,
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () {
+                Navigator.of(dialogContext, rootNavigator: true).pop();
+              },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext);
-                _goToSignup(context);
+                final navigator =
+                    Navigator.of(dialogContext, rootNavigator: true);
+                navigator.pop();
+                navigator.pushNamedAndRemoveUntil('/', (route) => false);
               },
               child: const Text('Logout'),
             ),
@@ -151,9 +154,7 @@ class SideMenuDrawer extends StatelessWidget {
   void _handleLogout(BuildContext context) {
     Navigator.pop(context);
     Future.delayed(const Duration(milliseconds: 120), () {
-      if (context.mounted) {
-        _showLogoutDialog(context);
-      }
+      _showLogoutDialog(context);
     });
   }
 

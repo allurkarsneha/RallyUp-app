@@ -100,7 +100,7 @@ class _NameScreenState extends State<NameScreen> {
                   text: 'Continue',
                   width: 180,
                   height: 48,
-                  backgroundColor: AppColors.darkGreen.withOpacity(0.75),
+                  backgroundColor: AppColors.darkGreen.withValues(alpha: 0.75),
                   onPressed: continueToPhone,
                 ),
               ),
