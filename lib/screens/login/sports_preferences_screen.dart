@@ -126,7 +126,7 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
                             image: AssetImage(image),
                             fit: BoxFit.cover,
                             colorFilter: ColorFilter.mode(
-                              Colors.black.withOpacity(0.25),
+                              Colors.black.withValues(alpha: .25),
                               BlendMode.darken,
                             ),
                           ),

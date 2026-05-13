@@ -3,6 +3,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/side_menu_drawer.dart';
+import '../player_details/group_chat_page.dart';
 import '../player_details/message_page.dart';
 import '../../widgets/player_details/messages/messages_widgets.dart';
 import 'group_messages_page.dart';
@@ -105,6 +106,15 @@ class _MessagesPageState extends State<MessagesPage> {
     }).toList();
   }
 
+  void _openThread(_MessageThread thread) {
+    Navigator.push(
+      context,
+      _fadeRoute<void>(
+        thread.isGroup ? const GroupChatPage() : const MessagePage(),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -126,6 +136,7 @@ class _MessagesPageState extends State<MessagesPage> {
                 return MessagesHeader(
                   showMenuButton: true,
                   onMenuTap: () => Scaffold.of(context).openDrawer(),
+                  onComposeTap: () {},
                 );
               },
             ),
@@ -192,16 +203,7 @@ class _MessagesPageState extends State<MessagesPage> {
                         online: thread.online,
                         isGroup: thread.isGroup,
                         avatars: thread.avatars,
-                        onTap: thread.name == 'Alex Johnson'
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const MessagePage(),
-                                  ),
-                                );
-                              }
-                            : null,
+                        onTap: () => _openThread(thread),
                       ),
                 ],
               ),

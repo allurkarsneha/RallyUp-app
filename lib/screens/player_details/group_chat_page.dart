@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rallyup/main.dart';
 
 import '../../widgets/main_bottom_nav.dart';
 import '../../theme/app_spacing.dart';
@@ -28,11 +29,22 @@ class GroupChatPage extends StatelessWidget {
     );
   }
 
+  void _onBottomNavTap(BuildContext context, int index) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      _fadeRoute<void>(MainShell(initialIndex: index)),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFCFAFA),
-      bottomNavigationBar: MainBottomNav(currentIndex: 1, onTap: (_) {}),
+      bottomNavigationBar: MainBottomNav(
+        currentIndex: 1,
+        onTap: (index) => _onBottomNavTap(context, index),
+      ),
       body: SafeArea(
         child: Column(
           children: [

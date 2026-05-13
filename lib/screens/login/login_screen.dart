@@ -125,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     text: 'Login',
                     width: 230,
                     height: 56,
-                    backgroundColor: AppColors.darkGreen.withOpacity(0.75),
+                    backgroundColor: AppColors.darkGreen.withValues(alpha: 0.75),
                     onPressed: login,
                   ),
                 ),

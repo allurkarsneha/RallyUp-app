@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:rallyup/main.dart';
 import 'package:rallyup/screens/booking_confirmed_page.dart';
+import 'package:rallyup/screens/court_details_page.dart';
+import 'package:rallyup/screens/courts_page.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
 import 'package:rallyup/screens/notifications_page.dart';
+import 'package:rallyup/screens/player_details/match_details_page.dart';
+import 'package:rallyup/screens/player_details/message_page.dart';
+import 'package:rallyup/screens/player_details/nearby_players_page.dart';
+import 'package:rallyup/screens/player_details/open_matches_page.dart';
+import 'package:rallyup/screens/profile/subscription_screen.dart';
+
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/booking_preview_card.dart';
+import '../../widgets/home/home_nearby_player_preview_card.dart';
+import '../../widgets/home/home_section_header.dart';
+import '../../widgets/home/home_suggested_court_preview_card.dart';
+import '../../widgets/home/home_suggested_open_match_preview_card.dart';
 import '../../widgets/home_top_header.dart';
 import '../../widgets/location_picker_sheet.dart';
 import '../../widgets/sports_card.dart';
@@ -18,6 +31,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const String _userName = 'Person name';
+
   String _selectedSport = 'All';
   String _selectedLocation = 'Santa Clara, CA';
 
@@ -56,12 +71,112 @@ class _HomePageState extends State<HomePage> {
           'date': 'Wed, 19 Aug 2025',
           'time': '6:00 PM - 7:00 PM (1 hour)',
         },
+      ];
+
+  List<Map<String, String>> get _allNearbyPlayers => [
         {
-          'sport': 'Pickleball',
-          'title': 'Sunnyvale Pickleball Courts',
-          'image': 'assets/images/courts/pickleballcourt.png',
-          'date': 'Thu, 20 Aug 2025',
-          'time': '7:00 PM - 8:00 PM (1 hour)',
+          'name': 'Alex Johnson',
+          'age': '24',
+          'sport': 'Tennis',
+          'initials': 'AJ',
+        },
+        {
+          'name': 'Priya Shah',
+          'age': '26',
+          'sport': 'Badminton',
+          'initials': 'PS',
+        },
+      ];
+
+  List<Map<String, String>> get _allSuggestedCourts => [
+        {
+          'title': 'SCU Tennis Court A',
+          'sport': 'Tennis',
+          'emoji': '🎾',
+          'image': 'assets/images/courts/tenniscourt.png',
+          'distance': '1.2 mi away',
+          'rating': '4.6',
+          'price': '\$22/hr',
+          'slots': '2 slots today',
+        },
+        {
+          'title': 'Bay Badminton Arena',
+          'sport': 'Badminton',
+          'emoji': '🏸',
+          'image': 'assets/images/courts/badmintoncourt.png',
+          'distance': '1.2 mi away',
+          'rating': '4.6',
+          'price': '\$16/hr',
+          'slots': '6 slots today',
+        },
+        {
+          'title': 'Downtown Basketball Court',
+          'sport': 'Basketball',
+          'emoji': '🏀',
+          'image': 'assets/images/courts/basketballcourt.png',
+          'distance': '2.4 mi away',
+          'rating': '4.6',
+          'price': '\$20/hr',
+          'slots': '3 slots today',
+        },
+      ];
+
+  List<Map<String, String>> get _allSuggestedOpenMatches => [
+        {
+          'title': 'SCU Tennis Court A',
+          'sport': 'Tennis',
+          'emoji': '🎾',
+          'image': 'assets/images/player_details/open_matches/tennis_court.png',
+          'date': 'Mon, 17 Aug 2025',
+          'time': '6:00 PM',
+          'players': '3/4 players',
+          'location': 'SCU Tennis Court A',
+          'address': '500 El Camino Real, Santa Clara, CA',
+          'level': 'Intermediate',
+          'host': 'Alex',
+          'hostAvatar':
+              'assets/images/player_details/open_matches/alex_avatar.png',
+          'about':
+              'Looking for 1 more player for a fun evening doubles match. Let us have a great game!',
+          'spots': '1 spot left',
+        },
+        {
+          'title': 'Bay Badminton Area',
+          'sport': 'Badminton',
+          'emoji': '🏸',
+          'image':
+              'assets/images/player_details/open_matches/badminton_court.png',
+          'date': 'Mon, 18 Aug 2025',
+          'time': '6:00 PM',
+          'players': '2/4 players',
+          'location': 'Bay Badminton Arena',
+          'address': '123 Lawrence Expwy, Sunnyvale, CA',
+          'level': 'Beginner',
+          'host': 'Priya',
+          'hostAvatar':
+              'assets/images/player_details/open_matches/priya_avatar.png',
+          'about':
+              'Beginner-friendly doubles game. Looking for two more players to join and have a relaxed match.',
+          'spots': '2 spots left',
+        },
+        {
+          'title': 'Downtown Basketball Run',
+          'sport': 'Basketball',
+          'emoji': '🏀',
+          'image':
+              'assets/images/player_details/open_matches/basketball_court.png',
+          'date': 'Mon, 19 Aug 2025',
+          'time': '6:00 PM',
+          'players': '7/10 players',
+          'location': 'Downtown Basketball Court',
+          'address': '456 Market St, San Jose, CA',
+          'level': 'Casual',
+          'host': 'Kevin',
+          'hostAvatar':
+              'assets/images/player_details/open_matches/kevin_avatar.png',
+          'about':
+              'Weekend basketball run with a casual group. Open to all players who want to join.',
+          'spots': '3 spots left',
         },
       ];
 
@@ -69,6 +184,27 @@ class _HomePageState extends State<HomePage> {
     if (_selectedSport == 'All') return _allBookings;
     return _allBookings
         .where((booking) => booking['sport'] == _selectedSport)
+        .toList();
+  }
+
+  List<Map<String, String>> get _filteredNearbyPlayers {
+    if (_selectedSport == 'All') return _allNearbyPlayers;
+    return _allNearbyPlayers
+        .where((player) => player['sport'] == _selectedSport)
+        .toList();
+  }
+
+  List<Map<String, String>> get _filteredSuggestedCourts {
+    if (_selectedSport == 'All') return _allSuggestedCourts;
+    return _allSuggestedCourts
+        .where((court) => court['sport'] == _selectedSport)
+        .toList();
+  }
+
+  List<Map<String, String>> get _filteredSuggestedOpenMatches {
+    if (_selectedSport == 'All') return _allSuggestedOpenMatches;
+    return _allSuggestedOpenMatches
+        .where((match) => match['sport'] == _selectedSport)
         .toList();
   }
 
@@ -126,11 +262,82 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _goToSignup(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF4A4A4A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: Text(
+            'Log out?',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.white,
+              fontSize: 16,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want\nto logout of your\naccount?',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption.copyWith(color: AppColors.white),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _goToSignup(context);
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _openNotificationsPage() {
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const NotificationsPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _openProfilePage() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const MainShell(initialIndex: 2),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+      (route) => false,
+    );
+  }
+
+  void _openMembershipPage() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const SubscriptionScreen(),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -165,20 +372,32 @@ class _HomePageState extends State<HomePage> {
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       _ProfileOptionTile(
                         icon: Icons.person_outline_rounded,
                         title: 'Profile',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _openProfilePage();
+                        },
                       ),
                       _ProfileOptionTile(
                         icon: Icons.card_membership_rounded,
                         title: 'Membership',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _openMembershipPage();
+                        },
                       ),
-                      Divider(height: 1),
+                      const Divider(height: 1),
                       _ProfileOptionTile(
                         icon: Icons.logout_rounded,
                         title: 'Sign Out',
                         isDanger: true,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showLogoutDialog(this.context);
+                        },
                       ),
                     ],
                   ),
@@ -222,6 +441,42 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _openNearbyPlayersPage() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const NearbyPlayersPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _openCourtsPage() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const CourtsPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _openOpenMatchesPage() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const OpenMatchesPage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   void _openBookingConfirmedPage(Map<String, String> booking) {
     Navigator.push(
       context,
@@ -245,15 +500,79 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _openPersonalMessagePage() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const MessagePage(),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _openCourtDetailsPage(Map<String, String> court) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => CourtDetailsPage(
+          courtName: court['title']!,
+          sport: court['sport']!,
+          sportEmoji: court['emoji']!,
+          imagePath: court['image']!,
+          distanceText: court['distance']!,
+          ratingText: court['rating']!,
+          priceText: court['price']!,
+          locationText: _selectedLocation,
+        ),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _openMatchDetailsPage(Map<String, String> match) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => MatchDetailsPage(
+          title: match['title']!,
+          sport: match['sport']!,
+          sportEmoji: match['emoji']!,
+          when: '${match['date']}, ${match['time']}',
+          location: match['location']!,
+          address: match['address']!,
+          players: match['players']!.replaceAll(' players', ''),
+          level: match['level']!,
+          host: match['host']!,
+          imagePath: match['image']!,
+          hostAvatarPath: match['hostAvatar']!,
+          about: match['about']!,
+          spotsLeftLabel: match['spots']!,
+        ),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bookings = _filteredBookings;
+    final nearbyPlayers = _filteredNearbyPlayers;
+    final suggestedCourts = _filteredSuggestedCourts;
+    final suggestedOpenMatches = _filteredSuggestedOpenMatches;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             HomeTopHeader(
-              userName: 'Person name',
+              userName: _userName,
               locationText: _selectedLocation,
               profileImagePath: null,
               onNotificationTap: _openNotificationsPage,
@@ -281,7 +600,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 scrollDirection: Axis.horizontal,
                 itemCount: _sports.length + 1,
-                separatorBuilder: (context, index) =>
+                separatorBuilder: (_, _) =>
                     const SizedBox(width: AppSpacing.sm),
                 itemBuilder: (context, index) {
                   if (index == 0) {
@@ -315,35 +634,14 @@ class _HomePageState extends State<HomePage> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.pageHorizontal,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'My Bookings',
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: _openMyBookingsPage,
-                          child: Text(
-                            'View All',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  HomeSectionHeader(
+                    title: 'My Bookings',
+                    onViewAllTap: _openMyBookingsPage,
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 220,
-                    child: _filteredBookings.isEmpty
+                    child: bookings.isEmpty
                         ? Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.pageHorizontal,
@@ -384,11 +682,11 @@ class _HomePageState extends State<HomePage> {
                               horizontal: AppSpacing.pageHorizontal,
                             ),
                             scrollDirection: Axis.horizontal,
-                            itemCount: _filteredBookings.length,
+                            itemCount: bookings.length,
                             separatorBuilder: (_, _) =>
                                 const SizedBox(width: 16),
                             itemBuilder: (context, index) {
-                              final booking = _filteredBookings[index];
+                              final booking = bookings[index];
 
                               return BookingPreviewCard(
                                 imagePath: booking['image']!,
@@ -396,9 +694,160 @@ class _HomePageState extends State<HomePage> {
                                 sport: booking['sport']!,
                                 dateText: booking['date']!,
                                 timeText: booking['time']!,
-                                onTap: () => _openBookingConfirmedPage(booking),
+                                onTap: null,
                                 onViewDetailsTap: () =>
                                     _openBookingConfirmedPage(booking),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 26),
+                  HomeSectionHeader(
+                    title: 'Nearby Players',
+                    onViewAllTap: _openNearbyPlayersPage,
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 120,
+                    child: nearbyPlayers.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.pageHorizontal,
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'No nearby players for this sport',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.pageHorizontal,
+                            ),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: nearbyPlayers.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 16),
+                            itemBuilder: (context, index) {
+                              final player = nearbyPlayers[index];
+                              return HomeNearbyPlayerPreviewCard(
+                                name: player['name']!,
+                                age: player['age']!,
+                                sport: player['sport']!,
+                                initials: player['initials']!,
+                                onConnectTap: _openPersonalMessagePage,
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 26),
+                  HomeSectionHeader(
+                    title: 'Suggested Courts',
+                    onViewAllTap: _openCourtsPage,
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 230,
+                    child: suggestedCourts.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.pageHorizontal,
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'No suggested courts for this sport',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.pageHorizontal,
+                            ),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: suggestedCourts.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 16),
+                            itemBuilder: (context, index) {
+                              final court = suggestedCourts[index];
+                              return HomeSuggestedCourtPreviewCard(
+                                imagePath: court['image']!,
+                                sport: court['sport']!,
+                                distanceText: court['distance']!,
+                                ratingText: court['rating']!,
+                                onViewDetailsTap: () =>
+                                    _openCourtDetailsPage(court),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 26),
+                  HomeSectionHeader(
+                    title: 'Suggested Open Matches',
+                    onViewAllTap: _openOpenMatchesPage,
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 235,
+                    child: suggestedOpenMatches.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.pageHorizontal,
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'No open matches for this sport',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.pageHorizontal,
+                            ),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: suggestedOpenMatches.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 16),
+                            itemBuilder: (context, index) {
+                              final match = suggestedOpenMatches[index];
+                              return HomeSuggestedOpenMatchPreviewCard(
+                                imagePath: match['image']!,
+                                title: match['title']!,
+                                sport: match['sport']!,
+                                players: match['players']!,
+                                dateText: match['date']!,
+                                timeText: match['time']!,
+                                onViewDetailsTap: () =>
+                                    _openMatchDetailsPage(match),
                               );
                             },
                           ),
@@ -417,10 +866,12 @@ class _ProfileOptionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final bool isDanger;
+  final VoidCallback onTap;
 
   const _ProfileOptionTile({
     required this.icon,
     required this.title,
+    required this.onTap,
     this.isDanger = false,
   });
 
@@ -429,9 +880,7 @@ class _ProfileOptionTile extends StatelessWidget {
     final color = isDanger ? Colors.redAccent : AppColors.textPrimary;
 
     return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-      },
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         child: Row(

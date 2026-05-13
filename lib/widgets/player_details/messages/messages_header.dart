@@ -9,6 +9,7 @@ class MessagesHeader extends StatelessWidget {
   final bool showBackButton;
   final bool showMenuButton;
   final VoidCallback? onMenuTap;
+  final VoidCallback? onComposeTap;
 
   const MessagesHeader({
     super.key,
@@ -16,60 +17,59 @@ class MessagesHeader extends StatelessWidget {
     this.showBackButton = false,
     this.showMenuButton = false,
     this.onMenuTap,
+    this.onComposeTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.pageHorizontal,
-        AppSpacing.lg,
+        18,
         AppSpacing.pageHorizontal,
-        AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        8,
       ),
       child: Row(
         children: [
-          if (showBackButton) ...[
+          if (showBackButton)
             IconButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_back_ios_new_rounded),
-              color: AppColors.textPrimary,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-          ] else if (showMenuButton) ...[
+              constraints: const BoxConstraints(),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 30,
+                color: AppColors.textPrimary,
+              ),
+            )
+          else if (showMenuButton)
             IconButton(
               onPressed: onMenuTap,
-              icon: const Icon(Icons.menu_rounded),
-              color: AppColors.textPrimary,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
+              constraints: const BoxConstraints(),
+              icon: const Icon(
+                Icons.menu_rounded,
+                size: 34,
+                color: AppColors.textPrimary,
+              ),
+            )
+          else
+            const SizedBox(width: 34),
+          const SizedBox(width: 18),
           Expanded(
             child: Text(
               title,
-              style: AppTextStyles.pageTitle.copyWith(fontSize: 28),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.pageTitle.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-          if (!showBackButton)
-            Container(
-              width: 40,
-              height: 40,
+          GestureDetector(
+            onTap: onComposeTap,
+            child: Container(
+              width: 52,
+              height: 52,
               decoration: const BoxDecoration(
                 color: AppColors.primaryLight,
                 shape: BoxShape.circle,
@@ -77,9 +77,10 @@ class MessagesHeader extends StatelessWidget {
               child: const Icon(
                 Icons.edit_outlined,
                 color: AppColors.primary,
-                size: 20,
+                size: 24,
               ),
             ),
+          ),
         ],
       ),
     );
