@@ -2,10 +2,42 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
-class ProfileSettingsScreen extends StatelessWidget {
+class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
 
-  Widget buildField(String label, String value) {
+  @override
+  State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
+}
+
+class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
+  late TextEditingController firstNameController;
+  late TextEditingController lastNameController;
+  late TextEditingController ageController;
+  late TextEditingController postalCodeController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    firstNameController = TextEditingController(text: 'User');
+    lastNameController = TextEditingController(text: 'Profile');
+    ageController = TextEditingController(text: '22');
+    postalCodeController = TextEditingController(text: '95050');
+  }
+
+  @override
+  void dispose() {
+    firstNameController.dispose();
+    lastNameController.dispose();
+    ageController.dispose();
+    postalCodeController.dispose();
+    super.dispose();
+  }
+
+  Widget buildField({
+    required String label,
+    required TextEditingController controller,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -19,16 +51,34 @@ class ProfileSettingsScreen extends StatelessWidget {
 
         const SizedBox(height: 8),
 
-        Container(
-          width: double.infinity,
-          height: 58,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDEDED),
-            borderRadius: BorderRadius.circular(14),
+        TextField(
+          controller: controller,
+          style: AppTextStyles.body.copyWith(fontSize: 16),
+
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFFEDEDED),
+
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 18,
+            ),
+
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
           ),
-          child: Text(value, style: AppTextStyles.body.copyWith(fontSize: 16)),
         ),
       ],
     );
@@ -54,7 +104,7 @@ class ProfileSettingsScreen extends StatelessWidget {
       backgroundColor: AppColors.white,
 
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 26),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,25 +157,30 @@ class ProfileSettingsScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              buildField('First Name', 'User'),
+              buildField(label: 'First Name', controller: firstNameController),
 
               const SizedBox(height: 18),
 
-              buildField('Last Name', 'Profile'),
+              buildField(label: 'Last Name', controller: lastNameController),
 
               const SizedBox(height: 18),
 
-              buildField('Age', '22'),
+              buildField(label: 'Age', controller: ageController),
 
               const SizedBox(height: 18),
 
-              buildField('Postal Code', '95050'),
+              buildField(
+                label: 'Postal Code',
+                controller: postalCodeController,
+              ),
 
               const SizedBox(height: 28),
 
               buildArrowRow('Sports'),
 
               buildArrowRow('Availability'),
+
+              const SizedBox(height: 30),
             ],
           ),
         ),
