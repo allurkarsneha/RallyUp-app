@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>RallyUp uses the camera to take your profile photo or capture your ID for verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RallyUp lets you pick a profile photo or ID image from your photo library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>RallyUp uses your location to show nearby players, courts, and matches.</string>
 </dict>
 </plist>

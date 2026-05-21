@@ -1,20 +1,70 @@
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/auth_provider.dart';
 import '../../screens/notifications_page.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
-import 'profile_settings_screen.dart';
-import 'subscription_screen.dart';
+import '../../widgets/user_avatar.dart';
 import 'account_settings_page.dart';
 import 'block_list_page.dart';
+import 'feedback_suggestions_page.dart';
 import 'legal_page.dart';
 import 'notifications_settings_page.dart' as profile_notifications;
-import 'feedback_suggestions_page.dart';
+import 'profile_settings_screen.dart';
+import 'subscription_screen.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  void _goToSignup(BuildContext context) {
-    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+  Future<void> _performLogout(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    await auth.signOut();
+    if (!context.mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  Future<void> _performDelete(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await auth.deleteAccount();
+      // Success path: AuthProvider has already cleared local state and
+      // notified listeners synchronously, so AuthGate is about to repaint
+      // to SignupScreen. If we're still mounted, pop any pushed routes
+      // back to the gate to keep the stack tidy.
+      if (!context.mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } on FirebaseAuthException catch (e) {
+      // Auth deletion failed — local state is intact (the user is still
+      // signed in with the same profile). Show a readable explanation and
+      // let them retry. We never surface raw Firebase backend strings.
+      messenger.showSnackBar(
+        SnackBar(content: Text(_readableDeleteError(e))),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Account deletion failed. Please try again.'),
+        ),
+      );
+    }
+  }
+
+  String _readableDeleteError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'requires-recent-login':
+        return 'For security, please log out and log back in, then try '
+            'deleting again.';
+      case 'network-request-failed':
+        return 'Network error. Check your connection and try again.';
+      case 'user-not-found':
+        // Already gone server-side; behave like success would have.
+        return 'Account already removed.';
+      default:
+        return 'Account deletion failed. Please try again.';
+    }
   }
 
   void _openNotificationsPage(BuildContext context) {
@@ -61,7 +111,7 @@ class ProfilePage extends StatelessWidget {
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                _goToSignup(context);
+                _performLogout(context);
               },
               child: const Text('Logout'),
             ),
@@ -90,7 +140,7 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
           content: Text(
-            'This action is permanent\nand cannot be undone.\nAll data will be lost.',
+            'This will permanently delete your\nRallyUp profile and account.\nThis cannot be undone.',
             textAlign: TextAlign.center,
             style: AppTextStyles.caption.copyWith(color: AppColors.white),
           ),
@@ -103,7 +153,7 @@ class ProfilePage extends StatelessWidget {
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                _goToSignup(context);
+                _performDelete(context);
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),
@@ -172,6 +222,22 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().currentUser;
+    // After signOut / deleteAccount, AuthProvider clears currentUser and
+    // flips status to unauthenticated synchronously. AuthGate (a parent of
+    // this page) repaints on the very next frame and replaces the whole
+    // MainShell with SignupScreen. Return SizedBox.shrink() — NOT an
+    // opaque Scaffold — so if this build happens to render for a frame
+    // before AuthGate's rebuild lands, the user sees nothing of it
+    // instead of a stuck blank white page.
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+    final headerName =
+        user.displayName.trim().isNotEmpty ? user.displayName.trim() : '';
+    final headerInitials = user.initials;
+    final headerContact = user.email ?? user.phone ?? '';
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -203,59 +269,44 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 42),
+              const SizedBox(height: 32),
               Row(
                 children: [
-                  Container(
-                    width: 82,
-                    height: 82,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF006A31), Color(0xFF003EA8)],
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'UP',
-                      style: AppTextStyles.pageTitle.copyWith(
-                        color: AppColors.white,
-                        fontSize: 34,
-                      ),
-                    ),
+                  UserAvatar(
+                    size: 82,
+                    initials: headerInitials,
+                    avatarId: user.avatarId,
+                    photoUrl: user.photoUrl,
                   ),
-                  const SizedBox(width: 24),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('User Profile', style: AppTextStyles.sectionTitle),
-                      const SizedBox(height: 4),
-                      Text(
-                        '22, Other',
-                        style: AppTextStyles.body.copyWith(fontSize: 16),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 22,
-                            color: AppColors.textPrimary,
-                          ),
-                          const SizedBox(width: 8),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          headerName,
+                          style: AppTextStyles.sectionTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (headerContact.isNotEmpty) ...[
+                          const SizedBox(height: 4),
                           Text(
-                            'Santa Clara, CA',
-                            style: AppTextStyles.body.copyWith(fontSize: 16),
+                            headerContact,
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 42),
+              const SizedBox(height: 32),
               _settingsItem(
                 context: context,
                 title: 'Player profile settings',
@@ -272,7 +323,7 @@ class ProfilePage extends StatelessWidget {
               _settingsItem(
                 context: context,
                 title: 'Account settings',
-                subtitle: 'ID Verification, Profile visibility',
+                subtitle: 'Sign-in info, Profile visibility',
                 onTap: () {
                   Navigator.push(
                     context,

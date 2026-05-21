@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:rallyup/main.dart';
+import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/notifications_page.dart';
 import 'package:rallyup/screens/player_details/match_details_page.dart';
+import 'package:rallyup/services/location_picker_handler.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/courts/court_search_bar.dart';
-import '../../widgets/location_picker_sheet.dart';
 import '../../widgets/main_bottom_nav.dart';
 import '../../widgets/side_menu_drawer.dart';
 import '../../widgets/sports_card.dart';
@@ -23,7 +25,6 @@ class OpenMatchesPage extends StatefulWidget {
 class _OpenMatchesPageState extends State<OpenMatchesPage> {
   String _selectedSport = 'All';
   String _selectedSort = 'default';
-  String _selectedLocation = 'Santa Clara, CA';
   final TextEditingController _searchController = TextEditingController();
 
   final Set<String> _favoriteMatches = {};
@@ -212,24 +213,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
     );
   }
 
-  Future<void> _openLocationOverlay() async {
-    final pickedLocation = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return LocationPickerSheet(
-          selectedLocation: _selectedLocation,
-        );
-      },
-    );
-
-    if (pickedLocation != null) {
-      setState(() {
-        _selectedLocation = pickedLocation;
-      });
-    }
-  }
+  Future<void> _openLocationOverlay() => openLocationPicker(context);
 
   void _openFilterSheet() {
     showModalBottomSheet(
@@ -367,6 +351,12 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
   @override
   Widget build(BuildContext context) {
     final matches = _filteredMatches;
+    final locationLabel = context
+            .watch<AuthProvider>()
+            .currentUser
+            ?.location
+            ?.displayLabel ??
+        'Set location';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -435,7 +425,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _selectedLocation,
+                            locationLabel,
                             style: AppTextStyles.bodyMedium.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,

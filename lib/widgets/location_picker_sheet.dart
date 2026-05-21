@@ -2,20 +2,37 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
-class LocationPickerSheet extends StatefulWidget {
-  final String selectedLocation;
+/// What the picker tells the caller when it closes. `null` from the
+/// modal-bottom-sheet means the user cancelled.
+sealed class LocationPickerResult {
+  const LocationPickerResult();
+}
 
-  const LocationPickerSheet({
-    super.key,
-    required this.selectedLocation,
-  });
+/// User wants to refresh from device GPS. The caller should run the
+/// permission + capture flow and persist the result through AuthProvider.
+class CurrentLocationRequest extends LocationPickerResult {
+  const CurrentLocationRequest();
+}
+
+/// User picked one of the manual entries. `label` is the displayable
+/// "City, ST" string.
+class ManualLocationPick extends LocationPickerResult {
+  final String label;
+  const ManualLocationPick(this.label);
+}
+
+class LocationPickerSheet extends StatefulWidget {
+  /// Currently displayed label so the matching row can show a check mark.
+  /// Optional — leave null if no current selection should be highlighted.
+  final String? currentLabel;
+
+  const LocationPickerSheet({super.key, this.currentLabel});
 
   @override
   State<LocationPickerSheet> createState() => _LocationPickerSheetState();
 }
 
 class _LocationPickerSheetState extends State<LocationPickerSheet> {
-  late String _selectedLocation;
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _recentLocations = const [
@@ -24,17 +41,20 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
     'San Jose, CA',
   ];
 
+  // A small curated quick-pick list. The text field below is the real
+  // search/entry path — anything the user types that doesn't match one of
+  // these is offered as a manual location via the fallback tile.
   final List<String> _suggestedLocations = const [
     'Palo Alto, CA',
     'Cupertino, CA',
     'Fremont, CA',
+    'San Mateo, CA',
+    'Mountain View, CA',
+    'Redwood City, CA',
+    'San Francisco, CA',
+    'Oakland, CA',
+    'Berkeley, CA',
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedLocation = widget.selectedLocation;
-  }
 
   List<String> get _filteredRecentLocations {
     final query = _searchController.text.trim().toLowerCase();
@@ -52,11 +72,15 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
         .toList();
   }
 
-  void _selectLocation(String location) {
-    setState(() {
-      _selectedLocation = location;
-    });
-    Navigator.pop(context, location);
+  void _pickManual(String location) {
+    Navigator.pop<LocationPickerResult>(context, ManualLocationPick(location));
+  }
+
+  void _pickCurrent() {
+    Navigator.pop<LocationPickerResult>(
+      context,
+      const CurrentLocationRequest(),
+    );
   }
 
   Widget _buildSectionCard(List<String> locations) {
@@ -69,7 +93,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
       child: Column(
         children: List.generate(locations.length, (index) {
           final location = locations[index];
-          final isSelected = location == _selectedLocation;
+          final isSelected = location == widget.currentLabel;
 
           return InkWell(
             borderRadius: index == 0
@@ -77,7 +101,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                 : index == locations.length - 1
                     ? const BorderRadius.vertical(bottom: Radius.circular(20))
                     : BorderRadius.zero,
-            onTap: () => _selectLocation(location),
+            onTap: () => _pickManual(location),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
@@ -126,10 +150,21 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
     super.dispose();
   }
 
+  /// True when the user typed something that doesn't match any curated
+  /// row — in that case we offer "Use 'San Mateo'" as a manual location.
+  bool get _shouldOfferManualEntry {
+    final query = _searchController.text.trim();
+    if (query.length < 2) return false;
+    return _filteredRecentLocations.isEmpty &&
+        _filteredSuggestedLocations.isEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     final recentLocations = _filteredRecentLocations;
     final suggestedLocations = _filteredSuggestedLocations;
+    final showManualEntry = _shouldOfferManualEntry;
+    final manualQuery = _searchController.text.trim();
 
     return SafeArea(
       top: false,
@@ -169,7 +204,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               ),
               const SizedBox(height: 18),
               InkWell(
-                onTap: () => _selectLocation('Current Location'),
+                onTap: _pickCurrent,
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -255,30 +290,107 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                   ],
                 ),
               ),
-              const SizedBox(height: 22),
-              Text(
-                'Recent Locations',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+              if (showManualEntry) ...[
+                const SizedBox(height: 22),
+                _ManualEntryTile(
+                  query: manualQuery,
+                  onTap: () => _pickManual(manualQuery),
                 ),
-              ),
-              const SizedBox(height: 12),
-              _buildSectionCard(recentLocations),
-              const SizedBox(height: 22),
-              Text(
-                'Suggested Locations',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+              ],
+              if (recentLocations.isNotEmpty) ...[
+                const SizedBox(height: 22),
+                Text(
+                  'Recent Locations',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              _buildSectionCard(suggestedLocations),
+                const SizedBox(height: 12),
+                _buildSectionCard(recentLocations),
+              ],
+              if (suggestedLocations.isNotEmpty) ...[
+                const SizedBox(height: 22),
+                Text(
+                  'Suggested Locations',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildSectionCard(suggestedLocations),
+              ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when the user types something we don't have in the curated list.
+/// Lets them commit the typed value as a manual location instead of being
+/// stuck with no results.
+class _ManualEntryTile extends StatelessWidget {
+  final String query;
+  final VoidCallback onTap;
+
+  const _ManualEntryTile({required this.query, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.add_location_alt_outlined,
+              size: 28,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Use "$query"',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Set this as your location',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 28,
+              color: AppColors.textPrimary,
+            ),
+          ],
         ),
       ),
     );

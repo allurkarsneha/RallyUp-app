@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:rallyup/main.dart';
+import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/court_details_page.dart';
 import 'package:rallyup/screens/notifications_page.dart';
+import 'package:rallyup/services/location_picker_handler.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/courts/court_listing_card.dart';
 import '../widgets/courts/court_search_bar.dart';
-import '../widgets/location_picker_sheet.dart';
 import '../widgets/main_bottom_nav.dart';
 import '../widgets/side_menu_drawer.dart';
 import '../widgets/sports_card.dart';
@@ -22,7 +24,6 @@ class CourtsPage extends StatefulWidget {
 class _CourtsPageState extends State<CourtsPage> {
   String _selectedSport = 'All';
   String _selectedSort = 'default';
-  String _selectedLocation = 'Santa Clara, CA';
   final TextEditingController _searchController = TextEditingController();
 
   final Set<String> _favoriteCourts = {};
@@ -182,24 +183,7 @@ class _CourtsPageState extends State<CourtsPage> {
     );
   }
 
-  Future<void> _openLocationOverlay() async {
-    final pickedLocation = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return LocationPickerSheet(
-          selectedLocation: _selectedLocation,
-        );
-      },
-    );
-
-    if (pickedLocation != null) {
-      setState(() {
-        _selectedLocation = pickedLocation;
-      });
-    }
-  }
+  Future<void> _openLocationOverlay() => openLocationPicker(context);
 
   void _openFilterSheet() {
     showModalBottomSheet(
@@ -301,7 +285,9 @@ class _CourtsPageState extends State<CourtsPage> {
           distanceText: court['distance']!,
           ratingText: court['rating']!,
           priceText: court['price']!,
-          locationText: _selectedLocation,
+          locationText: context.read<AuthProvider>().currentUser?.location
+                  ?.displayLabel ??
+              '',
         ),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -332,6 +318,12 @@ class _CourtsPageState extends State<CourtsPage> {
   @override
   Widget build(BuildContext context) {
     final courts = _filteredCourts;
+    final locationLabel = context
+            .watch<AuthProvider>()
+            .currentUser
+            ?.location
+            ?.displayLabel ??
+        'Set location';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -400,7 +392,7 @@ class _CourtsPageState extends State<CourtsPage> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _selectedLocation,
+                            locationLabel,
                             style: AppTextStyles.bodyMedium.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,

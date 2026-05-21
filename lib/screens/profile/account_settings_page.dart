@@ -1,28 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/auth_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/user_avatar.dart';
 
-class AccountSettingsPage extends StatefulWidget {
+/// Account-level controls: read-only sign-in info + a persisted privacy
+/// toggle. Profile photo lives in [EditAvatarScreen], ID verification lives
+/// in [IdVerificationScreen]. Nothing in this page duplicates those flows.
+class AccountSettingsPage extends StatelessWidget {
   const AccountSettingsPage({super.key});
 
   @override
-  State<AccountSettingsPage> createState() => _AccountSettingsPageState();
-}
-
-class _AccountSettingsPageState extends State<AccountSettingsPage> {
-  bool profileVisible = true;
-
-  @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().currentUser;
+    // After signOut / deleteAccount the provider clears currentUser
+    // synchronously and AuthGate is about to swap us out — render
+    // SizedBox.shrink() so this build is a no-op visually if it lands
+    // before AuthGate's repaint (an opaque Scaffold here was showing up
+    // as a "blank page" during delete).
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
+    final initials = user.initials;
+    final signInLabel = user.email ?? user.phone ?? '';
+    final signInMethod = user.email != null && user.email!.isNotEmpty
+        ? 'Email'
+        : (user.phone != null && user.phone!.isNotEmpty ? 'Phone' : 'Account');
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 34),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 32),
-
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -40,122 +56,173 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                   Text('Account Settings', style: AppTextStyles.pageTitle),
                 ],
               ),
-
-              const SizedBox(height: 58),
-
-              Container(
-                width: 96,
-                height: 96,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF006A31), Color(0xFF003EA8)],
-                  ),
+              const SizedBox(height: 44),
+              Center(
+                child: UserAvatar(
+                  size: 96,
+                  initials: initials,
+                  avatarId: user.avatarId,
+                  photoUrl: user.photoUrl,
                 ),
-                alignment: Alignment.center,
+              ),
+              const SizedBox(height: 14),
+              Center(
                 child: Text(
-                  'UP',
-                  style: AppTextStyles.pageTitle.copyWith(
-                    color: AppColors.white,
-                    fontSize: 38,
+                  user.displayName.trim().isEmpty
+                      ? 'Your account'
+                      : user.displayName.trim(),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-
-              const SizedBox(height: 48),
-
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Profile Verification',
-                  style: AppTextStyles.bodyMedium.copyWith(fontSize: 18),
-                ),
+              const SizedBox(height: 36),
+              _SectionLabel('Signed in with'),
+              const SizedBox(height: 6),
+              _ReadOnlyRow(
+                icon: user.email != null
+                    ? Icons.alternate_email_rounded
+                    : Icons.phone_iphone_rounded,
+                title: signInMethod,
+                value: signInLabel.isEmpty ? 'Account active' : signInLabel,
               ),
-
-              const SizedBox(height: 4),
-
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Verify your profile by uploading a photo of\nyour ID!',
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              SizedBox(
-                width: 205,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFA7E1B1),
-                    foregroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                  ),
-                  child: Text(
-                    'Upload Photo',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.primary,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 104),
-
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Profile Visibility',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Have your profile visible to\nother members of the\ncommunity',
-                          style: AppTextStyles.body.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Switch(
-                    value: profileVisible,
-                    activeThumbColor: AppColors.white,
-                    activeTrackColor: AppColors.brightGreen,
-                    inactiveThumbColor: AppColors.white,
-                    inactiveTrackColor: AppColors.textSecondary,
-                    onChanged: (value) {
-                      setState(() {
-                        profileVisible = value;
-                      });
-                    },
-                  ),
-                ],
+              const SizedBox(height: 32),
+              _SectionLabel('Privacy'),
+              const SizedBox(height: 6),
+              _ProfileVisibilityRow(
+                value: user.profileVisible,
+                onChanged: (next) {
+                  context.read<AuthProvider>().updateProfileVisibility(next);
+                },
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: AppTextStyles.bodyMedium.copyWith(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textSecondary,
+        letterSpacing: 0.4,
+      ),
+    );
+  }
+}
+
+class _ReadOnlyRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _ReadOnlyRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.lightGray,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.darkGreen, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileVisibilityRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _ProfileVisibilityRow({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.lightGray,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Profile Visibility',
+                  style: AppTextStyles.bodyMedium.copyWith(fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Allow other players to find your profile in nearby '
+                  'searches and open matches.',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Switch.adaptive(
+            value: value,
+            activeThumbColor: AppColors.darkGreen,
+            onChanged: onChanged,
+          ),
+        ],
       ),
     );
   }

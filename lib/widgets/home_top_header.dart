@@ -5,37 +5,32 @@ import '../theme/app_text_styles.dart';
 import 'user_avatar.dart';
 
 class HomeTopHeader extends StatelessWidget {
-  final String userName;
+  final String firstName;
+  final String initials;
+  final String? avatarId;
+  final String? photoUrl;
   final String locationText;
-  final String? profileImagePath;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onLocationTap;
 
   const HomeTopHeader({
     super.key,
-    required this.userName,
+    required this.firstName,
+    required this.initials,
+    this.avatarId,
+    this.photoUrl,
     required this.locationText,
-    this.profileImagePath,
     this.onNotificationTap,
     this.onProfileTap,
     this.onLocationTap,
   });
 
-  String _getInitials(String fullName) {
-    final parts = fullName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .toList();
-
-    if (parts.isEmpty) return 'U';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final greeting =
+        firstName.trim().isEmpty ? 'Welcome 👋' : 'Hi ${firstName.trim()} 👋';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.pageHorizontal,
@@ -85,8 +80,9 @@ class HomeTopHeader extends StatelessWidget {
               const SizedBox(width: 14),
               UserAvatar(
                 size: 50,
-                initials: _getInitials(userName),
-                imagePath: profileImagePath,
+                initials: initials,
+                photoUrl: photoUrl,
+                avatarId: avatarId,
                 onTap: onProfileTap,
               ),
             ],
@@ -100,7 +96,9 @@ class HomeTopHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hi $userName 👋',
+                      greeting,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.pageTitle.copyWith(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
