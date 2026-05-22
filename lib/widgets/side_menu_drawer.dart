@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:rallyup/main.dart';
+import 'package:rallyup/models/id_verification.dart';
+import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/courts_page.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
 import 'package:rallyup/screens/notifications_page.dart';
@@ -13,28 +16,7 @@ import '../theme/app_text_styles.dart';
 import 'user_avatar.dart';
 
 class SideMenuDrawer extends StatelessWidget {
-  final String userName;
-  final String userSubtitle;
-  final String? profileImagePath;
-
-  const SideMenuDrawer({
-    super.key,
-    this.userName = 'Person name',
-    this.userSubtitle = 'Verified Player',
-    this.profileImagePath,
-  });
-
-  String _getInitials(String fullName) {
-    final parts = fullName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .toList();
-
-    if (parts.isEmpty) return 'U';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
+  const SideMenuDrawer({super.key});
 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
@@ -71,11 +53,13 @@ class SideMenuDrawer extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                final navigator =
+              onPressed: () async {
+                final rootNavigator =
                     Navigator.of(dialogContext, rootNavigator: true);
-                navigator.pop();
-                navigator.pushNamedAndRemoveUntil('/', (route) => false);
+                final auth = context.read<AuthProvider>();
+                rootNavigator.pop();
+                await auth.signOut();
+                rootNavigator.popUntil((route) => route.isFirst);
               },
               child: const Text('Logout'),
             ),
@@ -86,12 +70,12 @@ class SideMenuDrawer extends StatelessWidget {
   }
 
   void _openHome(BuildContext context) {
-    Navigator.pop(context);
-    Navigator.pushAndRemoveUntil(
-      context,
-      _fadeRoute<void>(const MainShell(initialIndex: 0)),
-      (route) => false,
-    );
+    Navigator.pop(context); // close drawer
+    // Pop back to AuthGate (the root) so MainShell stays mounted and
+    // AuthGate remains in the stack to react to sign-out / delete. Then
+    // switch the existing shell to the Home tab.
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    MainShell.globalKey.currentState?.switchTo(0);
   }
 
   void _openNearbyPlayers(BuildContext context) {
@@ -143,23 +127,30 @@ class SideMenuDrawer extends StatelessWidget {
   }
 
   void _openSettings(BuildContext context) {
-    Navigator.pop(context);
-    Navigator.pushAndRemoveUntil(
-      context,
-      _fadeRoute<void>(const MainShell(initialIndex: 2)),
-      (route) => false,
-    );
+    Navigator.pop(context); // close drawer
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    MainShell.globalKey.currentState?.switchTo(2);
   }
 
   void _handleLogout(BuildContext context) {
-    Navigator.pop(context);
-    Future.delayed(const Duration(milliseconds: 120), () {
-      _showLogoutDialog(context);
-    });
+    // Do NOT pop the drawer first. The drawer is a route, so popping it
+    // deactivates this BuildContext, and the previous delayed showDialog
+    // was silently dropped because `context.mounted` returned false. Show
+    // the confirmation dialog on top of the drawer instead — after the
+    // user confirms, the post-signOut `popUntil(isFirst)` inside the
+    // dialog will pop both the drawer and any other routes back to
+    // AuthGate.
+    _showLogoutDialog(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().currentUser;
+    final displayName = user?.displayName.isNotEmpty == true
+        ? user!.displayName
+        : 'Welcome';
+    final initials = user?.initials ?? 'U';
+
     return Drawer(
       width: 288,
       backgroundColor: Colors.white,
@@ -168,10 +159,11 @@ class SideMenuDrawer extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _MenuHeader(
-              userName: userName,
-              userSubtitle: userSubtitle,
-              profileImagePath: profileImagePath,
-              initials: _getInitials(userName),
+              userName: displayName,
+              userSubtitle: IdVerification.labelFor(user?.idVerification),
+              photoUrl: user?.photoUrl,
+              avatarId: user?.avatarId,
+              initials: initials,
             ),
             const Divider(height: 1, color: AppColors.border),
             Expanded(
@@ -244,13 +236,15 @@ class SideMenuDrawer extends StatelessWidget {
 class _MenuHeader extends StatelessWidget {
   final String userName;
   final String userSubtitle;
-  final String? profileImagePath;
+  final String? photoUrl;
+  final String? avatarId;
   final String initials;
 
   const _MenuHeader({
     required this.userName,
     required this.userSubtitle,
-    required this.profileImagePath,
+    required this.photoUrl,
+    required this.avatarId,
     required this.initials,
   });
 
@@ -263,7 +257,8 @@ class _MenuHeader extends StatelessWidget {
           UserAvatar(
             size: 52,
             initials: initials,
-            imagePath: profileImagePath,
+            photoUrl: photoUrl,
+            avatarId: avatarId,
           ),
           const SizedBox(width: AppSpacing.md),
           Column(

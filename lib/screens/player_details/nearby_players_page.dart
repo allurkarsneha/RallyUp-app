@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:rallyup/main.dart';
+import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/notifications_page.dart';
 import 'package:rallyup/screens/player_details/message_page.dart';
 import 'package:rallyup/screens/player_details/player_profile_page.dart';
+import 'package:rallyup/services/location_picker_handler.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/courts/court_search_bar.dart';
-import '../../widgets/location_picker_sheet.dart';
 import '../../widgets/main_bottom_nav.dart';
 import '../../widgets/player_details/player_details_components.dart';
 import '../../widgets/side_menu_drawer.dart';
@@ -27,7 +29,6 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
   String _selectedLevel = 'All Levels';
   String _selectedSport = 'All';
   String _selectedSort = 'default';
-  String _selectedLocation = 'Santa Clara, CA';
 
   static const List<String> _sports = ['Tennis', 'Badminton', 'Table Tennis'];
 
@@ -140,22 +141,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
     );
   }
 
-  Future<void> _openLocationOverlay() async {
-    final pickedLocation = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return LocationPickerSheet(selectedLocation: _selectedLocation);
-      },
-    );
-
-    if (pickedLocation != null && pickedLocation.isNotEmpty) {
-      setState(() {
-        _selectedLocation = pickedLocation;
-      });
-    }
-  }
+  Future<void> _openLocationOverlay() => openLocationPicker(context);
 
   void _openPlayerProfile(_NearbyPlayer player) {
     Navigator.push(
@@ -320,6 +306,12 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
   @override
   Widget build(BuildContext context) {
     final players = _filteredPlayers;
+    final locationLabel = context
+            .watch<AuthProvider>()
+            .currentUser
+            ?.location
+            ?.displayLabel ??
+        'Set location';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -399,7 +391,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _selectedLocation,
+                            locationLabel,
                             style: AppTextStyles.caption.copyWith(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,

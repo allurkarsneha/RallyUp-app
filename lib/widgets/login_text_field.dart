@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 
 class LoginTextField extends StatelessWidget {
   final String label;
   final bool obscureText;
   final TextEditingController controller;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextInputType? keyboardType;
 
   const LoginTextField({
     super.key,
     required this.label,
     required this.controller,
     this.obscureText = false,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
+    this.keyboardType,
   });
 
   @override
@@ -30,6 +37,9 @@ class LoginTextField extends StatelessWidget {
         TextField(
           controller: controller,
           obscureText: obscureText,
+          textCapitalization: textCapitalization,
+          inputFormatters: inputFormatters,
+          keyboardType: keyboardType,
           decoration: InputDecoration(
             filled: true,
             fillColor: AppColors.lightGray,

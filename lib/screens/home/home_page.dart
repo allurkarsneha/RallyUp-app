@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:rallyup/main.dart';
+import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/booking_confirmed_page.dart';
 import 'package:rallyup/screens/court_details_page.dart';
 import 'package:rallyup/screens/courts_page.dart';
@@ -10,6 +12,8 @@ import 'package:rallyup/screens/player_details/message_page.dart';
 import 'package:rallyup/screens/player_details/nearby_players_page.dart';
 import 'package:rallyup/screens/player_details/open_matches_page.dart';
 import 'package:rallyup/screens/profile/subscription_screen.dart';
+import 'package:rallyup/services/location_picker_handler.dart';
+import 'package:rallyup/services/location_service.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -20,7 +24,6 @@ import '../../widgets/home/home_section_header.dart';
 import '../../widgets/home/home_suggested_court_preview_card.dart';
 import '../../widgets/home/home_suggested_open_match_preview_card.dart';
 import '../../widgets/home_top_header.dart';
-import '../../widgets/location_picker_sheet.dart';
 import '../../widgets/sports_card.dart';
 
 class HomePage extends StatefulWidget {
@@ -31,10 +34,37 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const String _userName = 'Person name';
-
   String _selectedSport = 'All';
-  String _selectedLocation = 'Santa Clara, CA';
+
+  final LocationService _locationService = LocationService();
+  bool _locationCaptureStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeAutoFetchLocation();
+    });
+  }
+
+  /// Fires once per HomePage lifetime, only if the signed-in user has no
+  /// stored location yet. Silent on permission denial — the user can tap
+  /// the location chip in the header to retry.
+  Future<void> _maybeAutoFetchLocation() async {
+    if (_locationCaptureStarted) return;
+    final auth = context.read<AuthProvider>();
+    final user = auth.currentUser;
+    if (user == null || user.location != null) return;
+    _locationCaptureStarted = true;
+    try {
+      final captured = await _locationService.captureCurrent();
+      if (!mounted) return;
+      await auth.updateLocation(captured);
+    } catch (_) {
+      // Permission denied, service off, or geocoding failed. Keep the
+      // "Set location" fallback; user can retry via the picker.
+    }
+  }
 
   final List<String> _sports = const [
     'Tennis',
@@ -262,8 +292,11 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _goToSignup(BuildContext context) {
-    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+  Future<void> _performLogout(BuildContext context) async {
+    await context.read<AuthProvider>().signOut();
+    if (!context.mounted) return;
+    // AuthGate now reports unauthenticated. Pop everything pushed above it.
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -298,7 +331,7 @@ class _HomePageState extends State<HomePage> {
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                _goToSignup(context);
+                _performLogout(context);
               },
               child: const Text('Logout'),
             ),
@@ -321,16 +354,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openProfilePage() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const MainShell(initialIndex: 2),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-      (route) => false,
-    );
+    // Switch to the existing MainShell's Profile tab instead of pushing a
+    // new MainShell. The old `pushAndRemoveUntil((route) => false)` popped
+    // AuthGate off the stack, which broke sign-out gating and made the UI
+    // lose track of the current user mid-session.
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    MainShell.globalKey.currentState?.switchTo(2);
   }
 
   void _openMembershipPage() {
@@ -358,7 +387,7 @@ class _HomePageState extends State<HomePage> {
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  width: 158,
+                  width: 200,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
@@ -410,24 +439,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _openLocationOverlay() async {
-    final pickedLocation = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return LocationPickerSheet(
-          selectedLocation: _selectedLocation,
-        );
-      },
-    );
-
-    if (pickedLocation != null) {
-      setState(() {
-        _selectedLocation = pickedLocation;
-      });
-    }
-  }
+  Future<void> _openLocationOverlay() => openLocationPicker(context);
 
   void _openMyBookingsPage() {
     Navigator.push(
@@ -524,7 +536,9 @@ class _HomePageState extends State<HomePage> {
           distanceText: court['distance']!,
           ratingText: court['rating']!,
           priceText: court['price']!,
-          locationText: _selectedLocation,
+          locationText: context.read<AuthProvider>().currentUser?.location
+                  ?.displayLabel ??
+              '',
         ),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -561,10 +575,24 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    // Same rationale as profile_page: render nothing while AuthGate is
+    // about to swap us out for SignupScreen. SizedBox.shrink() (instead
+    // of an opaque Scaffold) makes this a non-event visually — if this
+    // build happens to land before AuthGate's repaint, the user never
+    // sees a blank background page.
+    if (currentUser == null) {
+      return const SizedBox.shrink();
+    }
     final bookings = _filteredBookings;
     final nearbyPlayers = _filteredNearbyPlayers;
     final suggestedCourts = _filteredSuggestedCourts;
     final suggestedOpenMatches = _filteredSuggestedOpenMatches;
+    final firstName = currentUser.firstName;
+    final initials = currentUser.initials;
+    final avatarId = currentUser.avatarId;
+    final locationLabel =
+        currentUser.location?.displayLabel ?? 'Set location';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -572,9 +600,11 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             HomeTopHeader(
-              userName: _userName,
-              locationText: _selectedLocation,
-              profileImagePath: null,
+              firstName: firstName,
+              initials: initials,
+              avatarId: avatarId,
+              photoUrl: currentUser.photoUrl,
+              locationText: locationLabel,
               onNotificationTap: _openNotificationsPage,
               onProfileTap: _openProfileOptionsOverlay,
               onLocationTap: _openLocationOverlay,
@@ -640,7 +670,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
-                    height: 220,
+                    height: 232,
                     child: bookings.isEmpty
                         ? Padding(
                             padding: const EdgeInsets.symmetric(
@@ -708,7 +738,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
-                    height: 120,
+                    height: 134,
                     child: nearbyPlayers.isEmpty
                         ? Padding(
                             padding: const EdgeInsets.symmetric(
@@ -757,7 +787,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
-                    height: 230,
+                    height: 246,
                     child: suggestedCourts.isEmpty
                         ? Padding(
                             padding: const EdgeInsets.symmetric(
@@ -807,7 +837,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
-                    height: 235,
+                    height: 252,
                     child: suggestedOpenMatches.isEmpty
                         ? Padding(
                             padding: const EdgeInsets.symmetric(
@@ -887,12 +917,16 @@ class _ProfileOptionTile extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 21),
             const SizedBox(width: 12),
-            Text(
-              title,
-              style: TextStyle(
-                color: color,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],

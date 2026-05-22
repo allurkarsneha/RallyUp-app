@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/auth_provider.dart';
+import '../../providers/signup_form_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/primary_button.dart';
-import '../../main.dart';
 
 class SportsPreferencesScreen extends StatefulWidget {
   const SportsPreferencesScreen({super.key});
@@ -12,8 +15,6 @@ class SportsPreferencesScreen extends StatefulWidget {
 }
 
 class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
-  final Set<String> selectedSports = {};
-
   final List<Map<String, String>> sports = const [
     {'name': 'Tennis', 'image': 'assets/images/login/tennis.png'},
     {'name': 'Swimming', 'image': 'assets/images/login/swimming.png'},
@@ -27,15 +28,53 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
     {'name': 'Football', 'image': 'assets/images/login/football.png'},
   ];
 
-  void finishOnboarding() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MainShell(initialIndex: 0)),
-    );
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, String>> get _filteredSports {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return sports;
+    return sports
+        .where((s) => s['name']!.toLowerCase().contains(q))
+        .toList(growable: false);
+  }
+
+  Future<void> finishOnboarding() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final form = context.read<SignupFormProvider>();
+      await context.read<AuthProvider>().completeOnboarding(form.data);
+      if (!mounted) return;
+      // AuthGate now reports authenticated → showing MainShell at the root.
+      // Pop everything pushed on top of the gate so MainShell becomes visible.
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Clear the in-memory form after a successful submit.
+      form.clear();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Could not save your profile. Please try again.';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final form = context.watch<SignupFormProvider>();
+    final selected = form.selectedSports;
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -69,15 +108,26 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
               const SizedBox(height: 16),
 
               TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() => _query = value),
+                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   hintText: "Type 'Cycling'",
                   hintStyle: const TextStyle(color: AppColors.grayText),
                   filled: true,
                   fillColor: AppColors.lightGray,
-                  suffixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.grayText,
-                  ),
+                  suffixIcon: _query.isEmpty
+                      ? const Icon(Icons.search, color: AppColors.grayText)
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: AppColors.grayText,
+                          ),
+                        ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
@@ -87,10 +137,31 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
 
               const SizedBox(height: 24),
 
+              if (_error != null) ...[
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+              ],
+
               Expanded(
-                child: GridView.builder(
+                child: _filteredSports.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 80),
+                          child: Text(
+                            'No sports match "${_query.trim()}"',
+                            style: const TextStyle(
+                              color: AppColors.grayText,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      )
+                    : GridView.builder(
                   padding: const EdgeInsets.only(bottom: 80),
-                  itemCount: sports.length,
+                  itemCount: _filteredSports.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 22,
@@ -98,20 +169,14 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
                     childAspectRatio: 1.05,
                   ),
                   itemBuilder: (context, index) {
-                    final sport = sports[index];
+                    final sport = _filteredSports[index];
                     final name = sport['name']!;
                     final image = sport['image']!;
-                    final isSelected = selectedSports.contains(name);
+                    final isSelected = selected.contains(name);
 
                     return GestureDetector(
                       onTap: () {
-                        setState(() {
-                          if (isSelected) {
-                            selectedSports.remove(name);
-                          } else {
-                            selectedSports.add(name);
-                          }
-                        });
+                        context.read<SignupFormProvider>().toggleSport(name);
                       },
                       child: Container(
                         decoration: BoxDecoration(
@@ -153,11 +218,11 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
 
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: PrimaryButton(
-        text: 'Done',
+        text: _busy ? 'Saving…' : 'Done',
         width: 180,
         height: 50,
         backgroundColor: AppColors.darkGreen,
-        onPressed: finishOnboarding,
+        onPressed: _busy ? () {} : finishOnboarding,
       ),
     );
   }

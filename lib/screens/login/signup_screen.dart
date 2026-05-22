@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rallyup/screens/login/email_signup_screen.dart';
 import 'package:rallyup/screens/login/phone_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/primary_button.dart';
@@ -61,7 +62,7 @@ class SignupScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 52),
                       child: PrimaryButton(
-                        text: 'Get Started Now',
+                        text: 'Continue with Phone',
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -71,6 +72,24 @@ class SignupScreen extends StatelessWidget {
                           );
                         },
                         backgroundColor: AppColors.darkGreen,
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 52),
+                      child: PrimaryButton(
+                        text: 'Continue with Email',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const EmailSignupScreen(),
+                            ),
+                          );
+                        },
+                        backgroundColor: AppColors.brightGreen,
                       ),
                     ),
 
