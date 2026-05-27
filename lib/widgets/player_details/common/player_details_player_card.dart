@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
-import 'player_details_avatar.dart';
+import '../../user_avatar.dart';
 import 'player_details_card.dart';
 import 'player_details_chip.dart';
 import 'player_details_primary_button.dart';
@@ -11,6 +11,8 @@ import 'player_details_primary_button.dart';
 class PlayerDetailsPlayerCard extends StatelessWidget {
   final String name;
   final String initials;
+  final String? photoUrl;
+  final String? avatarId;
   final String sport;
   final String level;
   final String distance;
@@ -19,8 +21,6 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
   final String time;
   final String actionLabel;
   final double rating;
-  final bool online;
-  final String? avatarImagePath;
   final VoidCallback? onViewProfileTap;
   final VoidCallback? onActionTap;
 
@@ -28,6 +28,8 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
     super.key,
     required this.name,
     required this.initials,
+    this.photoUrl,
+    this.avatarId,
     required this.sport,
     required this.level,
     required this.distance,
@@ -36,8 +38,6 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
     required this.time,
     this.actionLabel = 'Connect',
     this.rating = 4.8,
-    this.online = false,
-    this.avatarImagePath,
     this.onViewProfileTap,
     this.onActionTap,
   });
@@ -53,10 +53,11 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PlayerDetailsAvatar(
+                UserAvatar(
+                  size: 56,
                   initials: initials,
-                  online: online,
-                  imagePath: avatarImagePath,
+                  photoUrl: photoUrl,
+                  avatarId: avatarId,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(

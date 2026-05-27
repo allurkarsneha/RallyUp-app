@@ -1,16 +1,24 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rallyup/main.dart';
+import 'package:rallyup/models/court.dart';
+import 'package:rallyup/models/user_location.dart';
 import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/court_details_page.dart';
-import 'package:rallyup/screens/notifications_page.dart';
+import 'package:rallyup/screens/main_shell_nav.dart';
+import 'package:rallyup/services/court_service.dart';
 import 'package:rallyup/services/location_picker_handler.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/booking_slots.dart';
+import '../utils/sport_emoji.dart';
 import '../widgets/courts/court_listing_card.dart';
 import '../widgets/courts/court_search_bar.dart';
 import '../widgets/main_bottom_nav.dart';
+import '../widgets/notification_bell_button.dart';
 import '../widgets/side_menu_drawer.dart';
 import '../widgets/sports_card.dart';
 
@@ -22,13 +30,16 @@ class CourtsPage extends StatefulWidget {
 }
 
 class _CourtsPageState extends State<CourtsPage> {
-  String _selectedSport = 'All';
-  String _selectedSort = 'default';
+  final CourtService _courtService = CourtService();
   final TextEditingController _searchController = TextEditingController();
 
+  String _selectedSport = 'All';
+  String _selectedSort = 'default';
+  // Favorites keyed by court doc id (was court title before — id is
+  // stable across renames).
   final Set<String> _favoriteCourts = {};
 
-  final List<String> _sports = const [
+  static const List<String> _sports = [
     'Tennis',
     'Badminton',
     'Table Tennis',
@@ -41,107 +52,85 @@ class _CourtsPageState extends State<CourtsPage> {
     'Swimming',
   ];
 
-  final List<Map<String, String>> _allCourts = const [
-    {
-      'title': 'SCU Tennis Court A',
-      'sport': 'Tennis',
-      'emoji': '🎾',
-      'image': 'assets/images/courts/tenniscourt.png',
-      'distance': '0.8 mi away',
-      'rating': '4.9',
-      'price': '\$22/hr',
-      'slots': '2 slots today',
-    },
-    {
-      'title': 'Bay Badminton Arena',
-      'sport': 'Badminton',
-      'emoji': '🏸',
-      'image': 'assets/images/courts/badmintoncourt.png',
-      'distance': '2.6 mi away',
-      'rating': '4.4',
-      'price': '\$16/hr',
-      'slots': '6 slots today',
-    },
-    {
-      'title': 'Downtown Basketball Court',
-      'sport': 'Basketball',
-      'emoji': '🏀',
-      'image': 'assets/images/courts/basketballcourt.png',
-      'distance': '3.9 mi away',
-      'rating': '4.2',
-      'price': '\$20/hr',
-      'slots': '3 slots today',
-    },
-    {
-      'title': 'Sunnyvale Pickleball Courts',
-      'sport': 'Pickleball',
-      'emoji': '🎾',
-      'image': 'assets/images/courts/pickleballcourt.png',
-      'distance': '1.4 mi away',
-      'rating': '4.8',
-      'price': '\$14/hr',
-      'slots': '8 slots today',
-    },
-    {
-      'title': 'SCU Volleyball Arena',
-      'sport': 'Volleyball',
-      'emoji': '🏐',
-      'image': 'assets/images/courts/volleyballcourt.png',
-      'distance': '2.1 mi away',
-      'rating': '4.6',
-      'price': '\$18/hr',
-      'slots': '4 slots today',
-    },
-  ];
-
-  List<Map<String, String>> get _filteredCourts {
+  /// Filters by sport using `sportTypes.contains(selectedSport)` so
+  /// multi-sport venues (e.g. Cupertino Sports Center) surface for
+  /// every sport they support — never just the "primary" one.
+  /// Then applies search across name / city / sports, then sorts by
+  /// the current sort key.
+  List<_RankedCourt> _filterAndSort(
+    List<Court> courts,
+    UserLocation? myLocation,
+  ) {
     final query = _searchController.text.trim().toLowerCase();
+    final filtered = courts.where((court) {
+      final matchesSport = _selectedSport == 'All' ||
+          court.sportTypes.any(
+            (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
+          );
 
-    final filtered = _allCourts.where((court) {
-      final matchesSport =
-          _selectedSport == 'All' || court['sport'] == _selectedSport;
-
-      final title = court['title']!.toLowerCase();
-      final sport = court['sport']!.toLowerCase();
-
-      final matchesSearch =
-          query.isEmpty || title.contains(query) || sport.contains(query);
+      final matchesSearch = query.isEmpty ||
+          court.name.toLowerCase().contains(query) ||
+          court.city.toLowerCase().contains(query) ||
+          court.sportTypes
+              .any((s) => s.toLowerCase().contains(query));
 
       return matchesSport && matchesSearch;
-    }).toList();
+    });
 
-    if (_selectedSort == 'distance') {
-      filtered.sort(
-        (a, b) => _extractNumber(a['distance']!).compareTo(
-          _extractNumber(b['distance']!),
-        ),
-      );
-    } else if (_selectedSort == 'rating') {
-      filtered.sort(
-        (a, b) => _extractNumber(b['rating']!).compareTo(
-          _extractNumber(a['rating']!),
-        ),
-      );
-    } else if (_selectedSort == 'price_low') {
-      filtered.sort(
-        (a, b) => _extractNumber(a['price']!).compareTo(
-          _extractNumber(b['price']!),
-        ),
-      );
-    } else if (_selectedSort == 'slots') {
-      filtered.sort(
-        (a, b) => _extractNumber(b['slots']!).compareTo(
-          _extractNumber(a['slots']!),
-        ),
-      );
+    final ranked = filtered
+        .map((c) => _RankedCourt.from(c, myLocation))
+        .toList();
+
+    switch (_selectedSort) {
+      case 'distance':
+        ranked.sort((a, b) {
+          if (a.sameCity != b.sameCity) return a.sameCity ? -1 : 1;
+          final aD = a.distanceKm ?? double.infinity;
+          final bD = b.distanceKm ?? double.infinity;
+          return aD.compareTo(bD);
+        });
+        break;
+      case 'rating':
+        ranked.sort((a, b) {
+          final ar = a.court.rating ?? 0;
+          final br = b.court.rating ?? 0;
+          return br.compareTo(ar);
+        });
+        break;
+      case 'price_low':
+        ranked.sort(
+          (a, b) => a.court.pricePerHour.compareTo(b.court.pricePerHour),
+        );
+        break;
+      case 'default':
+      default:
+        // Default ordering: same-city first then nearest, mirroring
+        // the rest of the app's "near you" heuristic.
+        ranked.sort((a, b) {
+          if (a.sameCity != b.sameCity) return a.sameCity ? -1 : 1;
+          final aD = a.distanceKm ?? double.infinity;
+          final bD = b.distanceKm ?? double.infinity;
+          return aD.compareTo(bD);
+        });
     }
-
-    return filtered;
+    return ranked;
   }
 
-  double _extractNumber(String text) {
-    final match = RegExp(r'(\d+(\.\d+)?)').firstMatch(text);
-    return double.tryParse(match?.group(1) ?? '0') ?? 0;
+  /// Build the small sport label that fits inside the court card's
+  /// metadata row. When the court only supports one sport we just
+  /// show it; for multi-sport venues we lead with [primary] (the
+  /// sport the card is currently being surfaced for) and append
+  /// "+N" for the rest. Two-sport venues read as "Tennis +1",
+  /// three-sport ones as "Tennis +2" — short enough to stay on the
+  /// metadata row without overflowing into the price column.
+  String _multiSportLabel(List<String> sportTypes, {required String primary}) {
+    if (sportTypes.isEmpty) return primary;
+    if (sportTypes.length == 1) return sportTypes.first;
+    final remaining = sportTypes.where(
+      (s) => s.toLowerCase() != primary.toLowerCase(),
+    ).length;
+    if (remaining <= 0) return primary;
+    return '$primary +$remaining';
   }
 
   String _getSportImagePath(String sport) {
@@ -171,18 +160,6 @@ class _CourtsPageState extends State<CourtsPage> {
     }
   }
 
-  void _openNotificationsPage() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-  }
-
   Future<void> _openLocationOverlay() => openLocationPicker(context);
 
   void _openFilterSheet() {
@@ -210,9 +187,7 @@ class _CourtsPageState extends State<CourtsPage> {
                 title: 'Default',
                 isSelected: _selectedSort == 'default',
                 onTap: () {
-                  setState(() {
-                    _selectedSort = 'default';
-                  });
+                  setState(() => _selectedSort = 'default');
                   Navigator.pop(context);
                 },
               ),
@@ -220,9 +195,7 @@ class _CourtsPageState extends State<CourtsPage> {
                 title: 'Nearest Distance',
                 isSelected: _selectedSort == 'distance',
                 onTap: () {
-                  setState(() {
-                    _selectedSort = 'distance';
-                  });
+                  setState(() => _selectedSort = 'distance');
                   Navigator.pop(context);
                 },
               ),
@@ -230,9 +203,7 @@ class _CourtsPageState extends State<CourtsPage> {
                 title: 'Highest Rating',
                 isSelected: _selectedSort == 'rating',
                 onTap: () {
-                  setState(() {
-                    _selectedSort = 'rating';
-                  });
+                  setState(() => _selectedSort = 'rating');
                   Navigator.pop(context);
                 },
               ),
@@ -240,19 +211,7 @@ class _CourtsPageState extends State<CourtsPage> {
                 title: 'Lowest Price',
                 isSelected: _selectedSort == 'price_low',
                 onTap: () {
-                  setState(() {
-                    _selectedSort = 'price_low';
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              _FilterOptionTile(
-                title: 'Most Available Slots',
-                isSelected: _selectedSort == 'slots',
-                onTap: () {
-                  setState(() {
-                    _selectedSort = 'slots';
-                  });
+                  setState(() => _selectedSort = 'price_low');
                   Navigator.pop(context);
                 },
               ),
@@ -263,31 +222,23 @@ class _CourtsPageState extends State<CourtsPage> {
     );
   }
 
-  void _toggleFavorite(String courtTitle) {
+  void _toggleFavorite(String courtId) {
     setState(() {
-      if (_favoriteCourts.contains(courtTitle)) {
-        _favoriteCourts.remove(courtTitle);
+      if (_favoriteCourts.contains(courtId)) {
+        _favoriteCourts.remove(courtId);
       } else {
-        _favoriteCourts.add(courtTitle);
+        _favoriteCourts.add(courtId);
       }
     });
   }
 
-  void _openCourtDetails(Map<String, String> court) {
+  void _openCourtDetails(Court court, String distanceText) {
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (_, _, _) => CourtDetailsPage(
-          courtName: court['title']!,
-          sport: court['sport']!,
-          sportEmoji: court['emoji']!,
-          imagePath: court['image']!,
-          distanceText: court['distance']!,
-          ratingText: court['rating']!,
-          priceText: court['price']!,
-          locationText: context.read<AuthProvider>().currentUser?.location
-                  ?.displayLabel ??
-              '',
+          court: court,
+          distanceText: distanceText,
         ),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -297,16 +248,7 @@ class _CourtsPageState extends State<CourtsPage> {
   }
 
   void _onBottomNavTap(int index) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-      (route) => false,
-    );
+    switchToMainShellTab(context, index);
   }
 
   @override
@@ -317,13 +259,9 @@ class _CourtsPageState extends State<CourtsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final courts = _filteredCourts;
-    final locationLabel = context
-            .watch<AuthProvider>()
-            .currentUser
-            ?.location
-            ?.displayLabel ??
-        'Set location';
+    final me = context.watch<AuthProvider>().currentUser;
+    final myLocation = me?.location;
+    final locationLabel = myLocation?.displayLabel ?? 'Set location';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -365,16 +303,7 @@ class _CourtsPageState extends State<CourtsPage> {
                         ),
                       ),
                       const Spacer(),
-                      IconButton(
-                        onPressed: _openNotificationsPage,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(
-                          Icons.notifications_none_rounded,
-                          size: 30,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
+                      const NotificationBellButton(size: 30),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -433,98 +362,137 @@ class _CourtsPageState extends State<CourtsPage> {
                     return SportsCard(
                       isAllCard: true,
                       isSelected: _selectedSport == 'All',
-                      onTap: () {
-                        setState(() {
-                          _selectedSport = 'All';
-                        });
-                      },
+                      onTap: () => setState(() => _selectedSport = 'All'),
                     );
                   }
-
                   final sport = _sports[index - 1];
-
                   return SportsCard(
                     imagePath: _getSportImagePath(sport),
                     isSelected: _selectedSport == sport,
-                    onTap: () {
-                      setState(() {
-                        _selectedSport = sport;
-                      });
-                    },
+                    onTap: () => setState(() => _selectedSport = sport),
                   );
                 },
               ),
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 24),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.pageHorizontal,
-                    ),
-                    child: Text(
-                      'Nearby Courts',
-                      style: AppTextStyles.sectionTitle,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  if (courts.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.pageHorizontal,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.border),
+              child: StreamBuilder<List<Court>>(
+                stream: _courtService.streamActiveCourts(),
+                builder: (context, snapshot) {
+                  final waitingFirst = snapshot.connectionState ==
+                          ConnectionState.waiting &&
+                      !snapshot.hasData;
+                  if (waitingFirst) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final courts =
+                      _filterAndSort(snapshot.data ?? const [], myLocation);
+                  return ListView(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.pageHorizontal,
                         ),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Text(
-                                'No courts found',
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Try another sport or search term',
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
+                        child: Text(
+                          'Nearby Courts',
+                          style: AppTextStyles.sectionTitle,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (courts.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.pageHorizontal,
                           ),
-                        ),
-                      ),
-                    )
-                  else
-                    ...courts.map(
-                      (court) => Padding(
-                        padding: const EdgeInsets.only(bottom: 18),
-                        child: CourtListingCard(
-                          imagePath: court['image']!,
-                          title: court['title']!,
-                          sport: court['sport']!,
-                          sportEmoji: court['emoji']!,
-                          distanceText: court['distance']!,
-                          ratingText: court['rating']!,
-                          priceText: court['price']!,
-                          slotsText: court['slots']!,
-                          isFavorite: _favoriteCourts.contains(court['title']!),
-                          onViewDetailsTap: () => _openCourtDetails(court),
-                          onFavoriteTap: () => _toggleFavorite(court['title']!),
-                        ),
-                      ),
-                    ),
-                ],
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'No courts found',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Try another sport or search term',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ...courts.map((ranked) {
+                          final court = ranked.court;
+                          // For the multi-sport filter row, use the
+                          // selected sport's emoji when possible — it
+                          // signals the venue is being surfaced for
+                          // that sport. Falls back to the court's
+                          // first declared sport otherwise.
+                          final emojiSport = _selectedSport != 'All' &&
+                                  court.sportTypes.any(
+                                    (s) =>
+                                        s.toLowerCase() ==
+                                        _selectedSport.toLowerCase(),
+                                  )
+                              ? _selectedSport
+                              : (court.sportTypes.isNotEmpty
+                                  ? court.sportTypes.first
+                                  : 'Tennis');
+                          // Multi-sport label: when the user has a
+                          // specific sport filter active and the court
+                          // supports it, lead with that sport and
+                          // append "+N" for the others so a Cupertino
+                          // Sports Center card filtered by "Tennis"
+                          // reads "Tennis +2" instead of hiding the
+                          // other sports entirely.
+                          final sportsLabel = _multiSportLabel(
+                            court.sportTypes,
+                            primary: emojiSport,
+                          );
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 18),
+                            child: CourtListingCard(
+                              imageUrl: court.imageUrls.isNotEmpty
+                                  ? court.imageUrls.first
+                                  : null,
+                              title: court.name,
+                              sportsLabel: sportsLabel,
+                              sportEmoji: sportEmojiFor(emojiSport),
+                              distanceText: ranked.distanceText,
+                              ratingText: (court.rating ?? 0).toStringAsFixed(1),
+                              priceText:
+                                  '\$${court.pricePerHour.toStringAsFixed(0)}/hr',
+                              // Slots-today badge. Matches the
+                              // original RallyUp UI; populated from
+                              // the generated slot count rather than
+                              // faking per-slot availability.
+                              topBadgeText: '${bookingSlots.length} slots today',
+                              isFavorite: _favoriteCourts.contains(court.id),
+                              onViewDetailsTap: () =>
+                                  _openCourtDetails(court, ranked.distanceText),
+                              onFavoriteTap: () => _toggleFavorite(court.id),
+                            ),
+                          );
+                        }),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -567,4 +535,56 @@ class _FilterOptionTile extends StatelessWidget {
       onTap: onTap,
     );
   }
+}
+
+/// Pairs a Court with its computed-distance display so the row in the
+/// stream's `.map` doesn't have to plumb both around separately. Kept
+/// private — moves to a shared place the moment another screen needs
+/// the same shape.
+class _RankedCourt {
+  final Court court;
+  final double? distanceKm;
+  final bool sameCity;
+
+  const _RankedCourt({
+    required this.court,
+    required this.distanceKm,
+    required this.sameCity,
+  });
+
+  factory _RankedCourt.from(Court court, UserLocation? me) {
+    if (me == null) {
+      return _RankedCourt(court: court, distanceKm: null, sameCity: false);
+    }
+    return _RankedCourt(
+      court: court,
+      distanceKm: _haversineKm(me.lat, me.lng, court.lat, court.lng),
+      sameCity: me.city.isNotEmpty &&
+          me.city.toLowerCase() == court.city.toLowerCase(),
+    );
+  }
+
+  String get distanceText {
+    if (distanceKm == null) {
+      // No user location → fall back to the court's city so the row
+      // never reads as a bare empty distance.
+      return court.city;
+    }
+    final mi = distanceKm! * 0.621371;
+    if (mi < 0.1) return '< 0.1 mi';
+    return '${mi.toStringAsFixed(1)} mi';
+  }
+}
+
+double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
+  const r = 6371.0;
+  double toRad(double d) => d * math.pi / 180;
+  final dLat = toRad(lat2 - lat1);
+  final dLng = toRad(lng2 - lng1);
+  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+      math.cos(toRad(lat1)) *
+          math.cos(toRad(lat2)) *
+          math.sin(dLng / 2) *
+          math.sin(dLng / 2);
+  return 2 * r * math.asin(math.sqrt(a));
 }

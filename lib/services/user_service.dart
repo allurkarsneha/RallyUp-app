@@ -17,8 +17,15 @@ class UserService {
     return AppUser.fromMap({...data, 'uid': uid});
   }
 
-  Future<void> createUser(AppUser user) async {
-    await _users.doc(user.uid).set(user.toMap());
+  /// Creates the user document. `extras` is merged into the payload after
+  /// `user.toMap()` so callers can write Firestore-only shadow fields
+  /// (e.g. flattened location columns for future where()/geo queries)
+  /// without bloating the AppUser model itself.
+  Future<void> createUser(
+    AppUser user, {
+    Map<String, dynamic> extras = const {},
+  }) async {
+    await _users.doc(user.uid).set({...user.toMap(), ...extras});
   }
 
   Future<void> updateFields(String uid, Map<String, dynamic> fields) async {
@@ -39,6 +46,26 @@ class UserService {
       final data = snap.data();
       if (data == null) return null;
       return AppUser.fromMap({...data, 'uid': uid});
+    });
+  }
+
+  /// Streams every visible user document. Single source of truth for the
+  /// Nearby Players list and (later) the Messaging directory. `excludeUid`
+  /// drops the caller themselves from the result so they don't appear in
+  /// their own directory. Users with `profileVisible == false` are filtered
+  /// out client-side.
+  ///
+  /// TODO:
+  /// Replace with geo-bounded query once user scale increases.
+  Stream<List<AppUser>> streamAllUsers({String? excludeUid}) {
+    return _users.snapshots().map((snap) {
+      return snap.docs
+          .map((doc) => AppUser.fromMap({...doc.data(), 'uid': doc.id}))
+          .where((u) {
+            if (excludeUid != null && u.uid == excludeUid) return false;
+            return u.profileVisible;
+          })
+          .toList();
     });
   }
 }

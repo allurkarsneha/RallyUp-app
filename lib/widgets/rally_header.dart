@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'notification_bell_button.dart';
 
 class RallyHeader extends StatelessWidget {
   final String title;
@@ -10,7 +12,6 @@ class RallyHeader extends StatelessWidget {
   final bool showNotificationButton;
   final VoidCallback? onBackTap;
   final VoidCallback? onMenuTap;
-  final VoidCallback? onNotificationTap;
 
   const RallyHeader({
     super.key,
@@ -20,7 +21,6 @@ class RallyHeader extends StatelessWidget {
     this.showNotificationButton = true,
     this.onBackTap,
     this.onMenuTap,
-    this.onNotificationTap,
   });
 
   @override
@@ -43,15 +43,13 @@ class RallyHeader extends StatelessWidget {
             ),
           ),
           if (showNotificationButton)
-            IconButton(
-              onPressed: onNotificationTap,
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: AppColors.textPrimary,
-                size: 24,
-              ),
-              splashRadius: 22,
-              tooltip: 'Notifications',
+            // The bell carries its own tap target + unread-dot stream,
+            // wrapped to roughly match the 48dp IconButton hit slop
+            // we used to have so spacing on every RallyHeader page
+            // stays consistent.
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: NotificationBellButton(size: 24),
             ),
         ],
       ),

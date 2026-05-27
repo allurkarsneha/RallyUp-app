@@ -1,32 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:rallyup/main.dart';
-import 'package:rallyup/screens/notifications_page.dart';
+
+import '../models/court.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
-import '../widgets/main_bottom_nav.dart';
+import '../utils/sport_emoji.dart';
 import '../widgets/court_details/book_court_sheet.dart';
+import '../widgets/court_details/court_image_carousel.dart';
+import '../widgets/main_bottom_nav.dart';
+import '../widgets/notification_bell_button.dart';
+import 'main_shell_nav.dart';
 
+/// Detail page for a single Court. Was previously fed raw display
+/// strings from the hard-coded courts list; now takes a real
+/// [Court] object plus a pre-formatted distance string from the
+/// caller (so the same haversine-derived label that the Courts list
+/// row uses appears here without re-computing).
 class CourtDetailsPage extends StatefulWidget {
-  final String courtName;
-  final String sport;
-  final String sportEmoji;
-  final String imagePath;
+  final Court court;
   final String distanceText;
-  final String ratingText;
-  final String priceText;
-  final String locationText;
 
   const CourtDetailsPage({
     super.key,
-    required this.courtName,
-    required this.sport,
-    required this.sportEmoji,
-    required this.imagePath,
+    required this.court,
     required this.distanceText,
-    required this.ratingText,
-    required this.priceText,
-    required this.locationText,
   });
 
   @override
@@ -34,20 +31,9 @@ class CourtDetailsPage extends StatefulWidget {
 }
 
 class _CourtDetailsPageState extends State<CourtDetailsPage> {
-  String _selectedAvailableFor = 'Doubles';
-  String _selectedSport = 'Tennis';
-
-  void _openNotificationsPage(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-  }
+  late String _selectedSport = widget.court.sportTypes.isNotEmpty
+      ? widget.court.sportTypes.first
+      : 'Tennis';
 
   void _openBookCourtSheet(BuildContext context) {
     showModalBottomSheet(
@@ -56,35 +42,63 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return BookCourtSheet(
-          courtName: widget.courtName,
-          sportEmoji: widget.sportEmoji,
-          imagePath: widget.imagePath,
-          priceText: widget.priceText,
-          selectedAvailableFor: _selectedAvailableFor,
-          selectedSport: _selectedSport,
+          court: widget.court,
+          // Seed the sheet with whatever sport the user had selected on
+          // the details page. They can still change it inside the
+          // overlay — the overlay always re-validates against
+          // `court.sportTypes` before writing the booking.
+          initialSport: _selectedSport,
         );
       },
     );
   }
 
   void _onBottomNavTap(BuildContext context, int index) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-      (route) => false,
-    );
+    switchToMainShellTab(context, index);
   }
 
-  Widget _buildAmenityItem(IconData icon, String label) {
+  /// Single-line sport label for the top metadata row of CourtDetails.
+  /// `selectedEmoji` is the emoji for [_selectedSport]; we lead with
+  /// it + the selected sport's name, then trail the remaining sports
+  /// joined with `· `. Single-sport courts collapse to just
+  /// `{emoji}  {name}` so the row reads identically to the
+  /// pre-multi-sport build for single-sport venues.
+  String _topSportLabel(List<String> sportTypes, String selectedEmoji) {
+    if (sportTypes.length <= 1) {
+      return '$selectedEmoji  $_selectedSport';
+    }
+    final others = sportTypes
+        .where((s) => s.toLowerCase() != _selectedSport.toLowerCase())
+        .toList();
+    if (others.isEmpty) return '$selectedEmoji  $_selectedSport';
+    return '$selectedEmoji  $_selectedSport · ${others.join(' · ')}';
+  }
+
+  IconData _iconForAmenity(String label) {
+    final l = label.toLowerCase();
+    if (l.contains('parking')) return Icons.local_parking_outlined;
+    if (l.contains('light')) return Icons.light_mode_outlined;
+    if (l.contains('restroom')) return Icons.wc_outlined;
+    if (l.contains('water')) return Icons.water_drop_outlined;
+    if (l.contains('seat')) return Icons.event_seat_outlined;
+    if (l.contains('rental') || l.contains('equipment')) {
+      return Icons.sports_tennis_outlined;
+    }
+    if (l.contains('indoor')) return Icons.home_work_outlined;
+    if (l.contains('outdoor') || l.contains('field') || l.contains('ground')) {
+      return Icons.park_outlined;
+    }
+    if (l.contains('net')) return Icons.sports_baseball_outlined;
+    if (l.contains('multi')) return Icons.dashboard_customize_outlined;
+    if (l.contains('community')) return Icons.groups_outlined;
+    return Icons.check_circle_outline_rounded;
+  }
+
+  Widget _buildAmenityItem(String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: AppColors.textSecondary),
+        Icon(_iconForAmenity(label), size: 16, color: AppColors.textSecondary),
         const SizedBox(width: 4),
         Text(
           label,
@@ -127,8 +141,13 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final sportsOptions = ['Tennis', 'Pickleball', 'Badminton'];
-    final availableForOptions = ['Singles', 'Doubles', 'Practice', 'Coaching'];
+    final court = widget.court;
+    final emoji = sportEmojiFor(_selectedSport);
+    final ratingText =
+        court.rating == null ? '—' : court.rating!.toStringAsFixed(1);
+    final priceText = '\$${court.pricePerHour.toStringAsFixed(0)}/hr';
+    final locationText =
+        court.city.isEmpty ? court.address : '${court.city}, ${court.region}';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -163,16 +182,7 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    onPressed: () => _openNotificationsPage(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      size: 30,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+                  const NotificationBellButton(size: 30),
                 ],
               ),
             ),
@@ -180,11 +190,13 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  Image.asset(
-                    widget.imagePath,
-                    width: double.infinity,
+                  // Image carousel — swipeable when multiple images,
+                  // single fixed image when only one, placeholder
+                  // when none. Keeps the same 210px image area the
+                  // page had with a single Image.asset before.
+                  CourtImageCarousel(
+                    imageUrls: court.imageUrls,
                     height: 210,
-                    fit: BoxFit.cover,
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -197,7 +209,7 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.courtName,
+                          court.name,
                           style: AppTextStyles.pageTitle.copyWith(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -207,11 +219,23 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            Text(
-                              '${widget.sportEmoji}  ${widget.sport}',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
+                            // Multi-sport venues must read clearly as
+                            // multi-sport here. Lead with the
+                            // currently-selected sport's emoji + name
+                            // (this is the one Book Court will use),
+                            // then a small grey tail of the remaining
+                            // sports so a Cupertino card reads
+                            // "🎾 Tennis · Badminton · Pickleball"
+                            // rather than just "🎾 Tennis".
+                            Flexible(
+                              child: Text(
+                                _topSportLabel(court.sportTypes, emoji),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -222,7 +246,7 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              '${widget.ratingText} (128 reviews)',
+                              ratingText,
                               style: AppTextStyles.bodyMedium.copyWith(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -249,21 +273,26 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                             const SizedBox(width: 10),
                             const Text(
                               '•',
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style:
+                                  TextStyle(color: AppColors.textSecondary),
                             ),
                             const SizedBox(width: 10),
-                            Text(
-                              widget.locationText,
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
+                            Flexible(
+                              child: Text(
+                                locationText,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          widget.priceText,
+                          priceText,
                           style: AppTextStyles.bodyMedium.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -281,7 +310,9 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Well-maintained outdoor tennis court with night lighting.\nPerfect for casual games and practice.',
+                          court.description.isNotEmpty
+                              ? court.description
+                              : 'No description provided yet.',
                           style: AppTextStyles.bodyMedium.copyWith(
                             fontSize: 13,
                             color: AppColors.textPrimary,
@@ -298,18 +329,23 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 18,
-                          runSpacing: 10,
-                          children: [
-                            _buildAmenityItem(Icons.light_mode_outlined, 'Lighting'),
-                            _buildAmenityItem(Icons.local_parking_outlined, 'Parking'),
-                            _buildAmenityItem(Icons.wc_outlined, 'Restrooms'),
-                            _buildAmenityItem(Icons.water_drop_outlined, 'Water'),
-                            _buildAmenityItem(Icons.event_seat_outlined, 'Seating'),
-                            _buildAmenityItem(Icons.sports_tennis_outlined, 'Rental Equipment'),
-                          ],
-                        ),
+                        if (court.amenities.isEmpty)
+                          Text(
+                            'No listed amenities.',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          )
+                        else
+                          Wrap(
+                            spacing: 18,
+                            runSpacing: 10,
+                            children: [
+                              for (final a in court.amenities)
+                                _buildAmenityItem(a),
+                            ],
+                          ),
                         const SizedBox(height: 18),
                         const Divider(color: AppColors.border),
                         const SizedBox(height: 14),
@@ -325,42 +361,15 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: availableForOptions.map((option) {
-                            return _buildSelectableChip(
-                              label: option,
-                              isSelected: _selectedAvailableFor == option,
-                              onTap: () {
-                                setState(() {
-                                  _selectedAvailableFor = option;
-                                });
-                              },
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Sports',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: sportsOptions.map((option) {
-                            return _buildSelectableChip(
-                              label: option,
-                              isSelected: _selectedSport == option,
-                              onTap: () {
-                                setState(() {
-                                  _selectedSport = option;
-                                });
-                              },
-                            );
-                          }).toList(),
+                          children: [
+                            for (final s in court.sportTypes)
+                              _buildSelectableChip(
+                                label: s,
+                                isSelected: _selectedSport == s,
+                                onTap: () =>
+                                    setState(() => _selectedSport = s),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 26),
                         SizedBox(

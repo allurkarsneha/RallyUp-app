@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
-import '../../screens/notifications_page.dart';
+import '../../screens/logout_helper.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/notification_bell_button.dart';
 import '../../widgets/user_avatar.dart';
 import 'account_settings_page.dart';
 import 'block_list_page.dart';
@@ -19,10 +20,7 @@ class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   Future<void> _performLogout(BuildContext context) async {
-    final auth = context.read<AuthProvider>();
-    await auth.signOut();
-    if (!context.mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    await performLogout(context);
   }
 
   Future<void> _performDelete(BuildContext context) async {
@@ -65,18 +63,6 @@ class ProfilePage extends StatelessWidget {
       default:
         return 'Account deletion failed. Please try again.';
     }
-  }
-
-  void _openNotificationsPage(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -257,16 +243,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => _openNotificationsPage(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: AppColors.textPrimary,
-                      size: 30,
-                    ),
-                  ),
+                  const NotificationBellButton(size: 30),
                 ],
               ),
               const SizedBox(height: 32),
@@ -299,6 +276,30 @@ class ProfilePage extends StatelessWidget {
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        if (user.location != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 16,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  user.location!.displayLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.body.copyWith(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ],

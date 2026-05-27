@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rallyup/main.dart';
 import 'package:rallyup/providers/auth_provider.dart';
-import 'package:rallyup/screens/notifications_page.dart';
+import 'package:rallyup/screens/main_shell_nav.dart';
 import 'package:rallyup/screens/player_details/match_details_page.dart';
 import 'package:rallyup/services/location_picker_handler.dart';
 
@@ -11,6 +10,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/courts/court_search_bar.dart';
 import '../../widgets/main_bottom_nav.dart';
+import '../../widgets/notification_bell_button.dart';
 import '../../widgets/side_menu_drawer.dart';
 import '../../widgets/sports_card.dart';
 import '../../widgets/player_details/open_matches/open_match_card.dart';
@@ -201,18 +201,6 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
     return AppColors.primary;
   }
 
-  void _openNotificationsPage() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-  }
-
   Future<void> _openLocationOverlay() => openLocationPicker(context);
 
   void _openFilterSheet() {
@@ -330,16 +318,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
   }
 
   void _onBottomNavTap(int index) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-      (route) => false,
-    );
+    switchToMainShellTab(context, index);
   }
 
   @override
@@ -398,16 +377,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
                         ),
                       ),
                       const Spacer(),
-                      IconButton(
-                        onPressed: _openNotificationsPage,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(
-                          Icons.notifications_none_rounded,
-                          size: 30,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
+                      const NotificationBellButton(size: 30),
                     ],
                   ),
                   const SizedBox(height: 10),

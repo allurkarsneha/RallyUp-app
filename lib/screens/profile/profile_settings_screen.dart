@@ -27,6 +27,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   late TextEditingController lastNameController;
   late TextEditingController ageController;
   late TextEditingController postalCodeController;
+  late TextEditingController bioController;
 
   String? _firstNameError;
   String? _lastNameError;
@@ -46,6 +47,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         TextEditingController(text: user?.age?.toString() ?? '');
     postalCodeController =
         TextEditingController(text: user?.postalCode ?? '');
+    bioController = TextEditingController(text: user?.bio ?? '');
   }
 
   @override
@@ -54,6 +56,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     lastNameController.dispose();
     ageController.dispose();
     postalCodeController.dispose();
+    bioController.dispose();
     super.dispose();
   }
 
@@ -122,12 +125,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     try {
       final ageText = ageController.text.trim();
       final postalText = postalCodeController.text.trim();
-      await context.read<AuthProvider>().updateProfile(
+      final auth = context.read<AuthProvider>();
+      await auth.updateProfile(
             firstName: firstNameController.text,
             lastName: lastNameController.text,
             age: ageText.isEmpty ? null : int.parse(ageText),
             postalCode: postalText.isEmpty ? null : postalText,
           );
+      // Bio is a separate update so the existing `updateProfile` contract
+      // (which doesn't know about bio) stays unchanged. Persist whatever
+      // the user typed — `updateBio` normalises empty/whitespace to null.
+      await auth.updateBio(bioController.text);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile saved')),
@@ -146,9 +154,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     required String label,
     required TextEditingController controller,
     String? errorText,
+    String? hintText,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     TextCapitalization textCapitalization = TextCapitalization.none,
+    int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,12 +174,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         TextField(
           controller: controller,
           style: AppTextStyles.body.copyWith(fontSize: 16),
-          keyboardType: keyboardType,
+          keyboardType:
+              maxLines > 1 ? TextInputType.multiline : keyboardType,
           inputFormatters: inputFormatters,
           textCapitalization: textCapitalization,
+          minLines: maxLines > 1 ? maxLines : null,
+          maxLines: maxLines,
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFFEDEDED),
+            hintText: hintText,
+            hintStyle: AppTextStyles.body.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 15,
+            ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 18,
               vertical: 18,
@@ -427,6 +445,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   LengthLimitingTextInputFormatter(
                     AppUser.maxPostalCodeLength,
                   ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _buildField(
+                label: 'About',
+                controller: bioController,
+                hintText: 'Tell other players a bit about yourself…',
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 4,
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(AppUser.maxBioLength),
                 ],
               ),
               if (_formError != null) ...[

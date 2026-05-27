@@ -19,11 +19,12 @@ class InviteSentPage extends StatelessWidget {
   }
 
   void _backToPlayers(BuildContext context) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      _fadeRoute<void>(const NearbyPlayersPage()),
-      (route) => false,
-    );
+    // Pop everything pushed above AuthGate (which is the navigator's
+    // first route) so the user lands back on the existing MainShell,
+    // then push NearbyPlayersPage on top — keeps AuthGate in the
+    // stack so logout can't drop into a blank page later.
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.push(context, _fadeRoute<void>(const NearbyPlayersPage()));
   }
 
   @override

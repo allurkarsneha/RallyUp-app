@@ -4,6 +4,7 @@ import 'package:rallyup/main.dart';
 import 'package:rallyup/models/id_verification.dart';
 import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/courts_page.dart';
+import 'package:rallyup/screens/logout_helper.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
 import 'package:rallyup/screens/notifications_page.dart';
 import 'package:rallyup/screens/player_details/invites_page.dart';
@@ -54,12 +55,15 @@ class SideMenuDrawer extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                final rootNavigator =
-                    Navigator.of(dialogContext, rootNavigator: true);
-                final auth = context.read<AuthProvider>();
-                rootNavigator.pop();
-                await auth.signOut();
-                rootNavigator.popUntil((route) => route.isFirst);
+                // Close the confirmation dialog first, then run the
+                // shared logout helper against the drawer's own
+                // context — `performLogout` pops the side-menu drawer
+                // and any other routes above the home AuthGate BEFORE
+                // signing out, which prevents the "black page" flash
+                // we used to get when AuthGate rebuilt under stale
+                // pushed routes.
+                Navigator.of(dialogContext, rootNavigator: true).pop();
+                await performLogout(context);
               },
               child: const Text('Logout'),
             ),

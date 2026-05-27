@@ -35,6 +35,7 @@ class AppUser {
   static const int minAge = 13;
   static const int maxAge = 120;
   static const int maxPostalCodeLength = 12;
+  static const int maxBioLength = 280;
 
   final String uid;
   final String? email;
@@ -46,6 +47,7 @@ class AppUser {
   final String? avatarId;
   final int? age;
   final String? postalCode;
+  final String? bio;
   final UserLocation? location;
   final IdVerification? idVerification;
   final List<String> sports;
@@ -65,6 +67,7 @@ class AppUser {
     this.avatarId,
     this.age,
     this.postalCode,
+    this.bio,
     this.location,
     this.idVerification,
     this.sports = const [],
@@ -97,6 +100,7 @@ class AppUser {
     String? lastName,
     String? photoUrl,
     String? avatarId,
+    String? bio,
     UserLocation? location,
     IdVerification? idVerification,
     List<String>? sports,
@@ -114,6 +118,7 @@ class AppUser {
       avatarId: avatarId ?? this.avatarId,
       age: age,
       postalCode: postalCode,
+      bio: bio ?? this.bio,
       location: location ?? this.location,
       idVerification: idVerification ?? this.idVerification,
       sports: sports ?? this.sports,
@@ -135,6 +140,7 @@ class AppUser {
         'avatarId': avatarId,
         'age': age,
         'postalCode': postalCode,
+        'bio': bio,
         'location': location?.toMap(),
         'idVerification': idVerification?.toMap(),
         'sports': sports,
@@ -157,6 +163,7 @@ class AppUser {
       avatarId: map['avatarId'] as String?,
       age: _parseInt(map['age']),
       postalCode: map['postalCode'] as String?,
+      bio: map['bio'] as String?,
       location: _safeWhenMap(
         map['location'],
         UserLocation.fromMap,

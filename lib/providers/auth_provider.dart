@@ -8,6 +8,7 @@ import '../models/id_verification.dart';
 import '../models/signup_form_data.dart';
 import '../models/user_location.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 import '../services/user_service.dart';
 
 enum AuthStatus {
@@ -20,6 +21,7 @@ enum AuthStatus {
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
   final UserService _userService;
+  final PushNotificationService _pushNotificationService;
 
   StreamSubscription<User?>? _authSub;
   AuthStatus _status = AuthStatus.loading;
@@ -29,8 +31,11 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider({
     required AuthService authService,
     required UserService userService,
+    PushNotificationService? pushNotificationService,
   })  : _authService = authService,
-        _userService = userService {
+        _userService = userService,
+        _pushNotificationService =
+            pushNotificationService ?? PushNotificationService() {
     _authSub = _authService.authStateChanges.listen(_onAuthChange);
   }
 
@@ -78,6 +83,15 @@ class AuthProvider extends ChangeNotifier {
       }
     }
     notifyListeners();
+
+    // Best-effort FCM init once we've settled on an authenticated user.
+    // Fire-and-forget — PushNotificationService swallows + debugPrints
+    // its own errors so a missing APNs key (iOS simulator) or denied
+    // permission can never crash this listener.
+    if (_status == AuthStatus.authenticated && _currentUser != null) {
+      // ignore: unawaited_futures
+      _pushNotificationService.initForUser(_currentUser!.uid);
+    }
   }
 
   Future<void> completeOnboarding(SignupFormData formData) async {
@@ -106,11 +120,16 @@ class AuthProvider extends ChangeNotifier {
         'displayName': displayName,
         'avatarId': formData.avatarId,
         'sports': sports,
+        if (formData.location != null) ...{
+          'location': formData.location!.toMap(),
+          ..._locationShadow(formData.location),
+        },
       });
       _currentUser = existing.copyWith(
         firstName: firstName,
         lastName: lastName,
         avatarId: formData.avatarId,
+        location: formData.location ?? existing.location,
         sports: sports,
         updatedAt: now,
       );
@@ -126,15 +145,39 @@ class AuthProvider extends ChangeNotifier {
       firstName: firstName,
       lastName: lastName,
       avatarId: formData.avatarId,
+      location: formData.location,
       sports: sports,
       createdAt: now,
       updatedAt: now,
     );
 
-    await _userService.createUser(user);
+    // The nested `location` object is written by `user.toMap()`. The top-level
+    // shadow fields below are intentionally duplicated so we can later run
+    // Firestore where()/range queries (e.g. by city, or lat/lng bounding box)
+    // without having to backfill every document.
+    await _userService.createUser(
+      user,
+      extras: _locationShadow(formData.location),
+    );
     _currentUser = user;
     _status = AuthStatus.authenticated;
     notifyListeners();
+  }
+
+  /// Flattened, top-level Firestore copies of the user's location fields.
+  /// Stored alongside the nested `location` object so future geo-bounded
+  /// queries (city match, lat/lng box) don't require composite-indexing
+  /// inside the nested map. Returns `{}` if there is no location to write,
+  /// so spread operators stay no-ops in that case.
+  Map<String, dynamic> _locationShadow(UserLocation? loc) {
+    if (loc == null) return const {};
+    return {
+      'locationCity': loc.city,
+      'locationRegion': loc.region,
+      'locationCountry': loc.country,
+      'locationLat': loc.lat,
+      'locationLng': loc.lng,
+    };
   }
 
   /// Persist editable profile fields (name + age + postal code) through the
@@ -165,11 +208,11 @@ class AuthProvider extends ChangeNotifier {
     });
 
     // CRITICAL: preserve every field that updateProfile doesn't touch
-    // (location, idVerification, profileVisible). Earlier this method
-    // omitted those three and they silently defaulted to null/null/true
-    // in the local AppUser, which is what caused ProfileSettings to
-    // show "Not started" right after the user saved an unrelated edit
-    // even though Firestore still had the record.
+    // (location, idVerification, profileVisible, bio). Earlier this method
+    // omitted those and they silently defaulted to null/null/true in the
+    // local AppUser, which is what caused ProfileSettings to show "Not
+    // started" right after the user saved an unrelated edit even though
+    // Firestore still had the record.
     _currentUser = AppUser(
       uid: user.uid,
       email: user.email,
@@ -181,6 +224,7 @@ class AuthProvider extends ChangeNotifier {
       avatarId: user.avatarId,
       age: age,
       postalCode: newPostalCode,
+      bio: user.bio,
       location: user.location,
       idVerification: user.idVerification,
       sports: user.sports,
@@ -189,6 +233,19 @@ class AuthProvider extends ChangeNotifier {
       createdAt: user.createdAt,
       updatedAt: now,
     );
+    notifyListeners();
+  }
+
+  /// Persist the player's About/Bio text. Trimmed; pass an empty/whitespace
+  /// string to clear. Length-clamped to [AppUser.maxBioLength] characters
+  /// at the call site (ProfileSettingsScreen enforces this with a
+  /// TextInputFormatter so we don't lose state by truncating here).
+  Future<void> updateBio(String? bio) async {
+    final user = _currentUser;
+    if (user == null) return;
+    final normalised = (bio == null || bio.trim().isEmpty) ? null : bio.trim();
+    await _userService.updateFields(user.uid, {'bio': normalised});
+    _currentUser = user.copyWith(bio: normalised, updatedAt: DateTime.now());
     notifyListeners();
   }
 
@@ -247,6 +304,7 @@ class AuthProvider extends ChangeNotifier {
       avatarId: null,
       age: user.age,
       postalCode: user.postalCode,
+      bio: user.bio,
       location: user.location,
       idVerification: user.idVerification,
       sports: user.sports,
@@ -278,6 +336,7 @@ class AuthProvider extends ChangeNotifier {
       avatarId: null,
       age: user.age,
       postalCode: user.postalCode,
+      bio: user.bio,
       location: user.location,
       idVerification: user.idVerification,
       sports: user.sports,

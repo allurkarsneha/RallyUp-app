@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'notification_bell_button.dart';
 import 'user_avatar.dart';
 
 class HomeTopHeader extends StatelessWidget {
@@ -10,7 +11,6 @@ class HomeTopHeader extends StatelessWidget {
   final String? avatarId;
   final String? photoUrl;
   final String locationText;
-  final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onLocationTap;
 
@@ -21,7 +21,6 @@ class HomeTopHeader extends StatelessWidget {
     this.avatarId,
     this.photoUrl,
     required this.locationText,
-    this.onNotificationTap,
     this.onProfileTap,
     this.onLocationTap,
   });
@@ -67,16 +66,7 @@ class HomeTopHeader extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              IconButton(
-                onPressed: onNotificationTap,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: AppColors.textPrimary,
-                  size: 28,
-                ),
-              ),
+              const NotificationBellButton(size: 28),
               const SizedBox(width: 14),
               UserAvatar(
                 size: 50,

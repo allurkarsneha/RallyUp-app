@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import 'courts/court_network_image.dart';
 
+/// Compact booking card used in the home page "My Bookings" rail.
+/// Image source is a Cloudinary URL (captured in the Booking
+/// snapshot at create time); empty/error falls back to the standard
+/// placeholder.
 class BookingPreviewCard extends StatelessWidget {
-  final String imagePath;
+  final String? imageUrl;
   final String title;
   final String sport;
   final String dateText;
@@ -13,7 +19,7 @@ class BookingPreviewCard extends StatelessWidget {
 
   const BookingPreviewCard({
     super.key,
-    required this.imagePath,
+    required this.imageUrl,
     required this.title,
     required this.sport,
     required this.dateText,
@@ -50,11 +56,10 @@ class BookingPreviewCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(18),
               ),
-              child: Image.asset(
-                imagePath,
+              child: SizedBox(
                 height: 90,
                 width: double.infinity,
-                fit: BoxFit.cover,
+                child: CourtNetworkImage(url: imageUrl, iconSize: 26),
               ),
             ),
             Expanded(
@@ -142,3 +147,4 @@ class BookingPreviewCard extends StatelessWidget {
     );
   }
 }
+

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/signup_form_data.dart';
+import '../models/user_location.dart';
 
 class SignupFormProvider extends ChangeNotifier {
   final SignupFormData _data = SignupFormData();
@@ -8,6 +9,7 @@ class SignupFormProvider extends ChangeNotifier {
   String get firstName => _data.firstName;
   String get lastName => _data.lastName;
   String? get avatarId => _data.avatarId;
+  UserLocation? get location => _data.location;
   Set<String> get selectedSports => _data.selectedSports;
   SignupFormData get data => _data;
 
@@ -19,6 +21,11 @@ class SignupFormProvider extends ChangeNotifier {
 
   void setAvatarId(String? avatarId) {
     _data.avatarId = avatarId;
+    notifyListeners();
+  }
+
+  void setLocation(UserLocation? location) {
+    _data.location = location;
     notifyListeners();
   }
 
@@ -35,6 +42,7 @@ class SignupFormProvider extends ChangeNotifier {
     _data.firstName = '';
     _data.lastName = '';
     _data.avatarId = null;
+    _data.location = null;
     _data.selectedSports = <String>{};
     notifyListeners();
   }
