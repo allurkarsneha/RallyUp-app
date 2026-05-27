@@ -4,12 +4,25 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
+/// Top bar used on every Messages-tab variant.
+///
+/// Right-side action:
+///   * Callers that need a different right-side widget (e.g. the
+///     primary Messages tab now wants a NotificationBellButton) pass
+///     [trailing]. That widget is rendered as-is inside the same
+///     52×52 circular slot the compose icon used to occupy, keeping
+///     the header rhythm identical.
+///   * If [trailing] is null we fall back to the legacy compose icon
+///     wired through [onComposeTap]. The Unread and Group variants
+///     still rely on this fallback, so removing the compose icon
+///     wholesale would change layouts we haven't reviewed.
 class MessagesHeader extends StatelessWidget {
   final String title;
   final bool showBackButton;
   final bool showMenuButton;
   final VoidCallback? onMenuTap;
   final VoidCallback? onComposeTap;
+  final Widget? trailing;
 
   const MessagesHeader({
     super.key,
@@ -18,6 +31,7 @@ class MessagesHeader extends StatelessWidget {
     this.showMenuButton = false,
     this.onMenuTap,
     this.onComposeTap,
+    this.trailing,
   });
 
   @override
@@ -65,22 +79,30 @@ class MessagesHeader extends StatelessWidget {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: onComposeTap,
-            child: Container(
+          if (trailing != null)
+            Container(
               width: 52,
               height: 52,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.edit_outlined,
-                color: AppColors.primary,
-                size: 24,
+              alignment: Alignment.center,
+              child: trailing,
+            )
+          else
+            GestureDetector(
+              onTap: onComposeTap,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.edit_outlined,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

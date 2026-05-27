@@ -12,6 +12,7 @@ import 'screens/login/signup_screen.dart';
 import 'screens/messages/messages_page.dart';
 import 'screens/profile/profile_page.dart';
 import 'services/auth_service.dart';
+import 'services/court_service.dart';
 import 'services/user_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/main_bottom_nav.dart';
@@ -22,6 +23,29 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Debug-only courts bootstrapping. The `assert(...)` block is
+  // stripped from release builds by Dart's assertion semantics, so
+  // production launches never trigger a seed/repair write.
+  //
+  //   * `seedCourtsIfEmpty()` short-circuits when ANY court already
+  //     exists, so it never duplicates.
+  //   * `repairCourtImagesIfNeeded()` handles the case where the
+  //     collection was seeded by an earlier build whose Cloudinary
+  //     URL helper hadn't been wired up — docs exist but `imageUrls`
+  //     is empty. It walks each known seed id and refills only the
+  //     `imageUrls` field. Idempotent; no-op once images are present.
+  //
+  // Fire-and-forget; the home Courts stream picks up the new/repaired
+  // docs on its next snapshot.
+  assert(() {
+    final service = CourtService();
+    () async {
+      await service.seedCourtsIfEmpty();
+      await service.repairCourtImagesIfNeeded();
+    }();
+    return true;
+  }());
 
   runApp(const RallyUpApp());
 }

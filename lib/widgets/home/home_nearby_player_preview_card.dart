@@ -2,20 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../user_avatar.dart';
 
 class HomeNearbyPlayerPreviewCard extends StatelessWidget {
   final String name;
-  final String age;
-  final String sport;
+  final String subtitle;
   final String initials;
+  final String? photoUrl;
+  final String? avatarId;
   final VoidCallback onConnectTap;
 
   const HomeNearbyPlayerPreviewCard({
     super.key,
     required this.name,
-    required this.age,
-    required this.sport,
+    required this.subtitle,
     required this.initials,
+    this.photoUrl,
+    this.avatarId,
     required this.onConnectTap,
   });
 
@@ -37,30 +40,11 @@ class HomeNearbyPlayerPreviewCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 68,
-            height: 68,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF3A36F0),
-                  Color(0xFF36C95F),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                initials,
-                style: AppTextStyles.pageTitle.copyWith(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+          UserAvatar(
+            size: 68,
+            initials: initials,
+            photoUrl: photoUrl,
+            avatarId: avatarId,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -75,14 +59,18 @@ class HomeNearbyPlayerPreviewCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$age   •   $sport',
+                  subtitle,
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontSize: 13,
                     color: AppColors.textPrimary,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 12),
                 SizedBox(

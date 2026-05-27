@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rallyup/main.dart';
+import 'package:rallyup/screens/main_shell_nav.dart';
 import 'package:rallyup/screens/player_details/match_joined_page.dart';
-import 'package:rallyup/screens/player_details/message_page.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -43,17 +42,7 @@ class MatchDetailsPage extends StatelessWidget {
   });
 
   void _onBottomNavTap(BuildContext context, int index) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            MainShell(initialIndex: index),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-      (route) => false,
-    );
+    switchToMainShellTab(context, index);
   }
 
   void _openMatchJoined(BuildContext context) {
@@ -61,7 +50,17 @@ class MatchDetailsPage extends StatelessWidget {
   }
 
   void _openHostMessage(BuildContext context) {
-    Navigator.push(context, _fadeRoute<void>(const MessagePage()));
+    // Match details still runs off hard-coded data; there's no real host
+    // AppUser to thread into MessagePage yet. Surface a clear "not wired
+    // up" message instead of pushing a broken chat — once open matches
+    // migrate to Firestore, this will pass the host's AppUser through.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Messaging the match host will be available once matches are live.',
+        ),
+      ),
+    );
   }
 
   void _showJoinDialog(BuildContext context) {

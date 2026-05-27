@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../courts/court_network_image.dart';
 
+/// Small horizontally-scrolling preview tile for the home page's
+/// "Suggested Courts" rail. Now sources its image from a Cloudinary
+/// URL instead of a bundled asset; falls back to the same RallyUp
+/// primary-light placeholder used elsewhere when the URL is missing
+/// or fails to load.
 class HomeSuggestedCourtPreviewCard extends StatelessWidget {
-  final String imagePath;
+  final String? imageUrl;
   final String sport;
   final String distanceText;
   final String ratingText;
@@ -12,7 +18,7 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
 
   const HomeSuggestedCourtPreviewCard({
     super.key,
-    required this.imagePath,
+    required this.imageUrl,
     required this.sport,
     required this.distanceText,
     required this.ratingText,
@@ -40,11 +46,10 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
             borderRadius: const BorderRadius.vertical(
               top: Radius.circular(18),
             ),
-            child: Image.asset(
-              imagePath,
+            child: SizedBox(
               height: 130,
               width: double.infinity,
-              fit: BoxFit.cover,
+              child: CourtNetworkImage(url: imageUrl, iconSize: 30),
             ),
           ),
           Expanded(
@@ -57,6 +62,8 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           sport,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodyMedium.copyWith(
                             fontSize: 13,
                             color: AppColors.textPrimary,
@@ -102,7 +109,8 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(18),
                             ),
                             backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
                           ),
                           child: Text(
                             'View Details',
@@ -125,3 +133,4 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
     );
   }
 }
+

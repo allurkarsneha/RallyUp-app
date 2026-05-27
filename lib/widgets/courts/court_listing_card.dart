@@ -1,31 +1,45 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
+import 'court_network_image.dart';
 
+/// Single court tile rendered on the Courts tab. Takes already-built
+/// display strings instead of a `Court` so the page can format
+/// distance / price / rating consistently with its current visual
+/// language and the card stays presentational only.
+///
+/// Image source is now a Cloudinary URL (`imageUrl`) rather than a
+/// bundled asset path. A null/empty URL or a network failure falls
+/// back to a clean RallyUp-style placeholder — the card never shows
+/// a broken-image icon or crashes the list.
 class CourtListingCard extends StatelessWidget {
-  final String imagePath;
+  final String? imageUrl;
   final String title;
-  final String sport;
+  final String sportsLabel;
   final String sportEmoji;
   final String distanceText;
   final String ratingText;
   final String priceText;
-  final String slotsText;
+  /// Short caption shown in the top-left of the image (was "X slots
+  /// today" in the static mock; we now use it for the venue's city so
+  /// the badge still carries useful info without faking slot data).
+  final String topBadgeText;
   final bool isFavorite;
   final VoidCallback? onViewDetailsTap;
   final VoidCallback? onFavoriteTap;
 
   const CourtListingCard({
     super.key,
-    required this.imagePath,
+    required this.imageUrl,
     required this.title,
-    required this.sport,
+    required this.sportsLabel,
     required this.sportEmoji,
     required this.distanceText,
     required this.ratingText,
     required this.priceText,
-    required this.slotsText,
+    required this.topBadgeText,
     required this.isFavorite,
     this.onViewDetailsTap,
     this.onFavoriteTap,
@@ -56,35 +70,35 @@ class CourtListingCard extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(22),
                 ),
-                child: Image.asset(
-                  imagePath,
+                child: SizedBox(
                   width: double.infinity,
                   height: 210,
-                  fit: BoxFit.cover,
+                  child: CourtNetworkImage(url: imageUrl, iconSize: 38),
                 ),
               ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color.fromARGB(210, 11, 107, 67),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Text(
-                    slotsText,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+              if (topBadgeText.isNotEmpty)
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(210, 11, 107, 67),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      topBadgeText,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
               Positioned(
                 top: 12,
                 right: 12,
@@ -109,6 +123,8 @@ class CourtListingCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -121,7 +137,7 @@ class CourtListingCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '$sportEmoji  $sport',
+                        '$sportEmoji  $sportsLabel',
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodyMedium.copyWith(
                           fontSize: 12,
@@ -199,3 +215,4 @@ class CourtListingCard extends StatelessWidget {
     );
   }
 }
+

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/user_location.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/location_picker_sheet.dart';
 import 'location_service.dart';
@@ -43,7 +42,26 @@ Future<bool> openLocationPicker(BuildContext context) async {
         return false;
       }
     case ManualLocationPick(:final label):
-      await auth.updateLocation(UserLocation.manual(label));
-      return true;
+      // Forward-geocode the label so the saved record has real lat/lng.
+      // The legacy `UserLocation.manual(label)` shortcut stored `(0, 0)`,
+      // which made every haversine distance against real players read as
+      // ~7,900 mi — that's the Cupertino/San Mateo bug. If geocoding can't
+      // resolve the label, surface a SnackBar instead of silently saving
+      // bad coordinates.
+      try {
+        final resolved =
+            await LocationService().resolveManualLocation(label);
+        await auth.updateLocation(resolved);
+        return true;
+      } catch (_) {
+        messenger?.showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Couldn't set that location. Please try another city.",
+            ),
+          ),
+        );
+        return false;
+      }
   }
 }

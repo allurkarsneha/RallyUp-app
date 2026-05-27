@@ -1,59 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:rallyup/main.dart';
-import '../../widgets/main_bottom_nav.dart';
+
+import '../../models/app_user.dart';
+import '../../models/id_verification.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/main_bottom_nav.dart';
 import '../../widgets/player_details/player_details_components.dart';
+import '../../widgets/user_avatar.dart';
+import '../main_shell_nav.dart';
 import 'invite_to_match_page.dart';
 import 'message_page.dart';
 import 'nearby_players_page.dart';
 
+/// Read-only profile view for another player, driven entirely off the
+/// [AppUser] passed in from NearbyPlayersPage. The page used to render
+/// hard-coded values (rating 4.8, "Online", canned availability) — those
+/// have all been removed so the surface only shows fields that exist on
+/// the underlying user document.
 class PlayerProfilePage extends StatelessWidget {
-  final String playerName;
-  final String initials;
-  final String sport;
-  final String level;
+  final AppUser user;
   final String distance;
-  final double rating;
-  final bool online;
 
   const PlayerProfilePage({
     super.key,
-    this.playerName = 'Alex Johnson',
-    this.initials = 'AJ',
-    this.sport = 'Tennis',
-    this.level = 'Intermediate',
-    this.distance = '0.8 mi',
-    this.rating = 4.8,
-    this.online = true,
+    required this.user,
+    required this.distance,
   });
 
   static const String _heroImagePath =
       'assets/images/player_details/player_profile/player_profile_hero.png';
-  static const String _avatarImagePath =
-      'assets/images/player_details/player_profile/alex_johnson.png';
 
   void _onBottomNavTap(BuildContext context, int index) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            MainShell(initialIndex: index),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-      (route) => false,
-    );
+    switchToMainShellTab(context, index);
   }
 
   void _openMessage(BuildContext context) {
-    Navigator.push(context, _fadeRoute<void>(const MessagePage()));
+    Navigator.push(
+      context,
+      _fadeRoute<void>(MessagePage(otherUser: user)),
+    );
   }
 
   void _openInviteToMatch(BuildContext context) {
-    Navigator.push(context, _fadeRoute<void>(const InviteToMatchPage()));
+    Navigator.push(
+      context,
+      _fadeRoute<void>(InviteToMatchPage(otherUser: user)),
+    );
   }
 
   void _goBackToPlayers(BuildContext context) {
@@ -70,6 +63,10 @@ class PlayerProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locationLabel = user.location?.displayLabel;
+    final hasBio = user.bio != null && user.bio!.trim().isNotEmpty;
+    final verificationLabel = IdVerification.labelFor(user.idVerification);
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       bottomNavigationBar: MainBottomNav(
@@ -80,43 +77,68 @@ class PlayerProfilePage extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
-              child: PlayerProfileHero(
+              child: _PlayerProfileHero(
                 heroImagePath: _heroImagePath,
-                avatarImagePath: _avatarImagePath,
+                user: user,
                 onBackTap: () => _goBackToPlayers(context),
               ),
             ),
             SliverToBoxAdapter(
+              // Stretch so the About / Sports / Availability sections
+              // get full page width and their CrossAxisAlignment.start
+              // can actually take effect. Without `stretch`, the
+              // parent column collapses each child to its natural
+              // width and then centers it — which made the lower
+              // sections read as visually centered cards instead of
+              // normal left-aligned profile content. The top
+              // hero/name/chips/action buttons each center themselves
+              // explicitly (Text textAlign, Wrap WrapAlignment.center,
+              // PlayerProfileActionButtons' own Center wrapper) so
+              // they stay centered under the stretched column.
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    playerName,
+                    user.displayName,
                     style: AppTextStyles.pageTitle.copyWith(fontSize: 20),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: [
-                      PlayerDetailsChip(label: sport),
-                      PlayerDetailsChip(label: level),
-                      PlayerDetailsChip(
-                        label: distance,
-                        icon: Icons.location_on_outlined,
-                      ),
-                      PlayerDetailsChip(
-                        label: rating.toStringAsFixed(1),
-                        icon: Icons.star_rounded,
-                      ),
-                      PlayerDetailsChip(
-                        label: online ? 'Online' : 'Offline',
-                        icon: Icons.circle,
-                        selected: online,
-                      ),
-                    ],
+                  // Replaces the old "Sport / Level / Distance / Rating /
+                  // Online" chip row with real fields only. Sports come
+                  // from the user; distance comes from NearbyPlayersPage;
+                  // verification status replaces the dummy rating/online
+                  // badges. There is no skill-level field yet — chip
+                  // omitted intentionally.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.pageHorizontal,
+                    ),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        for (final sport in user.sports)
+                          PlayerDetailsChip(label: sport),
+                        PlayerDetailsChip(
+                          label: distance,
+                          icon: Icons.location_on_outlined,
+                        ),
+                        if (locationLabel != null && locationLabel.isNotEmpty)
+                          PlayerDetailsChip(
+                            label: locationLabel,
+                            icon: Icons.place_outlined,
+                          ),
+                        PlayerDetailsChip(
+                          label: verificationLabel,
+                          icon: Icons.verified_user_outlined,
+                          selected: user.idVerification?.status ==
+                              IdVerificationStatus.verified,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 28),
                   PlayerProfileActionButtons(
@@ -124,15 +146,287 @@ class PlayerProfilePage extends StatelessWidget {
                     onInviteTap: () => _openInviteToMatch(context),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
-                  const PlayerProfileAboutSection(),
+                  _PlayerProfileAbout(
+                    firstName: user.firstName,
+                    bio: hasBio ? user.bio!.trim() : null,
+                    sports: user.sports,
+                  ),
                   const SizedBox(height: AppSpacing.xl),
-                  const AvailabilitySection(),
+                  _PlayerProfileAvailability(availability: user.availability),
                   const SizedBox(height: AppSpacing.xxl),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Hero variant that swaps the hard-coded asset avatar for the shared
+/// [UserAvatar] priority chain (photoUrl → avatarId → initials). The
+/// little check-mark "verified" badge has been removed because not every
+/// player is verified — verification is surfaced via the chip row below
+/// instead, where it can reflect real state from [IdVerification].
+class _PlayerProfileHero extends StatelessWidget {
+  final String heroImagePath;
+  final AppUser user;
+  final VoidCallback? onBackTap;
+
+  const _PlayerProfileHero({
+    required this.heroImagePath,
+    required this.user,
+    this.onBackTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 214,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          SizedBox(
+            height: 176,
+            width: double.infinity,
+            child: Image.asset(heroImagePath, fit: BoxFit.cover),
+          ),
+          Positioned.fill(
+            bottom: 38,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.black.withValues(alpha: 0.18),
+                    AppColors.black.withValues(alpha: 0.05),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: AppSpacing.xs,
+            top: AppSpacing.xl,
+            child: IconButton(
+              onPressed: onBackTap ?? () => Navigator.maybePop(context),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              color: AppColors.textPrimary,
+              tooltip: 'Back',
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.black.withValues(alpha: 0.14),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: UserAvatar(
+                  size: 76,
+                  initials: user.initials,
+                  photoUrl: user.photoUrl,
+                  avatarId: user.avatarId,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// About section that renders the user's bio if they wrote one, otherwise
+/// a single "No bio added yet." line. Sports are rendered as real pills
+/// using the user's actual sports list — there is no skill-level field
+/// yet, so that part of the legacy mock-up is intentionally absent.
+class _PlayerProfileAbout extends StatelessWidget {
+  final String firstName;
+  final String? bio;
+  final List<String> sports;
+
+  const _PlayerProfileAbout({
+    required this.firstName,
+    required this.bio,
+    required this.sports,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final aboutTitle =
+        firstName.trim().isEmpty ? 'About' : 'About ${firstName.trim()}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pageHorizontal,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            aboutTitle,
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            bio ?? 'No bio added yet.',
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          ),
+          if (sports.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Sports',
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final sport in sports)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      sport,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.brightGreen,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Availability that mirrors what the user actually saved in
+/// `AvailabilitySlot`s. Falls back to a single "No availability set" line
+/// when the map is empty — the old hard-coded seven-day list is gone.
+class _PlayerProfileAvailability extends StatelessWidget {
+  final Map<String, AvailabilitySlot> availability;
+
+  const _PlayerProfileAvailability({required this.availability});
+
+  // Canonical week order used by EditAvailabilityScreen; matters for the
+  // day-chip row + the day-wise timing list to stay consistent.
+  static const List<String> _weekOrder = [
+    'Sun',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+  ];
+
+  static const Map<String, String> _shortToLong = {
+    'Sun': 'Sunday',
+    'Mon': 'Monday',
+    'Tue': 'Tuesday',
+    'Wed': 'Wednesday',
+    'Thu': 'Thursday',
+    'Fri': 'Friday',
+    'Sat': 'Saturday',
+  };
+
+  String _formatTime12h(BuildContext context, String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length != 2) return hhmm;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return hhmm;
+    final tod = TimeOfDay(hour: h, minute: m);
+    return MaterialLocalizations.of(context).formatTimeOfDay(tod);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeDays =
+        _weekOrder.where(availability.containsKey).toList(growable: false);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pageHorizontal,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Availability',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF1E3A8A),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (activeDays.isEmpty)
+            Text(
+              'No availability set',
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            )
+          else ...[
+            Text('Days', style: AppTextStyles.bodyMedium),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final day in activeDays)
+                  AvailabilityDayChip(label: day),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Daywise Timings',
+              style: AppTextStyles.sectionTitle.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            for (var i = 0; i < activeDays.length; i++) ...[
+              DaywiseTimingRow(
+                day: _shortToLong[activeDays[i]] ?? activeDays[i],
+                time:
+                    '${_formatTime12h(context, availability[activeDays[i]]!.start)}'
+                    ' - '
+                    '${_formatTime12h(context, availability[activeDays[i]]!.end)}',
+              ),
+              if (i < activeDays.length - 1)
+                const Divider(height: 1, color: Color(0xFFF0F0F0)),
+            ],
+          ],
+        ],
       ),
     );
   }

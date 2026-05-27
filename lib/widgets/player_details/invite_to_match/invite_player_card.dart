@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/app_user.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../user_avatar.dart';
 import 'invite_to_match_surface.dart';
 
 class InvitePlayerCard extends StatelessWidget {
-  final String avatarImagePath;
+  final AppUser user;
 
-  const InvitePlayerCard({super.key, required this.avatarImagePath});
+  const InvitePlayerCard({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
+    final primarySport =
+        user.sports.isNotEmpty ? user.sports.first : 'Multi-sport';
+    final locationLabel = user.location?.displayLabel;
+
     return InviteToMatchSurface(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -19,13 +25,11 @@ class InvitePlayerCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          ClipOval(
-            child: Image.asset(
-              avatarImagePath,
-              width: 52,
-              height: 52,
-              fit: BoxFit.cover,
-            ),
+          UserAvatar(
+            size: 52,
+            initials: user.initials,
+            photoUrl: user.photoUrl,
+            avatarId: user.avatarId,
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -33,7 +37,7 @@ class InvitePlayerCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Alex Johnson',
+                  user.displayName,
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -43,60 +47,33 @@ class InvitePlayerCard extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
-                    const _InviteMiniPill(label: 'Intermediate'),
-                    const SizedBox(width: AppSpacing.sm),
                     Text(
-                      '🎾 Tennis',
+                      primarySport,
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Flexible(
-                      child: Text(
-                        '📍 0.8 mi',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
+                    if (locationLabel != null && locationLabel.isNotEmpty) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Flexible(
+                        child: Text(
+                          '📍 $locationLabel',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _InviteMiniPill extends StatelessWidget {
-  final String label;
-
-  const _InviteMiniPill({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 20,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.caption.copyWith(
-          color: const Color(0xFF2563EB),
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-        ),
       ),
     );
   }

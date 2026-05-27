@@ -84,4 +84,88 @@ class LocationService {
       updatedAt: DateTime.now(),
     );
   }
+
+  /// Resolve a user-picked label (e.g. `"Cupertino, CA"`) into a fully
+  /// populated [UserLocation] with real lat/lng. The legacy
+  /// `UserLocation.manual(label)` constructor stored `(0, 0)` for
+  /// coordinates, which made every haversine distance against real player
+  /// docs read as ~7,900 mi. That constructor remains as a last-resort
+  /// fallback; this method is the supported path for manual picks now.
+  ///
+  /// Pipeline:
+  ///   1. Forward-geocode the label → lat/lng.
+  ///   2. Best-effort reverse-geocode that lat/lng → city/region/country.
+  ///   3. If reverse-geocoding returns nothing useful, fall back to the
+  ///      city/region/country parsed out of the label itself
+  ///      ([UserLocation.manual]) so we still write a readable record.
+  ///
+  /// Throws [LocationFailure(LocationFailureReason.geocodingFailed)] if
+  /// forward-geocoding returns no results, so the caller can show a
+  /// targeted "couldn't set that location" message rather than silently
+  /// persisting `(0, 0)`.
+  Future<UserLocation> resolveManualLocation(String label) async {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) {
+      throw const LocationFailure(
+        LocationFailureReason.geocodingFailed,
+        'Empty label',
+      );
+    }
+
+    List<gc.Location> locations;
+    try {
+      locations = await gc.locationFromAddress(trimmed);
+    } catch (e) {
+      throw LocationFailure(
+        LocationFailureReason.geocodingFailed,
+        e.toString(),
+      );
+    }
+    if (locations.isEmpty) {
+      throw const LocationFailure(
+        LocationFailureReason.geocodingFailed,
+        'No results for label',
+      );
+    }
+
+    final first = locations.first;
+    final lat = first.latitude;
+    final lng = first.longitude;
+
+    String city = '';
+    String region = '';
+    String country = '';
+    try {
+      final placemarks = await gc.placemarkFromCoordinates(lat, lng);
+      if (placemarks.isNotEmpty) {
+        final p = placemarks.first;
+        city = p.locality ??
+            p.subAdministrativeArea ??
+            p.subLocality ??
+            '';
+        region = p.administrativeArea ?? '';
+        country = p.country ?? '';
+      }
+    } catch (_) {
+      // Reverse-geocoding failed (offline emulator, rate-limited service).
+      // Fall through; we'll use the parsed label as a backstop below.
+    }
+
+    if (city.isEmpty && region.isEmpty && country.isEmpty) {
+      final parsed = UserLocation.manual(trimmed);
+      city = parsed.city;
+      region = parsed.region;
+      country = parsed.country;
+    }
+
+    return UserLocation(
+      lat: lat,
+      lng: lng,
+      city: city,
+      region: region,
+      country: country,
+      source: LocationSource.manual,
+      updatedAt: DateTime.now(),
+    );
+  }
 }

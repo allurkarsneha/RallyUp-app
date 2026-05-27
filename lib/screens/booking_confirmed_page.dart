@@ -1,37 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:rallyup/main.dart';
+import 'package:intl/intl.dart';
+import 'package:rallyup/screens/main_shell_nav.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
+
+import '../models/booking.dart';
 import '../theme/app_colors.dart';
+import '../widgets/courts/court_network_image.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
-import '../widgets/primary_button.dart';
+import '../utils/sport_emoji.dart';
 import '../widgets/main_bottom_nav.dart';
+import '../widgets/primary_button.dart';
 
+/// Post-booking success screen. Now takes a real [Booking] rather
+/// than a bag of strings, so every field shown here is the same data
+/// the BookingService persisted to Firestore — no more hard-coded
+/// court names, dates, or price totals.
+///
+/// Match-type / players-needed / cost-split visuals that the
+/// previous version rendered are intentionally gone — they were
+/// scaffolding for the open-match phase and didn't reflect anything
+/// that the BookingService actually stores.
 class BookingConfirmedPage extends StatelessWidget {
-  final String courtName;
-  final String sport;
-  final String sportEmoji;
-  final String imagePath;
-  final String dateText;
-  final String timeText;
-  final int totalPlayers;
-  final int confirmedPlayers;
-  final int playersNeeded;
-  final String totalAmount;
+  final Booking booking;
 
-  const BookingConfirmedPage({
-    super.key,
-    required this.courtName,
-    required this.sport,
-    required this.sportEmoji,
-    required this.imagePath,
-    required this.dateText,
-    required this.timeText,
-    required this.totalPlayers,
-    required this.confirmedPlayers,
-    required this.playersNeeded,
-    required this.totalAmount,
-  });
+  const BookingConfirmedPage({super.key, required this.booking});
 
   void _openShareOptions(BuildContext context) {
     showModalBottomSheet(
@@ -81,33 +74,34 @@ class BookingConfirmedPage extends StatelessWidget {
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const MyBookingsPage(),
         transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
   }
 
   void _onBottomNavTap(BuildContext context, int index) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => MainShell(initialIndex: index),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
-        },
-      ),
-      (route) => false,
-    );
+    switchToMainShellTab(context, index);
+  }
+
+  String _formatTime(BuildContext context, String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length != 2) return hhmm;
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    return MaterialLocalizations.of(context)
+        .formatTimeOfDay(TimeOfDay(hour: h, minute: m));
   }
 
   @override
   Widget build(BuildContext context) {
+    final emoji = sportEmojiFor(booking.sportType);
+    final dateText = DateFormat('EEE, MMM d, y').format(booking.date);
+    final timeText =
+        '${_formatTime(context, booking.startTime)} - '
+        '${_formatTime(context, booking.endTime)}';
+    final totalText = '\$${booking.totalPrice.toStringAsFixed(2)}';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -156,11 +150,13 @@ class BookingConfirmedPage extends StatelessWidget {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(18),
-                              child: Image.asset(
-                                imagePath,
+                              child: SizedBox(
                                 width: 150,
                                 height: 110,
-                                fit: BoxFit.cover,
+                                child: CourtNetworkImage(
+                                  url: booking.courtImageUrl,
+                                  iconSize: 32,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 14),
@@ -168,22 +164,38 @@ class BookingConfirmedPage extends StatelessWidget {
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      courtName,
+                                      booking.courtName,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.bodyMedium.copyWith(
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textPrimary,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    if (booking.courtAddress.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        booking.courtAddress,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTextStyles.bodyMedium
+                                            .copyWith(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 6),
                                     Text(
-                                      '$sportEmoji  $sport',
-                                      style: AppTextStyles.bodyMedium.copyWith(
+                                      '$emoji  ${booking.sportType}',
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(
                                         fontSize: 12,
                                         color: AppColors.textSecondary,
                                       ),
@@ -191,15 +203,17 @@ class BookingConfirmedPage extends StatelessWidget {
                                     const SizedBox(height: 10),
                                     Text(
                                       dateText,
-                                      style: AppTextStyles.bodyMedium.copyWith(
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(
                                         fontSize: 12,
                                         color: AppColors.textPrimary,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     Text(
                                       timeText,
-                                      style: AppTextStyles.bodyMedium.copyWith(
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(
                                         fontSize: 12,
                                         color: AppColors.textPrimary,
                                         height: 1.25,
@@ -214,21 +228,23 @@ class BookingConfirmedPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    _SummaryRow(label: 'Total Players', value: '$totalPlayers'),
-                    const SizedBox(height: 10),
                     _SummaryRow(
-                      label: 'Confirmed Players',
-                      value: '$confirmedPlayers',
+                      label: 'Status',
+                      value: booking.status.replaceFirstMapped(
+                        RegExp(r'^.'),
+                        (m) => m.group(0)!.toUpperCase(),
+                      ),
+                      valueColor: AppColors.primary,
                     ),
                     const SizedBox(height: 10),
                     _SummaryRow(
-                      label: 'Players Needed',
-                      value: '$playersNeeded',
+                      label: 'Price per hour',
+                      value: '\$${booking.pricePerHour.toStringAsFixed(2)}',
                     ),
                     const SizedBox(height: 14),
                     _SummaryRow(
                       label: 'Total',
-                      value: totalAmount,
+                      value: totalText,
                       isBold: true,
                     ),
                     const SizedBox(height: 24),
@@ -323,26 +339,33 @@ class _SummaryRow extends StatelessWidget {
   final String label;
   final String value;
   final bool isBold;
+  final Color? valueColor;
 
   const _SummaryRow({
     required this.label,
     required this.value,
     this.isBold = false,
+    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final style = AppTextStyles.bodyMedium.copyWith(
+    final labelStyle = AppTextStyles.bodyMedium.copyWith(
       fontSize: 15,
       fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
       color: AppColors.textPrimary,
     );
+    final valueStyle = AppTextStyles.bodyMedium.copyWith(
+      fontSize: 15,
+      fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+      color: valueColor ?? AppColors.textPrimary,
+    );
 
     return Row(
       children: [
-        Text(label, style: style),
+        Text(label, style: labelStyle),
         const Spacer(),
-        Text(value, style: style),
+        Text(value, style: valueStyle),
       ],
     );
   }

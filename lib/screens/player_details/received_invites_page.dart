@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rallyup/main.dart';
+import 'package:rallyup/screens/main_shell_nav.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -21,11 +21,7 @@ class ReceivedInvitesPage extends StatelessWidget {
   }
 
   void _onBottomNavTap(BuildContext context, int index) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      _fadeRoute<void>(MainShell(initialIndex: index)),
-      (route) => false,
-    );
+    switchToMainShellTab(context, index);
   }
 
   @override

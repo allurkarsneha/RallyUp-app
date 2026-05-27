@@ -1,19 +1,30 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rallyup/main.dart';
+import 'package:intl/intl.dart';
+import 'package:rallyup/models/app_user.dart';
+import 'package:rallyup/models/booking.dart';
+import 'package:rallyup/models/court.dart';
+import 'package:rallyup/models/user_location.dart';
 import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/booking_confirmed_page.dart';
 import 'package:rallyup/screens/court_details_page.dart';
 import 'package:rallyup/screens/courts_page.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
-import 'package:rallyup/screens/notifications_page.dart';
 import 'package:rallyup/screens/player_details/match_details_page.dart';
-import 'package:rallyup/screens/player_details/message_page.dart';
 import 'package:rallyup/screens/player_details/nearby_players_page.dart';
 import 'package:rallyup/screens/player_details/open_matches_page.dart';
+import 'package:rallyup/screens/player_details/player_profile_page.dart';
 import 'package:rallyup/screens/profile/subscription_screen.dart';
+import 'package:rallyup/screens/logout_helper.dart';
+import 'package:rallyup/services/booking_service.dart';
+import 'package:rallyup/services/court_service.dart';
 import 'package:rallyup/services/location_picker_handler.dart';
 import 'package:rallyup/services/location_service.dart';
+import 'package:rallyup/services/user_service.dart';
+import 'package:rallyup/utils/sport_emoji.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -37,7 +48,14 @@ class _HomePageState extends State<HomePage> {
   String _selectedSport = 'All';
 
   final LocationService _locationService = LocationService();
+  final UserService _userService = UserService();
+  final CourtService _courtService = CourtService();
+  final BookingService _bookingService = BookingService();
   bool _locationCaptureStarted = false;
+
+  // Maximum entries in the home preview row; "View all" goes to the
+  // full NearbyPlayersPage if the user wants more.
+  static const int _homeNearbyPreviewLimit = 6;
 
   @override
   void initState() {
@@ -78,78 +96,6 @@ class _HomePageState extends State<HomePage> {
     'Cricket',
     'Swimming',
   ];
-
-  List<Map<String, String>> get _allBookings => [
-        {
-          'sport': 'Tennis',
-          'title': 'SCU Tennis Court A',
-          'image': 'assets/images/courts/tenniscourt.png',
-          'date': 'Mon, 17 Aug 2025',
-          'time': '6:00 PM - 7:00 PM (1 hour)',
-        },
-        {
-          'sport': 'Badminton',
-          'title': 'Bay Badminton Arena',
-          'image': 'assets/images/courts/badmintoncourt.png',
-          'date': 'Tue, 18 Aug 2025',
-          'time': '6:00 PM - 7:00 PM (1 hour)',
-        },
-        {
-          'sport': 'Basketball',
-          'title': 'Downtown Basketball Court',
-          'image': 'assets/images/courts/basketballcourt.png',
-          'date': 'Wed, 19 Aug 2025',
-          'time': '6:00 PM - 7:00 PM (1 hour)',
-        },
-      ];
-
-  List<Map<String, String>> get _allNearbyPlayers => [
-        {
-          'name': 'Alex Johnson',
-          'age': '24',
-          'sport': 'Tennis',
-          'initials': 'AJ',
-        },
-        {
-          'name': 'Priya Shah',
-          'age': '26',
-          'sport': 'Badminton',
-          'initials': 'PS',
-        },
-      ];
-
-  List<Map<String, String>> get _allSuggestedCourts => [
-        {
-          'title': 'SCU Tennis Court A',
-          'sport': 'Tennis',
-          'emoji': '🎾',
-          'image': 'assets/images/courts/tenniscourt.png',
-          'distance': '1.2 mi away',
-          'rating': '4.6',
-          'price': '\$22/hr',
-          'slots': '2 slots today',
-        },
-        {
-          'title': 'Bay Badminton Arena',
-          'sport': 'Badminton',
-          'emoji': '🏸',
-          'image': 'assets/images/courts/badmintoncourt.png',
-          'distance': '1.2 mi away',
-          'rating': '4.6',
-          'price': '\$16/hr',
-          'slots': '6 slots today',
-        },
-        {
-          'title': 'Downtown Basketball Court',
-          'sport': 'Basketball',
-          'emoji': '🏀',
-          'image': 'assets/images/courts/basketballcourt.png',
-          'distance': '2.4 mi away',
-          'rating': '4.6',
-          'price': '\$20/hr',
-          'slots': '3 slots today',
-        },
-      ];
 
   List<Map<String, String>> get _allSuggestedOpenMatches => [
         {
@@ -210,25 +156,85 @@ class _HomePageState extends State<HomePage> {
         },
       ];
 
-  List<Map<String, String>> get _filteredBookings {
-    if (_selectedSport == 'All') return _allBookings;
-    return _allBookings
-        .where((booking) => booking['sport'] == _selectedSport)
-        .toList();
+  /// Returns the subset of streamed users that should appear in the
+  /// home preview. When a specific sport is selected, players whose
+  /// `sports` list contains that sport surface first; users with a
+  /// matching same-city location come next so the preview matches what
+  /// `NearbyPlayersPage` shows at the top of its list.
+  List<_HomeRankedPlayer> _rankForHome(
+    List<AppUser> users,
+    UserLocation? myLocation,
+  ) {
+    final filtered = _selectedSport == 'All'
+        ? users
+        : users
+            .where(
+              (u) => u.sports.any(
+                (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
+              ),
+            )
+            .toList();
+    final ranked = filtered
+        .map((u) => _HomeRankedPlayer.from(u, myLocation))
+        .toList()
+      ..sort((a, b) {
+        if (a.sameCity != b.sameCity) return a.sameCity ? -1 : 1;
+        final aD = a.distanceKm ?? double.infinity;
+        final bD = b.distanceKm ?? double.infinity;
+        return aD.compareTo(bD);
+      });
+    return ranked.length > _homeNearbyPreviewLimit
+        ? ranked.sublist(0, _homeNearbyPreviewLimit)
+        : ranked;
   }
 
-  List<Map<String, String>> get _filteredNearbyPlayers {
-    if (_selectedSport == 'All') return _allNearbyPlayers;
-    return _allNearbyPlayers
-        .where((player) => player['sport'] == _selectedSport)
-        .toList();
+  String _primarySport(AppUser u) =>
+      u.sports.isEmpty ? 'Multi-sport' : u.sports.first;
+
+  void _openPlayerProfileFromHome(_HomeRankedPlayer ranked) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => PlayerProfilePage(
+          user: ranked.user,
+          distance: ranked.distanceLabel,
+        ),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
-  List<Map<String, String>> get _filteredSuggestedCourts {
-    if (_selectedSport == 'All') return _allSuggestedCourts;
-    return _allSuggestedCourts
-        .where((court) => court['sport'] == _selectedSport)
-        .toList();
+  /// Same-city-first / nearest-first ranking applied to the real
+  /// court stream feeding the home "Suggested Courts" rail. Sport
+  /// filter uses `sportTypes.contains(...)` so multi-sport venues
+  /// surface for every supported sport.
+  List<_HomeRankedCourt> _rankCourts(
+    List<Court> courts,
+    UserLocation? myLocation,
+  ) {
+    final filtered = _selectedSport == 'All'
+        ? courts
+        : courts
+            .where(
+              (c) => c.sportTypes.any(
+                (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
+              ),
+            )
+            .toList();
+    final ranked =
+        filtered.map((c) => _HomeRankedCourt.from(c, myLocation)).toList()
+          ..sort((a, b) {
+            if (a.sameCity != b.sameCity) return a.sameCity ? -1 : 1;
+            final aD = a.distanceKm ?? double.infinity;
+            final bD = b.distanceKm ?? double.infinity;
+            return aD.compareTo(bD);
+          });
+    const homeCourtsLimit = 6;
+    return ranked.length > homeCourtsLimit
+        ? ranked.sublist(0, homeCourtsLimit)
+        : ranked;
   }
 
   List<Map<String, String>> get _filteredSuggestedOpenMatches {
@@ -265,38 +271,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _getSportEmoji(String sport) {
-    switch (sport) {
-      case 'Tennis':
-        return '🎾';
-      case 'Badminton':
-        return '🏸';
-      case 'Basketball':
-        return '🏀';
-      case 'Volleyball':
-        return '🏐';
-      case 'Pickleball':
-        return '🎾';
-      case 'Soccer':
-        return '⚽';
-      case 'Football':
-        return '🏈';
-      case 'Cricket':
-        return '🏏';
-      case 'Swimming':
-        return '🏊';
-      case 'Table Tennis':
-        return '🏓';
-      default:
-        return '🎾';
-    }
-  }
-
   Future<void> _performLogout(BuildContext context) async {
-    await context.read<AuthProvider>().signOut();
-    if (!context.mounted) return;
-    // AuthGate now reports unauthenticated. Pop everything pushed above it.
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    await performLogout(context);
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -338,18 +314,6 @@ class _HomePageState extends State<HomePage> {
           ],
         );
       },
-    );
-  }
-
-  void _openNotificationsPage() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const NotificationsPage(),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
     );
   }
 
@@ -489,22 +453,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _openBookingConfirmedPage(Map<String, String> booking) {
+  DateTime _startOfToday() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  String _fmtClock(BuildContext context, String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length != 2) return hhmm;
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    return MaterialLocalizations.of(context)
+        .formatTimeOfDay(TimeOfDay(hour: h, minute: m));
+  }
+
+  void _openBookingDetails(Booking booking) {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => BookingConfirmedPage(
-          courtName: booking['title']!,
-          sport: booking['sport']!,
-          sportEmoji: _getSportEmoji(booking['sport']!),
-          imagePath: booking['image']!,
-          dateText: booking['date']!,
-          timeText: booking['time']!,
-          totalPlayers: 4,
-          confirmedPlayers: 1,
-          playersNeeded: 3,
-          totalAmount: '\$21.80',
-        ),
+        pageBuilder: (_, _, _) => BookingConfirmedPage(booking: booking),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -512,33 +479,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _openPersonalMessagePage() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const MessagePage(),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-  }
-
-  void _openCourtDetailsPage(Map<String, String> court) {
+  void _openCourtDetails(_HomeRankedCourt ranked) {
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (_, _, _) => CourtDetailsPage(
-          courtName: court['title']!,
-          sport: court['sport']!,
-          sportEmoji: court['emoji']!,
-          imagePath: court['image']!,
-          distanceText: court['distance']!,
-          ratingText: court['rating']!,
-          priceText: court['price']!,
-          locationText: context.read<AuthProvider>().currentUser?.location
-                  ?.displayLabel ??
-              '',
+          court: ranked.court,
+          distanceText: ranked.distanceText,
         ),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -584,9 +531,6 @@ class _HomePageState extends State<HomePage> {
     if (currentUser == null) {
       return const SizedBox.shrink();
     }
-    final bookings = _filteredBookings;
-    final nearbyPlayers = _filteredNearbyPlayers;
-    final suggestedCourts = _filteredSuggestedCourts;
     final suggestedOpenMatches = _filteredSuggestedOpenMatches;
     final firstName = currentUser.firstName;
     final initials = currentUser.initials;
@@ -605,7 +549,6 @@ class _HomePageState extends State<HomePage> {
               avatarId: avatarId,
               photoUrl: currentUser.photoUrl,
               locationText: locationLabel,
-              onNotificationTap: _openNotificationsPage,
               onProfileTap: _openProfileOptionsOverlay,
               onLocationTap: _openLocationOverlay,
             ),
@@ -671,8 +614,45 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 232,
-                    child: bookings.isEmpty
-                        ? Padding(
+                    child: StreamBuilder<List<Booking>>(
+                      stream:
+                          _bookingService.streamBookingsForUser(currentUser.uid),
+                      builder: (context, snapshot) {
+                        final waitingFirst = snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            !snapshot.hasData;
+                        if (waitingFirst) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final todayStart = _startOfToday();
+                        final upcoming = (snapshot.data ?? const <Booking>[])
+                            .where((b) =>
+                                !b.isCancelled &&
+                                !b.date.isBefore(todayStart))
+                            .toList()
+                          // Soonest first matches MyBookingsPage's
+                          // upcoming-tab ordering.
+                          ..sort((a, b) {
+                            final byDate = a.date.compareTo(b.date);
+                            if (byDate != 0) return byDate;
+                            return a.startTime.compareTo(b.startTime);
+                          });
+                        // Filter by selected sport AFTER the upcoming
+                        // filter so the rail still shows other-sport
+                        // bookings when "All" is selected.
+                        final filtered = _selectedSport == 'All'
+                            ? upcoming
+                            : upcoming
+                                .where((b) =>
+                                    b.sportType.toLowerCase() ==
+                                    _selectedSport.toLowerCase())
+                                .toList();
+                        final preview = filtered.take(6).toList();
+
+                        if (preview.isEmpty) {
+                          return Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.pageHorizontal,
                             ),
@@ -680,7 +660,8 @@ class _HomePageState extends State<HomePage> {
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: AppColors.border),
+                                border:
+                                    Border.all(color: AppColors.border),
                               ),
                               child: Center(
                                 child: Column(
@@ -688,7 +669,8 @@ class _HomePageState extends State<HomePage> {
                                   children: [
                                     Text(
                                       'No bookings yet',
-                                      style: AppTextStyles.bodyMedium.copyWith(
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textPrimary,
@@ -696,8 +678,9 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      'Try booking a court for this sport',
-                                      style: AppTextStyles.bodyMedium.copyWith(
+                                      'Book a court to see it here',
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(
                                         fontSize: 13,
                                         color: AppColors.textSecondary,
                                       ),
@@ -706,30 +689,42 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.pageHorizontal,
-                            ),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: bookings.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 16),
-                            itemBuilder: (context, index) {
-                              final booking = bookings[index];
+                          );
+                        }
 
-                              return BookingPreviewCard(
-                                imagePath: booking['image']!,
-                                title: booking['title']!,
-                                sport: booking['sport']!,
-                                dateText: booking['date']!,
-                                timeText: booking['time']!,
-                                onTap: null,
-                                onViewDetailsTap: () =>
-                                    _openBookingConfirmedPage(booking),
-                              );
-                            },
+                        return ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.pageHorizontal,
                           ),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: preview.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final booking = preview[index];
+                            final dateText = DateFormat(
+                              'EEE, MMM d',
+                            ).format(booking.date);
+                            final timeText =
+                                '${_fmtClock(context, booking.startTime)}'
+                                ' - '
+                                '${_fmtClock(context, booking.endTime)}';
+                            return BookingPreviewCard(
+                              imageUrl: booking.courtImageUrl,
+                              title: booking.courtName,
+                              sport:
+                                  '${sportEmojiFor(booking.sportType)}  '
+                                  '${booking.sportType}',
+                              dateText: dateText,
+                              timeText: timeText,
+                              onTap: () => _openBookingDetails(booking),
+                              onViewDetailsTap: () =>
+                                  _openBookingDetails(booking),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 26),
                   HomeSectionHeader(
@@ -739,8 +734,26 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 134,
-                    child: nearbyPlayers.isEmpty
-                        ? Padding(
+                    child: StreamBuilder<List<AppUser>>(
+                      stream: _userService.streamAllUsers(
+                        excludeUid: currentUser.uid,
+                      ),
+                      builder: (context, snapshot) {
+                        final waitingFirst =
+                            snapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                !snapshot.hasData;
+                        if (waitingFirst) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final ranked = _rankForHome(
+                          snapshot.data ?? const <AppUser>[],
+                          currentUser.location,
+                        );
+                        if (ranked.isEmpty) {
+                          return Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.pageHorizontal,
                             ),
@@ -748,7 +761,8 @@ class _HomePageState extends State<HomePage> {
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: AppColors.border),
+                                border:
+                                    Border.all(color: AppColors.border),
                               ),
                               child: Center(
                                 child: Text(
@@ -759,26 +773,35 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.pageHorizontal,
-                            ),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: nearbyPlayers.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 16),
-                            itemBuilder: (context, index) {
-                              final player = nearbyPlayers[index];
-                              return HomeNearbyPlayerPreviewCard(
-                                name: player['name']!,
-                                age: player['age']!,
-                                sport: player['sport']!,
-                                initials: player['initials']!,
-                                onConnectTap: _openPersonalMessagePage,
-                              );
-                            },
+                          );
+                        }
+                        return ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.pageHorizontal,
                           ),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: ranked.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final r = ranked[index];
+                            final subtitleParts = <String>[
+                              _primarySport(r.user),
+                              r.distanceLabel,
+                            ].where((s) => s.isNotEmpty).toList();
+                            return HomeNearbyPlayerPreviewCard(
+                              name: r.user.displayName,
+                              subtitle: subtitleParts.join('  •  '),
+                              initials: r.user.initials,
+                              photoUrl: r.user.photoUrl,
+                              avatarId: r.user.avatarId,
+                              onConnectTap: () =>
+                                  _openPlayerProfileFromHome(r),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 26),
                   HomeSectionHeader(
@@ -788,8 +811,23 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 246,
-                    child: suggestedCourts.isEmpty
-                        ? Padding(
+                    child: StreamBuilder<List<Court>>(
+                      stream: _courtService.streamActiveCourts(),
+                      builder: (context, snapshot) {
+                        final waitingFirst = snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            !snapshot.hasData;
+                        if (waitingFirst) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final ranked = _rankCourts(
+                          snapshot.data ?? const <Court>[],
+                          currentUser.location,
+                        );
+                        if (ranked.isEmpty) {
+                          return Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.pageHorizontal,
                             ),
@@ -797,7 +835,8 @@ class _HomePageState extends State<HomePage> {
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: AppColors.border),
+                                border:
+                                    Border.all(color: AppColors.border),
                               ),
                               child: Center(
                                 child: Text(
@@ -808,27 +847,46 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.pageHorizontal,
-                            ),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: suggestedCourts.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 16),
-                            itemBuilder: (context, index) {
-                              final court = suggestedCourts[index];
-                              return HomeSuggestedCourtPreviewCard(
-                                imagePath: court['image']!,
-                                sport: court['sport']!,
-                                distanceText: court['distance']!,
-                                ratingText: court['rating']!,
-                                onViewDetailsTap: () =>
-                                    _openCourtDetailsPage(court),
-                              );
-                            },
+                          );
+                        }
+                        return ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.pageHorizontal,
                           ),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: ranked.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final r = ranked[index];
+                            // Sport label: when a sport is selected
+                            // and supported, show that; otherwise show
+                            // the court's first sport so the rail
+                            // never reads as "Tennis" for a basketball
+                            // court.
+                            final sportLabel = _selectedSport != 'All' &&
+                                    r.court.sportTypes.any((s) =>
+                                        s.toLowerCase() ==
+                                        _selectedSport.toLowerCase())
+                                ? _selectedSport
+                                : (r.court.sportTypes.isNotEmpty
+                                    ? r.court.sportTypes.first
+                                    : 'Tennis');
+                            return HomeSuggestedCourtPreviewCard(
+                              imageUrl: r.court.imageUrls.isNotEmpty
+                                  ? r.court.imageUrls.first
+                                  : null,
+                              sport:
+                                  '${sportEmojiFor(sportLabel)}  $sportLabel',
+                              distanceText: r.distanceText,
+                              ratingText: (r.court.rating ?? 0)
+                                  .toStringAsFixed(1),
+                              onViewDetailsTap: () => _openCourtDetails(r),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 26),
                   HomeSectionHeader(
@@ -933,5 +991,95 @@ class _ProfileOptionTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// View model that pairs a real [AppUser] with the distance bookkeeping
+/// the home preview needs. Distance + same-city logic is intentionally
+/// duplicated from `nearby_players_page.dart`'s private `_RankedPlayer`
+/// rather than refactored into a shared helper — the spec for this bug
+/// fix said "minimally duplicate safe logic; do not do a large refactor."
+class _HomeRankedPlayer {
+  final AppUser user;
+  final double? distanceKm;
+  final bool sameCity;
+
+  const _HomeRankedPlayer({
+    required this.user,
+    required this.distanceKm,
+    required this.sameCity,
+  });
+
+  factory _HomeRankedPlayer.from(AppUser u, UserLocation? me) {
+    if (me == null || u.location == null) {
+      return _HomeRankedPlayer(user: u, distanceKm: null, sameCity: false);
+    }
+    return _HomeRankedPlayer(
+      user: u,
+      distanceKm: _haversineKm(me.lat, me.lng, u.location!.lat, u.location!.lng),
+      sameCity: u.location!.city.isNotEmpty &&
+          u.location!.city.toLowerCase() == me.city.toLowerCase(),
+    );
+  }
+
+  String get distanceLabel {
+    if (distanceKm == null) {
+      return user.location?.displayLabel ?? 'Location unavailable';
+    }
+    final mi = distanceKm! * 0.621371;
+    if (mi < 0.1) return '< 0.1 mi';
+    return '${mi.toStringAsFixed(1)} mi';
+  }
+}
+
+double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
+  const r = 6371.0;
+  double toRad(double d) => d * math.pi / 180;
+  final dLat = toRad(lat2 - lat1);
+  final dLng = toRad(lng2 - lng1);
+  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+      math.cos(toRad(lat1)) *
+          math.cos(toRad(lat2)) *
+          math.sin(dLng / 2) *
+          math.sin(dLng / 2);
+  return 2 * r * math.asin(math.sqrt(a));
+}
+
+/// Court-side analogue of [_HomeRankedPlayer]. Carries the
+/// pre-computed distance label so the home preview tile reads the
+/// same as the Courts tab list rather than re-doing haversine math
+/// per render.
+class _HomeRankedCourt {
+  final Court court;
+  final double? distanceKm;
+  final bool sameCity;
+
+  const _HomeRankedCourt({
+    required this.court,
+    required this.distanceKm,
+    required this.sameCity,
+  });
+
+  factory _HomeRankedCourt.from(Court court, UserLocation? me) {
+    if (me == null) {
+      return _HomeRankedCourt(
+        court: court,
+        distanceKm: null,
+        sameCity: false,
+      );
+    }
+    return _HomeRankedCourt(
+      court: court,
+      distanceKm: _haversineKm(me.lat, me.lng, court.lat, court.lng),
+      sameCity: me.city.isNotEmpty &&
+          me.city.toLowerCase() == court.city.toLowerCase(),
+    );
+  }
+
+  String get distanceText {
+    if (distanceKm == null) return court.city;
+    final mi = distanceKm! * 0.621371;
+    if (mi < 0.1) return '< 0.1 mi away';
+    return '${mi.toStringAsFixed(1)} mi away';
   }
 }

@@ -1,29 +1,25 @@
 import 'package:flutter/material.dart';
 
+import '../../models/app_user.dart';
 import '../../widgets/main_bottom_nav.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/player_details_components.dart';
 import 'invite_sent_page.dart';
-import 'player_profile_page.dart';
 
+/// Invite-to-Match is intentionally still display-only in this phase —
+/// real match creation depends on courts and open-match flows that are
+/// out of scope. Take the real [otherUser] so the header card renders
+/// the right name/avatar/sports; everything below the player card is
+/// still placeholder UI that lands when the booking/match phase ships.
 class InviteToMatchPage extends StatelessWidget {
-  const InviteToMatchPage({super.key});
+  final AppUser otherUser;
 
-  static const String _avatarPath =
-      'assets/images/player_details/message_chat/alex_johnson.png';
+  const InviteToMatchPage({super.key, required this.otherUser});
 
   void _goBackToProfile(BuildContext context) {
-    if (Navigator.canPop(context)) {
-      Navigator.maybePop(context);
-      return;
-    }
-
-    Navigator.pushReplacement(
-      context,
-      _fadeRoute<void>(const PlayerProfilePage()),
-    );
+    Navigator.maybePop(context);
   }
 
   void _sendInvite(BuildContext context) {
@@ -48,7 +44,7 @@ class InviteToMatchPage extends StatelessWidget {
                   AppSpacing.lg,
                 ),
                 children: [
-                  const InvitePlayerCard(avatarImagePath: _avatarPath),
+                  InvitePlayerCard(user: otherUser),
                   const SizedBox(height: AppSpacing.lg),
                   const InviteDetailCard(),
                   const SizedBox(height: AppSpacing.lg),
@@ -64,6 +60,7 @@ class InviteToMatchPage extends StatelessWidget {
     );
   }
 }
+
 
 class _InviteHeader extends StatelessWidget {
   final VoidCallback? onBackTap;
