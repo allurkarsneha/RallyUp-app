@@ -44,8 +44,9 @@ class _PhoneScreenState extends State<PhoneScreen> {
       return;
     }
     if (!_looksLikeE164(phone)) {
-      setState(() =>
-          phoneError = 'Use international format, e.g. +14085551234');
+      setState(
+        () => phoneError = 'Use international format, e.g. +14085551234',
+      );
       return;
     }
 
@@ -58,9 +59,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
           setState(() => _busy = false);
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => OtpScreen(phoneNumber: phone),
-            ),
+            MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: phone)),
           );
         },
         onFailed: (FirebaseAuthException e) {

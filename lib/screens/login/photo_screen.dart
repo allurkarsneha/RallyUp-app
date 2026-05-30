@@ -74,10 +74,7 @@ class PhotoScreen extends StatelessWidget {
 
               const Text(
                 "Tap one to use as your profile avatar, or skip to use your initials.",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.grayText,
-                ),
+                style: TextStyle(fontSize: 13, color: AppColors.grayText),
               ),
 
               const SizedBox(height: 28),
@@ -98,9 +95,9 @@ class PhotoScreen extends StatelessWidget {
                 initials: initials,
                 onSelect: (id) {
                   final isSelected = selectedAvatarId == id;
-                  context
-                      .read<SignupFormProvider>()
-                      .setAvatarId(isSelected ? null : id);
+                  context.read<SignupFormProvider>().setAvatarId(
+                    isSelected ? null : id,
+                  );
                 },
               ),
 
@@ -168,11 +165,7 @@ class _AvatarPickerGrid extends StatelessWidget {
             width: 3,
           ),
         ),
-        child: UserAvatar(
-          size: 64,
-          initials: initials,
-          avatarId: id,
-        ),
+        child: UserAvatar(size: 64, initials: initials, avatarId: id),
       ),
     );
   }

@@ -68,9 +68,9 @@ class _EditAvatarScreenState extends State<EditAvatarScreen> {
       );
       await auth.setProfilePhotoUrl(url);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile photo updated')));
     } on ImageUploadException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
@@ -242,9 +242,7 @@ class _EditAvatarScreenState extends State<EditAvatarScreen> {
               if (_busy) ...[
                 const SizedBox(height: 16),
                 const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.darkGreen,
-                  ),
+                  child: CircularProgressIndicator(color: AppColors.darkGreen),
                 ),
               ],
               const SizedBox(height: 28),
@@ -292,8 +290,7 @@ class _ActionTile extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color:
-                    disabled ? AppColors.grayText : AppColors.darkGreen,
+                color: disabled ? AppColors.grayText : AppColors.darkGreen,
                 size: 32,
               ),
               const SizedBox(height: 8),
@@ -302,9 +299,7 @@ class _ActionTile extends StatelessWidget {
                 style: AppTextStyles.bodyMedium.copyWith(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: disabled
-                      ? AppColors.grayText
-                      : AppColors.textPrimary,
+                  color: disabled ? AppColors.grayText : AppColors.textPrimary,
                 ),
               ),
             ],
@@ -346,11 +341,7 @@ class _PresetGrid extends StatelessWidget {
             width: 3,
           ),
         ),
-        child: UserAvatar(
-          size: 60,
-          initials: initials,
-          avatarId: id,
-        ),
+        child: UserAvatar(size: 60, initials: initials, avatarId: id),
       ),
     );
   }

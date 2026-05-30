@@ -6,18 +6,24 @@ import '../models/app_notification.dart';
 import '../models/booking.dart';
 import '../models/court.dart';
 import 'notification_service.dart';
+import 'schedule_conflict_service.dart';
 
 /// Real Firestore-backed booking layer. Replaces the hard-coded maps
 /// that the bookings screens used during the static-mock phase.
 class BookingService {
   final FirebaseFirestore _db;
   final NotificationService _notifications;
+  final ScheduleConflictService _conflicts;
 
   BookingService({
     FirebaseFirestore? db,
     NotificationService? notifications,
-  })  : _db = db ?? FirebaseFirestore.instance,
-        _notifications = notifications ?? NotificationService();
+    ScheduleConflictService? conflicts,
+  }) : _db = db ?? FirebaseFirestore.instance,
+       _notifications = notifications ?? NotificationService(),
+       _conflicts =
+           conflicts ??
+           ScheduleConflictService(db: db ?? FirebaseFirestore.instance);
 
   CollectionReference<Map<String, dynamic>> get _bookings =>
       _db.collection('bookings');
@@ -28,12 +34,8 @@ class BookingService {
   /// `userId + date`. The dataset per user is small in scope (tens of
   /// bookings) and sort cost is negligible.
   Stream<List<Booking>> streamBookingsForUser(String userId) {
-    return _bookings
-        .where('userId', isEqualTo: userId)
-        .snapshots()
-        .map((snap) {
-      final bookings =
-          snap.docs.map((doc) => Booking.fromDoc(doc)).toList();
+    return _bookings.where('userId', isEqualTo: userId).snapshots().map((snap) {
+      final bookings = snap.docs.map((doc) => Booking.fromDoc(doc)).toList();
       bookings.sort((a, b) {
         final byDate = a.date.compareTo(b.date);
         if (byDate != 0) return byDate;
@@ -62,10 +64,23 @@ class BookingService {
     required String startTime,
     required String endTime,
   }) async {
+    // Schedule conflict guards run BEFORE the doc write so we never
+    // persist a colliding booking. Distinct StateError messages
+    // ('court-occupied' vs 'schedule-conflict') let the UI surface
+    // the right SnackBar copy.
+    await _conflicts.assertNoConflictForNewReservation(
+      userId: userId,
+      courtId: court.id,
+      date: date,
+      startTime: startTime,
+      endTime: endTime,
+    );
+
     final ref = _bookings.doc();
     final now = DateTime.now();
-    final courtImageUrl =
-        court.imageUrls.isNotEmpty ? court.imageUrls.first : '';
+    final courtImageUrl = court.imageUrls.isNotEmpty
+        ? court.imageUrls.first
+        : '';
 
     final payload = {
       'userId': userId,
@@ -188,8 +203,8 @@ class BookingService {
           targetId: targetId,
         )
         .catchError((e) {
-      debugPrint('BookingService: notification write failed: $e');
-    });
+          debugPrint('BookingService: notification write failed: $e');
+        });
   }
 
   /// Human-readable "EEE, MMM d · 6:00 PM - 7:00 PM" for notification

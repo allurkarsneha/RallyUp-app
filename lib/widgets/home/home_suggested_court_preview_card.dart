@@ -43,9 +43,7 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
       child: Column(
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(18),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             child: SizedBox(
               height: 130,
               width: double.infinity,
@@ -109,8 +107,7 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(18),
                             ),
                             backgroundColor: Colors.white,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                           ),
                           child: Text(
                             'View Details',
@@ -133,4 +130,3 @@ class HomeSuggestedCourtPreviewCard extends StatelessWidget {
     );
   }
 }
-

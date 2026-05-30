@@ -18,8 +18,7 @@ class SportsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color borderColor =
-        isSelected ? AppColors.primary : AppColors.border;
+    final Color borderColor = isSelected ? AppColors.primary : AppColors.border;
 
     return InkWell(
       onTap: onTap,
@@ -30,10 +29,7 @@ class SportsCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: borderColor,
-            width: 1.6,
-          ),
+          border: Border.all(color: borderColor, width: 1.6),
         ),
         child: isAllCard ? const _AllSportsCardContent() : _buildImageCard(),
       ),
@@ -105,10 +101,7 @@ class _AllSportsIcon extends StatelessWidget {
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: AppColors.textPrimary,
-                    width: 2,
-                  ),
+                  border: Border.all(color: AppColors.textPrimary, width: 2),
                   borderRadius: BorderRadius.circular(6),
                 ),
               ),

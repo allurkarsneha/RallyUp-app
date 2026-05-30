@@ -25,8 +25,7 @@ class BookingSlot {
       final parts = hhmm.split(':');
       final h = int.tryParse(parts[0]) ?? 0;
       final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
-      return localizations
-          .formatTimeOfDay(TimeOfDay(hour: h, minute: m));
+      return localizations.formatTimeOfDay(TimeOfDay(hour: h, minute: m));
     }
 
     return '${fmt(start)} - ${fmt(end)}';

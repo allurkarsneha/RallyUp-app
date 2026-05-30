@@ -14,7 +14,7 @@ class CourtService {
   final FirebaseFirestore _db;
 
   CourtService({FirebaseFirestore? db})
-      : _db = db ?? FirebaseFirestore.instance;
+    : _db = db ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _courts =>
       _db.collection('courts');
@@ -84,8 +84,7 @@ class CourtService {
       // to confirm the cloud name + public ID combination resolves to
       // a real Cloudinary asset. Cheaper than chasing "why is my
       // placeholder showing" through six layers of widgets.
-      if (_seedData.isNotEmpty &&
-          _seedData.first.imagePublicIds.isNotEmpty) {
+      if (_seedData.isNotEmpty && _seedData.first.imagePublicIds.isNotEmpty) {
         debugPrint(
           'CourtService: sample image URL = '
           '${cloudinaryCourtImage(_seedData.first.imagePublicIds.first)}',
@@ -127,9 +126,7 @@ class CourtService {
             : const <String>[];
         if (currentUrls.isNotEmpty) continue;
 
-        final urls = entry.imagePublicIds
-            .map(cloudinaryCourtImage)
-            .toList();
+        final urls = entry.imagePublicIds.map(cloudinaryCourtImage).toList();
         await ref.update({
           'imageUrls': urls,
           'updatedAt': FieldValue.serverTimestamp(),
@@ -346,12 +343,7 @@ class CourtService {
       lng: -122.0839,
       rating: 4.5,
       pricePerHour: 15,
-      amenities: [
-        'Multi-Sport Courts',
-        'Parking',
-        'Lighting',
-        'Restrooms',
-      ],
+      amenities: ['Multi-Sport Courts', 'Parking', 'Lighting', 'Restrooms'],
       description:
           'Multi-sport park with soccer, basketball, volleyball, and tennis facilities.',
       imagePublicIds: [

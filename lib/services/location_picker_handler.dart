@@ -49,8 +49,7 @@ Future<bool> openLocationPicker(BuildContext context) async {
       // resolve the label, surface a SnackBar instead of silently saving
       // bad coordinates.
       try {
-        final resolved =
-            await LocationService().resolveManualLocation(label);
+        final resolved = await LocationService().resolveManualLocation(label);
         await auth.updateLocation(resolved);
         return true;
       } catch (_) {

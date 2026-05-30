@@ -195,4 +195,3 @@ class MyBookingListCard extends StatelessWidget {
     );
   }
 }
-

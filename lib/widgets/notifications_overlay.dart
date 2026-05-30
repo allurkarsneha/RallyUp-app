@@ -54,10 +54,7 @@ class _NotificationTile extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _NotificationTile({
-    required this.title,
-    required this.subtitle,
-  });
+  const _NotificationTile({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {

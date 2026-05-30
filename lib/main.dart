@@ -17,12 +17,23 @@ import 'services/user_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/main_bottom_nav.dart';
 
+/// App-wide root navigator key. Used by code that needs to push
+/// routes from outside the widget tree — most notably
+/// `PushNotificationService` when an FCM tap arrives.
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'rootNavigatorKey',
+);
+
+/// App-wide messenger key so background-tap routing can show a
+/// SnackBar (e.g. "this match is no longer available") without
+/// reaching for a BuildContext.
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>(debugLabel: 'rootScaffoldMessengerKey');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Debug-only courts bootstrapping. The `assert(...)` block is
   // stripped from release builds by Dart's assertion semantics, so
@@ -73,6 +84,11 @@ class RallyUpApp extends StatelessWidget {
         title: 'RallyUp',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
+        // Exposed so non-widget code (e.g. PushNotificationService's
+        // notification-tap handler) can push routes onto the root
+        // navigator without a BuildContext.
+        navigatorKey: rootNavigatorKey,
+        scaffoldMessengerKey: rootScaffoldMessengerKey,
         home: const AuthGate(),
         routes: {
           '/login': (context) => const LoginScreen(),
@@ -101,11 +117,7 @@ class MainShell extends StatefulWidget {
 class MainShellState extends State<MainShell> {
   late int _currentIndex;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    MessagesPage(),
-    ProfilePage(),
-  ];
+  final List<Widget> _pages = const [HomePage(), MessagesPage(), ProfilePage()];
 
   @override
   void initState() {

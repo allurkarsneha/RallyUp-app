@@ -66,9 +66,9 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
     setState(() => _busy = true);
     try {
       await context.read<AuthService>().signUpWithEmail(
-            email: email,
-            password: password,
-          );
+        email: email,
+        password: password,
+      );
       if (!mounted) return;
       // AuthProvider will detect the auth user and switch to needsOnboarding.
       // Pop back to root so AuthGate renders the onboarding flow.
@@ -128,10 +128,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                 ),
               ),
               const SizedBox(height: 28),
-              LoginTextField(
-                label: 'Email *',
-                controller: emailController,
-              ),
+              LoginTextField(label: 'Email *', controller: emailController),
               if (_emailError != null) ...[
                 const SizedBox(height: 6),
                 Text(

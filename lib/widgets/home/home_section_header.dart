@@ -22,10 +22,7 @@ class HomeSectionHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(
-            title,
-            style: AppTextStyles.sectionTitle,
-          ),
+          Text(title, style: AppTextStyles.sectionTitle),
           const Spacer(),
           GestureDetector(
             onTap: onViewAllTap,

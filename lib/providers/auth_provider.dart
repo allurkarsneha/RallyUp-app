@@ -11,12 +11,7 @@ import '../services/auth_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/user_service.dart';
 
-enum AuthStatus {
-  loading,
-  unauthenticated,
-  needsOnboarding,
-  authenticated,
-}
+enum AuthStatus { loading, unauthenticated, needsOnboarding, authenticated }
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
@@ -32,10 +27,10 @@ class AuthProvider extends ChangeNotifier {
     required AuthService authService,
     required UserService userService,
     PushNotificationService? pushNotificationService,
-  })  : _authService = authService,
-        _userService = userService,
-        _pushNotificationService =
-            pushNotificationService ?? PushNotificationService() {
+  }) : _authService = authService,
+       _userService = userService,
+       _pushNotificationService =
+           pushNotificationService ?? PushNotificationService() {
     _authSub = _authService.authStateChanges.listen(_onAuthChange);
   }
 
@@ -56,7 +51,8 @@ class AuthProvider extends ChangeNotifier {
     // "keep what we have". Without this, a network blip or a token refresh
     // that re-triggers this listener can null out _currentUser and make
     // every part of the UI fall back to "Welcome / U".
-    final hadGoodUser = _currentUser != null &&
+    final hadGoodUser =
+        _currentUser != null &&
         _currentUser!.uid == firebaseUser.uid &&
         _status == AuthStatus.authenticated;
 
@@ -195,8 +191,7 @@ class AuthProvider extends ChangeNotifier {
     final newFirstName = firstName.trim();
     final newLastName = lastName.trim();
     final newPostalCode = postalCode?.trim();
-    final newDisplayName =
-        AppUser.buildDisplayName(newFirstName, newLastName);
+    final newDisplayName = AppUser.buildDisplayName(newFirstName, newLastName);
     final now = DateTime.now();
 
     await _userService.updateFields(user.uid, {
@@ -262,14 +257,16 @@ class AuthProvider extends ChangeNotifier {
   ) async {
     final user = _currentUser;
     if (user == null) return;
-    final firestorePayload =
-        availability.map((day, slot) => MapEntry(day, slot.toMap()));
-    await _userService.updateFields(
-      user.uid,
-      {'availability': firestorePayload},
+    final firestorePayload = availability.map(
+      (day, slot) => MapEntry(day, slot.toMap()),
     );
-    _currentUser =
-        user.copyWith(availability: availability, updatedAt: DateTime.now());
+    await _userService.updateFields(user.uid, {
+      'availability': firestorePayload,
+    });
+    _currentUser = user.copyWith(
+      availability: availability,
+      updatedAt: DateTime.now(),
+    );
     notifyListeners();
   }
 
@@ -277,8 +274,7 @@ class AuthProvider extends ChangeNotifier {
     final user = _currentUser;
     if (user == null) return;
     await _userService.updateFields(user.uid, {'avatarId': avatarId});
-    _currentUser =
-        user.copyWith(avatarId: avatarId, updatedAt: DateTime.now());
+    _currentUser = user.copyWith(avatarId: avatarId, updatedAt: DateTime.now());
     notifyListeners();
   }
 
@@ -352,8 +348,10 @@ class AuthProvider extends ChangeNotifier {
     final user = _currentUser;
     if (user == null) return;
     await _userService.updateFields(user.uid, {'profileVisible': visible});
-    _currentUser =
-        user.copyWith(profileVisible: visible, updatedAt: DateTime.now());
+    _currentUser = user.copyWith(
+      profileVisible: visible,
+      updatedAt: DateTime.now(),
+    );
     notifyListeners();
   }
 
@@ -361,8 +359,7 @@ class AuthProvider extends ChangeNotifier {
     final user = _currentUser;
     if (user == null) return;
     await _userService.updateFields(user.uid, {'location': location.toMap()});
-    _currentUser =
-        user.copyWith(location: location, updatedAt: DateTime.now());
+    _currentUser = user.copyWith(location: location, updatedAt: DateTime.now());
     notifyListeners();
   }
 
@@ -380,12 +377,13 @@ class AuthProvider extends ChangeNotifier {
         'verified / rejected transitions belong to the admin flow.',
       );
     }
-    await _userService.updateFields(
-      user.uid,
-      {'idVerification': record.toMap()},
+    await _userService.updateFields(user.uid, {
+      'idVerification': record.toMap(),
+    });
+    _currentUser = user.copyWith(
+      idVerification: record,
+      updatedAt: DateTime.now(),
     );
-    _currentUser =
-        user.copyWith(idVerification: record, updatedAt: DateTime.now());
     notifyListeners();
   }
 
@@ -451,6 +449,35 @@ class AuthProvider extends ChangeNotifier {
     _lastError = null;
     notifyListeners();
     await _authService.signOut();
+  }
+
+  /// Sends a Firebase Auth password-reset email. Returns null on
+  /// success or a friendly error string on failure so the calling
+  /// UI can surface a SnackBar without parsing FirebaseAuthException
+  /// codes itself.
+  Future<String?> sendPasswordResetEmail(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return 'Enter the email you signed up with.';
+    try {
+      await _authService.sendPasswordResetEmail(trimmed);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'invalid-email':
+          return "That doesn't look like a valid email address.";
+        case 'user-not-found':
+          // Firebase Auth returns this for unknown emails. We mirror
+          // the success-style message so we don't leak which emails
+          // are registered.
+          return null;
+        case 'too-many-requests':
+          return 'Too many attempts. Try again in a few minutes.';
+        default:
+          return "Couldn't send the reset email. Try again.";
+      }
+    } catch (_) {
+      return "Couldn't send the reset email. Try again.";
+    }
   }
 
   @override

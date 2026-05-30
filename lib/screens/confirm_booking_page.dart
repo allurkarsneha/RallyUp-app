@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../models/app_notification.dart';
 import '../models/booking_draft.dart';
 import '../providers/auth_provider.dart';
 import '../services/booking_service.dart';
+import '../services/notification_service.dart';
+import '../services/open_match_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
@@ -13,6 +16,7 @@ import '../widgets/courts/court_network_image.dart';
 import '../widgets/main_bottom_nav.dart';
 import 'booking_confirmed_page.dart';
 import 'main_shell_nav.dart';
+import 'player_details/match_details_page.dart';
 
 /// Review-before-confirm page. Sits between BookCourtSheet (or the
 /// Open Match `PlayersSetupSheet`) and the final
@@ -42,6 +46,8 @@ class ConfirmBookingPage extends StatefulWidget {
 
 class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
   final BookingService _bookingService = BookingService();
+  final OpenMatchService _openMatchService = OpenMatchService();
+  final NotificationService _notificationService = NotificationService();
   bool _busy = false;
 
   Future<void> _confirmPrivateBooking() async {
@@ -72,12 +78,24 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
       if (!mounted) return;
       rootNavigator.pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, _, _) =>
-              BookingConfirmedPage(booking: booking),
+          pageBuilder: (_, _, _) => BookingConfirmedPage(booking: booking),
           transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
         ),
       );
+    } on StateError catch (e) {
+      // Schedule conflict guards (court-occupied /
+      // schedule-conflict) throw StateError; translate to the
+      // matching SnackBar copy before falling back to the generic
+      // booking-failed message.
+      final text =
+          _conflictText(e) ?? "Couldn't confirm this booking. Try again.";
+      if (!mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(text)));
+        return;
+      }
+      setState(() => _busy = false);
+      messenger.showSnackBar(SnackBar(content: Text(text)));
     } catch (_) {
       if (!mounted) {
         messenger.showSnackBar(
@@ -96,19 +114,92 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
     }
   }
 
-  /// Open Match path: deliberately a no-write placeholder.
-  /// `open_matches/{id}` integration ships later — for now we surface
-  /// a clear SnackBar so the user understands their selection wasn't
-  /// saved as a private booking.
-  void _confirmOpenMatch() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Open Match creation is coming next. Nothing was booked.',
+  /// Maps schedule-conflict StateError codes to user-facing copy.
+  /// Returns null when the error isn't a conflict so the caller
+  /// can fall through to a generic message.
+  String? _conflictText(StateError e) {
+    switch (e.message) {
+      case 'court-occupied':
+        return 'This court is already booked for the selected time.';
+      case 'schedule-conflict':
+        return 'You already have another booking or match during this time.';
+      default:
+        return null;
+    }
+  }
+
+  /// Open Match path: writes a real `open_matches/{id}` doc via
+  /// [OpenMatchService.createOpenMatch], fires a host notification,
+  /// and routes to [MatchDetailsPage] with the freshly-created match.
+  /// We do NOT write a private `bookings/{id}` doc on this path — open
+  /// matches are tracked separately and the host's "booking" surfaces
+  /// in OpenMatchesPage / MatchDetailsPage rather than MyBookings.
+  Future<void> _confirmOpenMatch() async {
+    final me = context.read<AuthProvider>().currentUser;
+    if (me == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in to create this open match.'),
         ),
-        duration: Duration(seconds: 3),
-      ),
-    );
+      );
+      return;
+    }
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() => _busy = true);
+    try {
+      final match = await _openMatchService.createOpenMatch(
+        host: me,
+        draft: widget.draft,
+      );
+      // Best-effort host notification — failures swallowed so the
+      // match write isn't rolled back.
+      _notificationService
+          .createNotification(
+            userId: match.hostUid,
+            title: 'Open match created',
+            body: '${match.courtName} is open for players.',
+            type: AppNotification.typeOpenMatchCreated,
+            targetType: AppNotification.targetMatch,
+            targetId: match.id,
+          )
+          .catchError((_) {});
+      if (!mounted) return;
+      rootNavigator.pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => MatchDetailsPage(match: match),
+          transitionsBuilder: (_, animation, _, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    } on StateError catch (e) {
+      // OpenMatchService throws StateError for both legacy
+      // host-duplicate messages (already user-facing) and the
+      // newer conflict codes — translate the codes first.
+      final text = _conflictText(e) ?? e.message;
+      if (!mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(text)));
+        return;
+      }
+      setState(() => _busy = false);
+      messenger.showSnackBar(SnackBar(content: Text(text)));
+    } catch (_) {
+      if (!mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't create this open match. Try again."),
+          ),
+        );
+        return;
+      }
+      setState(() => _busy = false);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't create this open match. Try again."),
+        ),
+      );
+    }
   }
 
   void _onBottomNavTap(int index) {
@@ -120,8 +211,9 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
     if (parts.length != 2) return hhmm;
     final h = int.tryParse(parts[0]) ?? 0;
     final m = int.tryParse(parts[1]) ?? 0;
-    return MaterialLocalizations.of(context)
-        .formatTimeOfDay(TimeOfDay(hour: h, minute: m));
+    return MaterialLocalizations.of(
+      context,
+    ).formatTimeOfDay(TimeOfDay(hour: h, minute: m));
   }
 
   @override
@@ -132,8 +224,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
         '${_formatTime(context, draft.startTime)} - '
         '${_formatTime(context, draft.endTime)}';
     final emoji = sportEmojiFor(draft.sportType);
-    final matchTypeLabel =
-        draft.isOpenMatch ? 'Open match' : 'Private match';
+    final matchTypeLabel = draft.isOpenMatch ? 'Open match' : 'Private match';
     final priceText = '\$${draft.court.pricePerHour.toStringAsFixed(2)}';
     final totalText = '\$${draft.totalPrice.toStringAsFixed(2)}';
     final imageUrl = draft.court.imageUrls.isNotEmpty
@@ -217,15 +308,13 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                             child: Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     draft.court.name,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.bodyMedium
-                                        .copyWith(
+                                    style: AppTextStyles.bodyMedium.copyWith(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.textPrimary,
@@ -237,8 +326,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                                       draft.court.address,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
+                                      style: AppTextStyles.bodyMedium.copyWith(
                                         fontSize: 11,
                                         color: AppColors.textSecondary,
                                       ),
@@ -247,8 +335,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                                   const SizedBox(height: 6),
                                   Text(
                                     '$emoji  ${draft.sportType}',
-                                    style: AppTextStyles.bodyMedium
-                                        .copyWith(
+                                    style: AppTextStyles.bodyMedium.copyWith(
                                       fontSize: 12,
                                       color: AppColors.textSecondary,
                                     ),
@@ -256,8 +343,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                                   const SizedBox(height: 6),
                                   Text(
                                     dateText,
-                                    style: AppTextStyles.bodyMedium
-                                        .copyWith(
+                                    style: AppTextStyles.bodyMedium.copyWith(
                                       fontSize: 12,
                                       color: AppColors.textPrimary,
                                     ),
@@ -265,8 +351,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                                   const SizedBox(height: 4),
                                   Text(
                                     timeText,
-                                    style: AppTextStyles.bodyMedium
-                                        .copyWith(
+                                    style: AppTextStyles.bodyMedium.copyWith(
                                       fontSize: 12,
                                       color: AppColors.textPrimary,
                                     ),
@@ -301,8 +386,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                     ),
                     _DetailRow(
                       label: 'Players confirmed',
-                      value:
-                          '${draft.playersConfirmed ?? 0} (including you)',
+                      value: '${draft.playersConfirmed ?? 0} (including you)',
                     ),
                     _DetailRow(
                       label: 'Still needed',
@@ -319,10 +403,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _DetailRow(
-                    label: 'Price per hour',
-                    value: priceText,
-                  ),
+                  _DetailRow(label: 'Price per hour', value: priceText),
                   _DetailRow(
                     label: draft.isOpenMatch ? 'Total court price' : 'Total',
                     value: totalText,
@@ -339,10 +420,9 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                     // surfaced; later phases will track per-player
                     // payment state inside the open match doc.
                     () {
-                      final players =
-                          (draft.playersRequired ?? 0) <= 0
-                              ? 1
-                              : (draft.playersRequired ?? 1);
+                      final players = (draft.playersRequired ?? 0) <= 0
+                          ? 1
+                          : (draft.playersRequired ?? 1);
                       final perPlayer = draft.totalPrice / players;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -354,10 +434,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                                 : '$players players',
                           ),
                           Container(
-                            margin: const EdgeInsets.only(
-                              top: 4,
-                              bottom: 6,
-                            ),
+                            margin: const EdgeInsets.only(top: 4, bottom: 6),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 12,
@@ -370,8 +447,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                               children: [
                                 Text(
                                   'Each player pays',
-                                  style:
-                                      AppTextStyles.bodyMedium.copyWith(
+                                  style: AppTextStyles.bodyMedium.copyWith(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.primary,
@@ -380,8 +456,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                                 const Spacer(),
                                 Text(
                                   '\$${perPlayer.toStringAsFixed(2)}',
-                                  style:
-                                      AppTextStyles.bodyMedium.copyWith(
+                                  style: AppTextStyles.bodyMedium.copyWith(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.primary,
@@ -402,12 +477,13 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                       onPressed: _busy
                           ? null
                           : (draft.isOpenMatch
-                              ? _confirmOpenMatch
-                              : _confirmPrivateBooking),
+                                ? _confirmOpenMatch
+                                : _confirmPrivateBooking),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        disabledBackgroundColor:
-                            AppColors.primary.withValues(alpha: 0.4),
+                        disabledBackgroundColor: AppColors.primary.withValues(
+                          alpha: 0.4,
+                        ),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -424,7 +500,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
                             )
                           : Text(
                               draft.isOpenMatch
-                                  ? 'Confirm Open Match'
+                                  ? 'Create Open Match'
                                   : 'Confirm Booking',
                               style: AppTextStyles.bodyMedium.copyWith(
                                 fontSize: 16,

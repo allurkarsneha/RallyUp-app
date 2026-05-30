@@ -13,7 +13,6 @@ import 'package:rallyup/services/location_picker_handler.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
-import '../utils/booking_slots.dart';
 import '../utils/sport_emoji.dart';
 import '../widgets/courts/court_listing_card.dart';
 import '../widgets/courts/court_search_bar.dart';
@@ -35,9 +34,6 @@ class _CourtsPageState extends State<CourtsPage> {
 
   String _selectedSport = 'All';
   String _selectedSort = 'default';
-  // Favorites keyed by court doc id (was court title before — id is
-  // stable across renames).
-  final Set<String> _favoriteCourts = {};
 
   static const List<String> _sports = [
     'Tennis',
@@ -63,16 +59,17 @@ class _CourtsPageState extends State<CourtsPage> {
   ) {
     final query = _searchController.text.trim().toLowerCase();
     final filtered = courts.where((court) {
-      final matchesSport = _selectedSport == 'All' ||
+      final matchesSport =
+          _selectedSport == 'All' ||
           court.sportTypes.any(
             (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
           );
 
-      final matchesSearch = query.isEmpty ||
+      final matchesSearch =
+          query.isEmpty ||
           court.name.toLowerCase().contains(query) ||
           court.city.toLowerCase().contains(query) ||
-          court.sportTypes
-              .any((s) => s.toLowerCase().contains(query));
+          court.sportTypes.any((s) => s.toLowerCase().contains(query));
 
       return matchesSport && matchesSearch;
     });
@@ -126,9 +123,9 @@ class _CourtsPageState extends State<CourtsPage> {
   String _multiSportLabel(List<String> sportTypes, {required String primary}) {
     if (sportTypes.isEmpty) return primary;
     if (sportTypes.length == 1) return sportTypes.first;
-    final remaining = sportTypes.where(
-      (s) => s.toLowerCase() != primary.toLowerCase(),
-    ).length;
+    final remaining = sportTypes
+        .where((s) => s.toLowerCase() != primary.toLowerCase())
+        .length;
     if (remaining <= 0) return primary;
     return '$primary +$remaining';
   }
@@ -222,24 +219,12 @@ class _CourtsPageState extends State<CourtsPage> {
     );
   }
 
-  void _toggleFavorite(String courtId) {
-    setState(() {
-      if (_favoriteCourts.contains(courtId)) {
-        _favoriteCourts.remove(courtId);
-      } else {
-        _favoriteCourts.add(courtId);
-      }
-    });
-  }
-
   void _openCourtDetails(Court court, String distanceText) {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => CourtDetailsPage(
-          court: court,
-          distanceText: distanceText,
-        ),
+        pageBuilder: (_, _, _) =>
+            CourtDetailsPage(court: court, distanceText: distanceText),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -379,14 +364,16 @@ class _CourtsPageState extends State<CourtsPage> {
               child: StreamBuilder<List<Court>>(
                 stream: _courtService.streamActiveCourts(),
                 builder: (context, snapshot) {
-                  final waitingFirst = snapshot.connectionState ==
-                          ConnectionState.waiting &&
+                  final waitingFirst =
+                      snapshot.connectionState == ConnectionState.waiting &&
                       !snapshot.hasData;
                   if (waitingFirst) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final courts =
-                      _filterAndSort(snapshot.data ?? const [], myLocation);
+                  final courts = _filterAndSort(
+                    snapshot.data ?? const [],
+                    myLocation,
+                  );
                   return ListView(
                     padding: const EdgeInsets.only(bottom: 24),
                     children: [
@@ -443,7 +430,8 @@ class _CourtsPageState extends State<CourtsPage> {
                           // signals the venue is being surfaced for
                           // that sport. Falls back to the court's
                           // first declared sport otherwise.
-                          final emojiSport = _selectedSport != 'All' &&
+                          final emojiSport =
+                              _selectedSport != 'All' &&
                                   court.sportTypes.any(
                                     (s) =>
                                         s.toLowerCase() ==
@@ -451,8 +439,8 @@ class _CourtsPageState extends State<CourtsPage> {
                                   )
                               ? _selectedSport
                               : (court.sportTypes.isNotEmpty
-                                  ? court.sportTypes.first
-                                  : 'Tennis');
+                                    ? court.sportTypes.first
+                                    : 'Tennis');
                           // Multi-sport label: when the user has a
                           // specific sport filter active and the court
                           // supports it, lead with that sport and
@@ -475,18 +463,13 @@ class _CourtsPageState extends State<CourtsPage> {
                               sportsLabel: sportsLabel,
                               sportEmoji: sportEmojiFor(emojiSport),
                               distanceText: ranked.distanceText,
-                              ratingText: (court.rating ?? 0).toStringAsFixed(1),
+                              ratingText: (court.rating ?? 0).toStringAsFixed(
+                                1,
+                              ),
                               priceText:
                                   '\$${court.pricePerHour.toStringAsFixed(0)}/hr',
-                              // Slots-today badge. Matches the
-                              // original RallyUp UI; populated from
-                              // the generated slot count rather than
-                              // faking per-slot availability.
-                              topBadgeText: '${bookingSlots.length} slots today',
-                              isFavorite: _favoriteCourts.contains(court.id),
                               onViewDetailsTap: () =>
                                   _openCourtDetails(court, ranked.distanceText),
-                              onFavoriteTap: () => _toggleFavorite(court.id),
                             ),
                           );
                         }),
@@ -559,7 +542,8 @@ class _RankedCourt {
     return _RankedCourt(
       court: court,
       distanceKm: _haversineKm(me.lat, me.lng, court.lat, court.lng),
-      sameCity: me.city.isNotEmpty &&
+      sameCity:
+          me.city.isNotEmpty &&
           me.city.toLowerCase() == court.city.toLowerCase(),
     );
   }
@@ -581,7 +565,8 @@ double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
   double toRad(double d) => d * math.pi / 180;
   final dLat = toRad(lat2 - lat1);
   final dLng = toRad(lng2 - lng1);
-  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+  final a =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
       math.cos(toRad(lat1)) *
           math.cos(toRad(lat2)) *
           math.sin(dLng / 2) *

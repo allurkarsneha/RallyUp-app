@@ -14,8 +14,10 @@ class AvailabilitySlot {
 
   /// Sensible default window when a user toggles a day on without picking
   /// a time yet.
-  static const AvailabilitySlot defaultSlot =
-      AvailabilitySlot(start: '18:00', end: '21:00');
+  static const AvailabilitySlot defaultSlot = AvailabilitySlot(
+    start: '18:00',
+    end: '21:00',
+  );
 
   Map<String, dynamic> toMap() => {'start': start, 'end': end};
 
@@ -130,26 +132,27 @@ class AppUser {
   }
 
   Map<String, dynamic> toMap() => {
-        'uid': uid,
-        'email': email,
-        'phone': phone,
-        'firstName': firstName,
-        'lastName': lastName,
-        'displayName': displayName,
-        'photoUrl': photoUrl,
-        'avatarId': avatarId,
-        'age': age,
-        'postalCode': postalCode,
-        'bio': bio,
-        'location': location?.toMap(),
-        'idVerification': idVerification?.toMap(),
-        'sports': sports,
-        'availability':
-            availability.map((day, slot) => MapEntry(day, slot.toMap())),
-        'profileVisible': profileVisible,
-        'createdAt': Timestamp.fromDate(createdAt),
-        'updatedAt': Timestamp.fromDate(updatedAt),
-      };
+    'uid': uid,
+    'email': email,
+    'phone': phone,
+    'firstName': firstName,
+    'lastName': lastName,
+    'displayName': displayName,
+    'photoUrl': photoUrl,
+    'avatarId': avatarId,
+    'age': age,
+    'postalCode': postalCode,
+    'bio': bio,
+    'location': location?.toMap(),
+    'idVerification': idVerification?.toMap(),
+    'sports': sports,
+    'availability': availability.map(
+      (day, slot) => MapEntry(day, slot.toMap()),
+    ),
+    'profileVisible': profileVisible,
+    'createdAt': Timestamp.fromDate(createdAt),
+    'updatedAt': Timestamp.fromDate(updatedAt),
+  };
 
   factory AppUser.fromMap(Map<String, dynamic> map) {
     return AppUser(
@@ -164,11 +167,7 @@ class AppUser {
       age: _parseInt(map['age']),
       postalCode: map['postalCode'] as String?,
       bio: map['bio'] as String?,
-      location: _safeWhenMap(
-        map['location'],
-        UserLocation.fromMap,
-        'location',
-      ),
+      location: _safeWhenMap(map['location'], UserLocation.fromMap, 'location'),
       idVerification: _safeWhenMap(
         map['idVerification'],
         IdVerification.fromMap,
@@ -177,10 +176,8 @@ class AppUser {
       sports: (map['sports'] as List<dynamic>?)?.cast<String>() ?? const [],
       availability: _parseAvailability(map['availability']),
       profileVisible: (map['profileVisible'] as bool?) ?? true,
-      createdAt:
-          (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

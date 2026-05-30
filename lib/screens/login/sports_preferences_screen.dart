@@ -67,9 +67,9 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
       // location, which the rest of the app handles gracefully.
       if (form.location == null) {
         try {
-          final captured = await _locationService
-              .captureCurrent()
-              .timeout(const Duration(seconds: 8));
+          final captured = await _locationService.captureCurrent().timeout(
+            const Duration(seconds: 8),
+          );
           form.setLocation(captured);
         } catch (_) {
           // permission denied / service off / timeout / geocoding failed —
@@ -183,56 +183,59 @@ class _SportsPreferencesScreenState extends State<SportsPreferencesScreen> {
                         ),
                       )
                     : GridView.builder(
-                  padding: const EdgeInsets.only(bottom: 80),
-                  itemCount: _filteredSports.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 22,
-                    crossAxisSpacing: 22,
-                    childAspectRatio: 1.05,
-                  ),
-                  itemBuilder: (context, index) {
-                    final sport = _filteredSports[index];
-                    final name = sport['name']!;
-                    final image = sport['image']!;
-                    final isSelected = selected.contains(name);
-
-                    return GestureDetector(
-                      onTap: () {
-                        context.read<SignupFormProvider>().toggleSport(name);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.darkGreen
-                                : Colors.transparent,
-                            width: 3,
-                          ),
-                          image: DecorationImage(
-                            image: AssetImage(image),
-                            fit: BoxFit.cover,
-                            colorFilter: ColorFilter.mode(
-                              Colors.black.withValues(alpha: .25),
-                              BlendMode.darken,
+                        padding: const EdgeInsets.only(bottom: 80),
+                        itemCount: _filteredSports.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 22,
+                              crossAxisSpacing: 22,
+                              childAspectRatio: 1.05,
                             ),
-                          ),
-                        ),
-                        alignment: Alignment.bottomCenter,
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            color: AppColors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                        itemBuilder: (context, index) {
+                          final sport = _filteredSports[index];
+                          final name = sport['name']!;
+                          final image = sport['image']!;
+                          final isSelected = selected.contains(name);
+
+                          return GestureDetector(
+                            onTap: () {
+                              context.read<SignupFormProvider>().toggleSport(
+                                name,
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.darkGreen
+                                      : Colors.transparent,
+                                  width: 3,
+                                ),
+                                image: DecorationImage(
+                                  image: AssetImage(image),
+                                  fit: BoxFit.cover,
+                                  colorFilter: ColorFilter.mode(
+                                    Colors.black.withValues(alpha: .25),
+                                    BlendMode.darken,
+                                  ),
+                                ),
+                              ),
+                              alignment: Alignment.bottomCenter,
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                name,
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),

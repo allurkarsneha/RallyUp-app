@@ -6,10 +6,12 @@ import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/courts_page.dart';
 import 'package:rallyup/screens/logout_helper.dart';
 import 'package:rallyup/screens/my_bookings_page.dart';
+import 'package:rallyup/screens/admin/id_verification_reviews_screen.dart';
 import 'package:rallyup/screens/notifications_page.dart';
 import 'package:rallyup/screens/player_details/invites_page.dart';
 import 'package:rallyup/screens/player_details/nearby_players_page.dart';
 import 'package:rallyup/screens/player_details/open_matches_page.dart';
+import 'package:rallyup/services/admin_service.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -41,9 +43,7 @@ class SideMenuDrawer extends StatelessWidget {
           content: Text(
             'Are you sure you want\nto logout of your\naccount?',
             textAlign: TextAlign.center,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.white,
-            ),
+            style: AppTextStyles.caption.copyWith(color: AppColors.white),
           ),
           actionsAlignment: MainAxisAlignment.spaceEvenly,
           actions: [
@@ -84,56 +84,46 @@ class SideMenuDrawer extends StatelessWidget {
 
   void _openNearbyPlayers(BuildContext context) {
     Navigator.pop(context);
-    Navigator.push(
-      context,
-      _fadeRoute<void>(const NearbyPlayersPage()),
-    );
+    Navigator.push(context, _fadeRoute<void>(const NearbyPlayersPage()));
   }
 
   void _openOpenMatches(BuildContext context) {
     Navigator.pop(context);
-    Navigator.push(
-      context,
-      _fadeRoute<void>(const OpenMatchesPage()),
-    );
+    Navigator.push(context, _fadeRoute<void>(const OpenMatchesPage()));
   }
 
   void _openCourts(BuildContext context) {
     Navigator.pop(context);
-    Navigator.push(
-      context,
-      _fadeRoute<void>(const CourtsPage()),
-    );
+    Navigator.push(context, _fadeRoute<void>(const CourtsPage()));
   }
 
   void _openInvites(BuildContext context) {
     Navigator.pop(context);
-    Navigator.push(
-      context,
-      _fadeRoute<void>(const InvitesPage()),
-    );
+    Navigator.push(context, _fadeRoute<void>(const InvitesPage()));
   }
 
   void _openMyBookings(BuildContext context) {
     Navigator.pop(context);
-    Navigator.push(
-      context,
-      _fadeRoute<void>(const MyBookingsPage()),
-    );
+    Navigator.push(context, _fadeRoute<void>(const MyBookingsPage()));
   }
 
   void _openNotifications(BuildContext context) {
     Navigator.pop(context);
-    Navigator.push(
-      context,
-      _fadeRoute<void>(const NotificationsPage()),
-    );
+    Navigator.push(context, _fadeRoute<void>(const NotificationsPage()));
   }
 
   void _openSettings(BuildContext context) {
     Navigator.pop(context); // close drawer
     Navigator.of(context).popUntil((route) => route.isFirst);
     MainShell.globalKey.currentState?.switchTo(2);
+  }
+
+  void _openAdminVerifications(BuildContext context) {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      _fadeRoute<void>(const IdVerificationReviewsScreen()),
+    );
   }
 
   void _handleLogout(BuildContext context) {
@@ -154,6 +144,7 @@ class SideMenuDrawer extends StatelessWidget {
         ? user!.displayName
         : 'Welcome';
     final initials = user?.initials ?? 'U';
+    final isAdmin = AdminService().isAdmin(user);
 
     return Drawer(
       width: 288,
@@ -217,6 +208,12 @@ class SideMenuDrawer extends StatelessWidget {
                     title: 'Settings',
                     onTap: () => _openSettings(context),
                   ),
+                  if (isAdmin)
+                    _MenuItem(
+                      icon: Icons.admin_panel_settings_outlined,
+                      title: 'ID Verification Reviews',
+                      onTap: () => _openAdminVerifications(context),
+                    ),
                 ],
               ),
             ),
@@ -268,15 +265,9 @@ class _MenuHeader extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                userName,
-                style: AppTextStyles.bodyMedium,
-              ),
+              Text(userName, style: AppTextStyles.bodyMedium),
               const SizedBox(height: 4),
-              Text(
-                userSubtitle,
-                style: AppTextStyles.caption,
-              ),
+              Text(userSubtitle, style: AppTextStyles.caption),
             ],
           ),
         ],
@@ -309,14 +300,9 @@ class _MenuItem extends StatelessWidget {
           horizontal: AppSpacing.sm,
           vertical: 2,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         leading: Icon(icon, color: color, size: 22),
-        title: Text(
-          title,
-          style: AppTextStyles.body.copyWith(color: color),
-        ),
+        title: Text(title, style: AppTextStyles.body.copyWith(color: color)),
         onTap: onTap,
       ),
     );

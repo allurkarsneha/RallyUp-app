@@ -82,8 +82,9 @@ class _PlayersSetupSheetState extends State<PlayersSetupSheet> {
     );
     if (picked != null) {
       setState(() {
-        _playersConfirmed =
-            picked > _playersRequired ? _playersRequired : picked;
+        _playersConfirmed = picked > _playersRequired
+            ? _playersRequired
+            : picked;
       });
     }
   }
@@ -106,7 +107,7 @@ class _PlayersSetupSheetState extends State<PlayersSetupSheet> {
       playersRequired: _playersRequired,
       playersConfirmed: _playersConfirmed,
     );
-    Navigator.of(context).pop();      // close players-setup sheet
+    Navigator.of(context).pop(); // close players-setup sheet
     Navigator.of(context).maybePop(); // close BookCourtSheet under it
     rootNavigator.push(
       PageRouteBuilder(
@@ -231,10 +232,7 @@ class _PlayersSetupSheetState extends State<PlayersSetupSheet> {
             ),
             const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(12),

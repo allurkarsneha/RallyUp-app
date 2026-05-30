@@ -99,25 +99,23 @@ class IdVerification {
   });
 
   Map<String, dynamic> toMap() => {
-        'documentType': documentType.storageKey,
-        'documentFrontUrl': documentFrontUrl,
-        'documentBackUrl': documentBackUrl,
-        'selfieUrl': selfieUrl,
-        'fullName': fullName,
-        'documentNumberLast4': documentNumberLast4,
-        'expiryDate': Timestamp.fromDate(expiryDate),
-        'issuingState': issuingState,
-        'status': status.storageKey,
-        'submittedAt': Timestamp.fromDate(submittedAt),
-        'reviewedAt':
-            reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
-        'reviewerNote': reviewerNote,
-      };
+    'documentType': documentType.storageKey,
+    'documentFrontUrl': documentFrontUrl,
+    'documentBackUrl': documentBackUrl,
+    'selfieUrl': selfieUrl,
+    'fullName': fullName,
+    'documentNumberLast4': documentNumberLast4,
+    'expiryDate': Timestamp.fromDate(expiryDate),
+    'issuingState': issuingState,
+    'status': status.storageKey,
+    'submittedAt': Timestamp.fromDate(submittedAt),
+    'reviewedAt': reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
+    'reviewerNote': reviewerNote,
+  };
 
   factory IdVerification.fromMap(Map<String, dynamic> map) {
     return IdVerification(
-      documentType:
-          IdDocumentTypeX.fromKey(map['documentType'] as String?),
+      documentType: IdDocumentTypeX.fromKey(map['documentType'] as String?),
       documentFrontUrl: (map['documentFrontUrl'] as String?) ?? '',
       documentBackUrl: map['documentBackUrl'] as String?,
       selfieUrl: map['selfieUrl'] as String?,

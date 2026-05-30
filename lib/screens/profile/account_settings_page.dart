@@ -96,9 +96,85 @@ class AccountSettingsPage extends StatelessWidget {
                   context.read<AuthProvider>().updateProfileVisibility(next);
                 },
               ),
+              if (user.email != null && user.email!.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                _ResetPasswordRow(email: user.email!),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ResetPasswordRow extends StatefulWidget {
+  final String email;
+
+  const _ResetPasswordRow({required this.email});
+
+  @override
+  State<_ResetPasswordRow> createState() => _ResetPasswordRowState();
+}
+
+class _ResetPasswordRowState extends State<_ResetPasswordRow> {
+  bool _sending = false;
+
+  Future<void> _sendReset() async {
+    if (_sending) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _sending = true);
+    final err = await context.read<AuthProvider>().sendPasswordResetEmail(
+      widget.email,
+    );
+    if (!mounted) return;
+    setState(() => _sending = false);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          err ?? 'Reset link sent to ${widget.email}. Check your inbox.',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.lightGray,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reset Password',
+                  style: AppTextStyles.bodyMedium.copyWith(fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "We'll email a secure link to ${widget.email} so you "
+                  'can set a new password.',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          TextButton(
+            onPressed: _sending ? null : _sendReset,
+            style: TextButton.styleFrom(foregroundColor: AppColors.darkGreen),
+            child: Text(_sending ? 'Sending…' : 'Send link'),
+          ),
+        ],
       ),
     );
   }
@@ -180,10 +256,7 @@ class _ProfileVisibilityRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  const _ProfileVisibilityRow({
-    required this.value,
-    required this.onChanged,
-  });
+  const _ProfileVisibilityRow({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {

@@ -55,14 +55,14 @@ class UserLocation {
   }
 
   Map<String, dynamic> toMap() => {
-        'lat': lat,
-        'lng': lng,
-        'city': city,
-        'region': region,
-        'country': country,
-        'source': source.name,
-        'updatedAt': Timestamp.fromDate(updatedAt),
-      };
+    'lat': lat,
+    'lng': lng,
+    'city': city,
+    'region': region,
+    'country': country,
+    'source': source.name,
+    'updatedAt': Timestamp.fromDate(updatedAt),
+  };
 
   factory UserLocation.fromMap(Map<String, dynamic> map) {
     final sourceStr = map['source'] as String?;
@@ -76,8 +76,7 @@ class UserLocation {
         (s) => s.name == sourceStr,
         orElse: () => LocationSource.gps,
       ),
-      updatedAt:
-          (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 }

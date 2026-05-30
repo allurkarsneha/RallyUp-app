@@ -10,10 +10,15 @@ import 'court_network_image.dart';
 /// distance / price / rating consistently with its current visual
 /// language and the card stays presentational only.
 ///
-/// Image source is now a Cloudinary URL (`imageUrl`) rather than a
-/// bundled asset path. A null/empty URL or a network failure falls
-/// back to a clean RallyUp-style placeholder — the card never shows
-/// a broken-image icon or crashes the list.
+/// Image source is a Cloudinary URL (`imageUrl`). A null/empty URL or
+/// a network failure falls back to a clean RallyUp-style placeholder
+/// — the card never shows a broken-image icon or crashes the list.
+///
+/// The top-right heart/favorite icon was removed — it was a local-only
+/// UI toggle with no persistence. The top-left "N slots today" badge
+/// was also removed; per-slot availability still gates the booking
+/// sheet via `CourtAvailabilityService`, but the card no longer
+/// surfaces a count.
 class CourtListingCard extends StatelessWidget {
   final String? imageUrl;
   final String title;
@@ -22,13 +27,7 @@ class CourtListingCard extends StatelessWidget {
   final String distanceText;
   final String ratingText;
   final String priceText;
-  /// Short caption shown in the top-left of the image (was "X slots
-  /// today" in the static mock; we now use it for the venue's city so
-  /// the badge still carries useful info without faking slot data).
-  final String topBadgeText;
-  final bool isFavorite;
   final VoidCallback? onViewDetailsTap;
-  final VoidCallback? onFavoriteTap;
 
   const CourtListingCard({
     super.key,
@@ -39,18 +38,13 @@ class CourtListingCard extends StatelessWidget {
     required this.distanceText,
     required this.ratingText,
     required this.priceText,
-    required this.topBadgeText,
-    required this.isFavorite,
     this.onViewDetailsTap,
-    this.onFavoriteTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.pageHorizontal,
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.pageHorizontal),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -64,56 +58,13 @@ class CourtListingCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 210,
-                  child: CourtNetworkImage(url: imageUrl, iconSize: 38),
-                ),
-              ),
-              if (topBadgeText.isNotEmpty)
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color.fromARGB(210, 11, 107, 67),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      topBadgeText,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: GestureDetector(
-                  onTap: onFavoriteTap,
-                  child: Icon(
-                    isFavorite
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-              ),
-            ],
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: SizedBox(
+              width: double.infinity,
+              height: 210,
+              child: CourtNetworkImage(url: imageUrl, iconSize: 38),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
@@ -215,4 +166,3 @@ class CourtListingCard extends StatelessWidget {
     );
   }
 }
-

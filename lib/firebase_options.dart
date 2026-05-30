@@ -65,5 +65,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'rallyup-6d38b.firebasestorage.app',
     iosBundleId: 'com.example.rallyup',
   );
-
 }

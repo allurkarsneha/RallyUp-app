@@ -53,9 +53,7 @@ class _CourtNetworkImageState extends State<CourtNetworkImage> {
       errorBuilder: (_, error, stack) {
         if (kDebugMode && !_loggedError) {
           _loggedError = true;
-          debugPrint(
-            'CourtNetworkImage: failed to load $url — $error',
-          );
+          debugPrint('CourtNetworkImage: failed to load $url — $error');
         }
         return _Placeholder(iconSize: widget.iconSize);
       },

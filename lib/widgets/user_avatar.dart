@@ -148,10 +148,7 @@ class UserAvatar extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: SizedBox.square(
-        dimension: size,
-        child: avatar,
-      ),
+      child: SizedBox.square(dimension: size, child: avatar),
     );
   }
 }

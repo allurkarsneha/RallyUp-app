@@ -34,7 +34,7 @@ class _EditAvailabilityScreenState extends State<EditAvailabilityScreen> {
     super.initState();
     final current =
         context.read<AuthProvider>().currentUser?.availability ??
-            const <String, AvailabilitySlot>{};
+        const <String, AvailabilitySlot>{};
     _slots = Map<String, AvailabilitySlot>.from(current);
   }
 
@@ -62,20 +62,21 @@ class _EditAvailabilityScreenState extends State<EditAvailabilityScreen> {
     final current = _slots[day] ?? AvailabilitySlot.defaultSlot;
     final picked = await showTimePicker(
       context: context,
-      initialTime: _parse(current.start,
-          fallback: const TimeOfDay(hour: 18, minute: 0)),
+      initialTime: _parse(
+        current.start,
+        fallback: const TimeOfDay(hour: 18, minute: 0),
+      ),
       helpText: 'Start time',
     );
     if (picked == null) return;
-    final endTod = _parse(current.end,
-        fallback: const TimeOfDay(hour: 21, minute: 0));
+    final endTod = _parse(
+      current.end,
+      fallback: const TimeOfDay(hour: 21, minute: 0),
+    );
     // If new start is after current end, push end one hour past start so the
     // window stays valid.
     final newEnd = _toMinutes(picked) >= _toMinutes(endTod)
-        ? TimeOfDay(
-            hour: (picked.hour + 1) % 24,
-            minute: picked.minute,
-          )
+        ? TimeOfDay(hour: (picked.hour + 1) % 24, minute: picked.minute)
         : endTod;
     setState(() {
       _slots[day] = AvailabilitySlot(
@@ -89,13 +90,17 @@ class _EditAvailabilityScreenState extends State<EditAvailabilityScreen> {
     final current = _slots[day] ?? AvailabilitySlot.defaultSlot;
     final picked = await showTimePicker(
       context: context,
-      initialTime: _parse(current.end,
-          fallback: const TimeOfDay(hour: 21, minute: 0)),
+      initialTime: _parse(
+        current.end,
+        fallback: const TimeOfDay(hour: 21, minute: 0),
+      ),
       helpText: 'End time',
     );
     if (picked == null) return;
-    final startTod = _parse(current.start,
-        fallback: const TimeOfDay(hour: 18, minute: 0));
+    final startTod = _parse(
+      current.start,
+      fallback: const TimeOfDay(hour: 18, minute: 0),
+    );
     if (_toMinutes(picked) <= _toMinutes(startTod)) {
       setState(() {
         _error = 'End time must be after start time.';
@@ -176,8 +181,12 @@ class _EditAvailabilityScreenState extends State<EditAvailabilityScreen> {
                 Expanded(
                   child: _TimeChip(
                     label: 'Start',
-                    value: _display(_parse(slot.start,
-                        fallback: const TimeOfDay(hour: 18, minute: 0))),
+                    value: _display(
+                      _parse(
+                        slot.start,
+                        fallback: const TimeOfDay(hour: 18, minute: 0),
+                      ),
+                    ),
                     onTap: () => _pickStart(day),
                   ),
                 ),
@@ -191,8 +200,12 @@ class _EditAvailabilityScreenState extends State<EditAvailabilityScreen> {
                 Expanded(
                   child: _TimeChip(
                     label: 'End',
-                    value: _display(_parse(slot.end,
-                        fallback: const TimeOfDay(hour: 21, minute: 0))),
+                    value: _display(
+                      _parse(
+                        slot.end,
+                        fallback: const TimeOfDay(hour: 21, minute: 0),
+                      ),
+                    ),
                     onTap: () => _pickEnd(day),
                   ),
                 ),

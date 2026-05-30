@@ -99,8 +99,7 @@ class _IdVerificationScreenState extends State<IdVerificationScreen> {
     if (_fullNameController.text.trim().length < 2) {
       return 'Enter the full name as printed on the document.';
     }
-    final docNumber =
-        _docNumberController.text.replaceAll(RegExp(r'\s'), '');
+    final docNumber = _docNumberController.text.replaceAll(RegExp(r'\s'), '');
     if (docNumber.length < 4) return 'Enter your document number.';
     if (_expiryDate == null) return 'Pick the document expiry date.';
     if (_documentType.requiresIssuingState &&
@@ -154,8 +153,7 @@ class _IdVerificationScreenState extends State<IdVerificationScreen> {
         );
       }
 
-      final docNumber =
-          _docNumberController.text.replaceAll(RegExp(r'\s'), '');
+      final docNumber = _docNumberController.text.replaceAll(RegExp(r'\s'), '');
       final last4 = docNumber.length >= 4
           ? docNumber.substring(docNumber.length - 4)
           : docNumber;
@@ -284,9 +282,7 @@ class _IdVerificationScreenState extends State<IdVerificationScreen> {
               LoginTextField(
                 label: 'Document number (we only store the last 4)',
                 controller: _docNumberController,
-                inputFormatters: [
-                  LengthLimitingTextInputFormatter(30),
-                ],
+                inputFormatters: [LengthLimitingTextInputFormatter(30)],
               ),
               if (showStateField) ...[
                 const SizedBox(height: 14),
@@ -294,9 +290,7 @@ class _IdVerificationScreenState extends State<IdVerificationScreen> {
                   label: 'Issuing state (e.g. CA)',
                   controller: _stateController,
                   textCapitalization: TextCapitalization.characters,
-                  inputFormatters: [
-                    LengthLimitingTextInputFormatter(2),
-                  ],
+                  inputFormatters: [LengthLimitingTextInputFormatter(2)],
                 ),
               ],
               const SizedBox(height: 14),
@@ -330,12 +324,12 @@ class _IdVerificationScreenState extends State<IdVerificationScreen> {
   }
 
   Widget _sectionLabel(String text) => Text(
-        text,
-        style: AppTextStyles.bodyMedium.copyWith(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-        ),
-      );
+    text,
+    style: AppTextStyles.bodyMedium.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+    ),
+  );
 
   Widget _docTypeOption(IdDocumentType type) {
     final selected = _documentType == type;
@@ -343,26 +337,21 @@ class _IdVerificationScreenState extends State<IdVerificationScreen> {
       onTap: _busy
           ? null
           : () => setState(() {
-                _documentType = type;
-                if (!type.requiresBack) _back = null;
-                if (!type.requiresIssuingState) _stateController.clear();
-              }),
+              _documentType = type;
+              if (!type.requiresBack) _back = null;
+              if (!type.requiresIssuingState) _stateController.clear();
+            }),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
             Icon(
-              selected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_off,
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
               color: selected ? AppColors.darkGreen : AppColors.grayText,
               size: 22,
             ),
             const SizedBox(width: 10),
-            Text(
-              type.label,
-              style: AppTextStyles.body.copyWith(fontSize: 15),
-            ),
+            Text(type.label, style: AppTextStyles.body.copyWith(fontSize: 15)),
           ],
         ),
       ),
@@ -423,8 +412,10 @@ class _CapturePane extends StatelessWidget {
                 alignment: Alignment.topRight,
                 child: Container(
                   margin: const EdgeInsets.all(8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(10),
@@ -448,8 +439,9 @@ class _ExpiryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label =
-        expiry == null ? 'Pick a date' : DateFormat.yMMMd().format(expiry!);
+    final label = expiry == null
+        ? 'Pick a date'
+        : DateFormat.yMMMd().format(expiry!);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),

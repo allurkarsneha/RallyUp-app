@@ -32,7 +32,6 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
   final TextEditingController _searchController = TextEditingController();
   final UserService _userService = UserService();
 
-  String _selectedLevel = 'All Levels';
   String _selectedSport = 'All';
   String _selectedSort = 'default';
 
@@ -144,55 +143,6 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
     );
   }
 
-  Widget _buildLevelChip(String label) {
-    final isSelected = _selectedLevel == label;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedLevel = label;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFF8F9FC), Color(0xFFEDEFF5)],
-                )
-              : const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Color(0xFFF8F8FA)],
-                ),
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(
-            color: isSelected ? const Color(0xFFD4D9E5) : AppColors.border,
-          ),
-          boxShadow: isSelected
-              ? const [
-                  BoxShadow(
-                    color: Color.fromARGB(18, 120, 130, 160),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.bodyMedium.copyWith(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF667085),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _searchController.dispose();
@@ -212,22 +162,18 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
 
     final ranked = users
         .where((u) {
-          final matchesSearch = query.isEmpty ||
+          final matchesSearch =
+              query.isEmpty ||
               u.displayName.toLowerCase().contains(query) ||
               u.sports.any((s) => s.toLowerCase().contains(query));
 
-          final matchesSport = _selectedSport == 'All' ||
+          final matchesSport =
+              _selectedSport == 'All' ||
               u.sports.any(
                 (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
               );
 
-          // Level isn't on AppUser yet — keep the filter UI working without
-          // hiding everyone when the user picks a level. Once skill level
-          // lands on the user model, swap in `u.skillLevel == _selectedLevel`.
-          final matchesLevel = _selectedLevel == 'All Levels';
-
-          return matchesSearch && matchesSport &&
-              (_selectedLevel == 'All Levels' || matchesLevel);
+          return matchesSearch && matchesSport;
         })
         .map((u) => _RankedPlayer.from(u, myLocation))
         .toList();
@@ -273,7 +219,7 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
             final players = _rankAndFilter(users, myLocation);
             final waitingForFirstSnapshot =
                 snapshot.connectionState == ConnectionState.waiting &&
-                    !snapshot.hasData;
+                !snapshot.hasData;
 
             return Column(
               children: [
@@ -401,24 +347,6 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
                     },
                   ),
                 ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.pageHorizontal,
-                  ),
-                  child: Row(
-                    children: [
-                      _buildLevelChip('All Levels'),
-                      const SizedBox(width: AppSpacing.xs),
-                      _buildLevelChip('Beginner'),
-                      const SizedBox(width: AppSpacing.xs),
-                      _buildLevelChip('Intermediate'),
-                      const SizedBox(width: AppSpacing.xs),
-                      _buildLevelChip('Advanced'),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: AppSpacing.lg),
                 Expanded(
                   child: ListView(
@@ -457,61 +385,53 @@ class _NearbyPlayersPageState extends State<NearbyPlayersPage> {
                                 ),
                               )
                             : players.isEmpty
-                                ? Container(
-                                    padding:
-                                        const EdgeInsets.all(AppSpacing.lg),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border:
-                                          Border.all(color: AppColors.border),
+                            ? Container(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'No players found for this search/filter',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: AppColors.textSecondary,
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        'No players found for this search/filter',
-                                        style: AppTextStyles.bodyMedium
-                                            .copyWith(
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : Column(
-                                    children: [
-                                      for (final ranked in players) ...[
-                                        PlayerDetailsPlayerCard(
-                                          name: ranked.user.displayName,
-                                          initials: ranked.user.initials,
-                                          photoUrl: ranked.user.photoUrl,
-                                          avatarId: ranked.user.avatarId,
-                                          sport: _primarySport(ranked.user),
-                                          level: 'Intermediate',
-                                          distance: ranked.distanceLabel,
-                                          bio: ranked.user.bio?.isNotEmpty ==
-                                                  true
-                                              ? ranked.user.bio!
-                                              : (ranked.sameCity
-                                                  ? 'Plays in '
-                                                      '${ranked.user.location!.city}'
-                                                  : 'Open to nearby matches'),
-                                          availability: 'Available this week',
-                                          time: '6 PM - 8 PM',
-                                          actionLabel: 'Connect',
-                                          rating: 4.8,
-                                          onViewProfileTap: () =>
-                                              _openPlayerProfile(ranked),
-                                          onActionTap: () =>
-                                              _openPersonalChat(ranked),
-                                        ),
-                                        const SizedBox(
-                                            height: AppSpacing.md),
-                                      ],
-                                      Text(
-                                        '${players.length} players shown',
-                                        style: AppTextStyles.caption,
-                                      ),
-                                    ],
                                   ),
+                                ),
+                              )
+                            : Column(
+                                children: [
+                                  for (final ranked in players) ...[
+                                    PlayerDetailsPlayerCard(
+                                      name: ranked.user.displayName,
+                                      initials: ranked.user.initials,
+                                      photoUrl: ranked.user.photoUrl,
+                                      avatarId: ranked.user.avatarId,
+                                      sport: _primarySport(ranked.user),
+                                      distance: ranked.distanceLabel,
+                                      bio: ranked.user.bio?.isNotEmpty == true
+                                          ? ranked.user.bio!
+                                          : (ranked.sameCity
+                                                ? 'Plays in '
+                                                      '${ranked.user.location!.city}'
+                                                : 'Open to nearby matches'),
+                                      actionLabel: 'Connect',
+                                      rating: 4.8,
+                                      onViewProfileTap: () =>
+                                          _openPlayerProfile(ranked),
+                                      onActionTap: () =>
+                                          _openPersonalChat(ranked),
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+                                  ],
+                                  Text(
+                                    '${players.length} players shown',
+                                    style: AppTextStyles.caption,
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -546,8 +466,14 @@ class _RankedPlayer {
     }
     return _RankedPlayer(
       user: u,
-      distanceKm: _haversineKm(me.lat, me.lng, u.location!.lat, u.location!.lng),
-      sameCity: u.location!.city.isNotEmpty &&
+      distanceKm: _haversineKm(
+        me.lat,
+        me.lng,
+        u.location!.lat,
+        u.location!.lng,
+      ),
+      sameCity:
+          u.location!.city.isNotEmpty &&
           u.location!.city.toLowerCase() == me.city.toLowerCase(),
     );
   }
@@ -573,7 +499,8 @@ double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
   double toRad(double d) => d * math.pi / 180;
   final dLat = toRad(lat2 - lat1);
   final dLng = toRad(lng2 - lng1);
-  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+  final a =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
       math.cos(toRad(lat1)) *
           math.cos(toRad(lat2)) *
           math.sin(dLng / 2) *

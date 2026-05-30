@@ -5,13 +5,16 @@ import 'package:provider/provider.dart';
 import '../models/app_notification.dart';
 import '../providers/auth_provider.dart';
 import '../services/booking_service.dart';
+import '../services/invite_service.dart';
 import '../services/notification_service.dart';
+import '../services/open_match_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/main_bottom_nav.dart';
 import 'booking_confirmed_page.dart';
 import 'main_shell_nav.dart';
+import 'player_details/match_details_page.dart';
 import 'player_details/received_invites_page.dart';
 
 class NotificationsPage extends StatefulWidget {
@@ -24,6 +27,8 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   final NotificationService _notificationService = NotificationService();
   final BookingService _bookingService = BookingService();
+  final OpenMatchService _openMatchService = OpenMatchService();
+  final InviteService _inviteService = InviteService();
 
   void _onBottomNavTap(int index) {
     switchToMainShellTab(context, index);
@@ -46,8 +51,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, _, _) =>
-                BookingConfirmedPage(booking: booking),
+            pageBuilder: (_, _, _) => BookingConfirmedPage(booking: booking),
             transitionsBuilder: (_, animation, _, child) {
               return FadeTransition(opacity: animation, child: child);
             },
@@ -55,14 +59,73 @@ class _NotificationsPageState extends State<NotificationsPage> {
         );
         break;
       case AppNotification.targetInvite:
-        // Invite read-side is currently mock-only — route to the
-        // existing ReceivedInvitesPage so the tap doesn't dead-end.
-        // Once invites become Firestore-backed, this will deep-link
-        // to a specific invite by id.
+        // Pending invite → invitee opens ReceivedInvitesPage to
+        // act on it. Accepted/declined/cancelled → the underlying
+        // match is the natural destination (host got the
+        // acceptance notice; everyone else just sees a status
+        // change). Falls back to ReceivedInvitesPage if the
+        // invite was deleted or the match no longer exists, so
+        // the tap is never a dead end.
+        final id = n.targetId;
+        if (id == null || id.isEmpty) {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, _, _) => const ReceivedInvitesPage(),
+              transitionsBuilder: (_, animation, _, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          );
+          break;
+        }
+        final invite = await _inviteService.getInvite(id);
+        if (!mounted) return;
+        if (invite == null || invite.isPending) {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, _, _) => const ReceivedInvitesPage(),
+              transitionsBuilder: (_, animation, _, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          );
+          break;
+        }
+        final match = await _openMatchService.getOpenMatch(invite.matchId);
+        if (!mounted) return;
+        if (match == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('This match is no longer available.')),
+          );
+          break;
+        }
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, _, _) => const ReceivedInvitesPage(),
+            pageBuilder: (_, _, _) => MatchDetailsPage(match: match),
+            transitionsBuilder: (_, animation, _, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
+        break;
+      case AppNotification.targetMatch:
+        final id = n.targetId;
+        if (id == null || id.isEmpty) return;
+        final match = await _openMatchService.getOpenMatch(id);
+        if (!mounted) return;
+        if (match == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('This match is no longer available.')),
+          );
+          return;
+        }
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (_, _, _) => MatchDetailsPage(match: match),
             transitionsBuilder: (_, animation, _, child) {
               return FadeTransition(opacity: animation, child: child);
             },
@@ -147,13 +210,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           'will appear here.',
                     )
                   : StreamBuilder<List<AppNotification>>(
-                      stream: _notificationService
-                          .streamNotificationsForUser(me.uid),
+                      stream: _notificationService.streamNotificationsForUser(
+                        me.uid,
+                      ),
                       builder: (context, snapshot) {
                         final waitingFirst =
                             snapshot.connectionState ==
-                                    ConnectionState.waiting &&
-                                !snapshot.hasData;
+                                ConnectionState.waiting &&
+                            !snapshot.hasData;
                         if (waitingFirst) {
                           return const Center(
                             child: CircularProgressIndicator(),
@@ -205,10 +269,7 @@ class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
   final VoidCallback onTap;
 
-  const _NotificationTile({
-    required this.notification,
-    required this.onTap,
-  });
+  const _NotificationTile({required this.notification, required this.onTap});
 
   IconData _iconFor(String type) {
     switch (type) {
@@ -218,6 +279,18 @@ class _NotificationTile extends StatelessWidget {
         return Icons.event_busy_rounded;
       case AppNotification.typeInviteReceived:
         return Icons.mail_outline_rounded;
+      case AppNotification.typeInviteAccepted:
+        return Icons.mark_email_read_outlined;
+      case AppNotification.typeInviteDeclined:
+        return Icons.mail_outlined;
+      case AppNotification.typeOpenMatchCreated:
+        return Icons.sports_score_rounded;
+      case AppNotification.typeMatchJoined:
+        return Icons.groups_rounded;
+      case AppNotification.typeMatchLeft:
+        return Icons.person_remove_alt_1_rounded;
+      case AppNotification.typeOpenMatchCancelled:
+        return Icons.event_busy_rounded;
       default:
         return Icons.notifications_none_rounded;
     }

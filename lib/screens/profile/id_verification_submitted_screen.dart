@@ -115,10 +115,7 @@ class IdVerificationSubmittedScreen extends StatelessWidget {
                           'Expires',
                           DateFormat.yMMMd().format(record.expiryDate),
                         ),
-                        _kv(
-                          'Document #',
-                          '•••• ${record.documentNumberLast4}',
-                        ),
+                        _kv('Document #', '•••• ${record.documentNumberLast4}'),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -205,25 +202,25 @@ class IdVerificationSubmittedScreen extends StatelessWidget {
   }
 
   Widget _kv(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              k,
-              style: AppTextStyles.body.copyWith(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            Text(
-              v,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          k,
+          style: AppTextStyles.body.copyWith(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+          ),
         ),
-      );
+        Text(
+          v,
+          style: AppTextStyles.bodyMedium.copyWith(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 }
