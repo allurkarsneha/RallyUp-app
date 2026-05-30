@@ -43,10 +43,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final user = context.read<AuthProvider>().currentUser;
     firstNameController = TextEditingController(text: user?.firstName ?? '');
     lastNameController = TextEditingController(text: user?.lastName ?? '');
-    ageController =
-        TextEditingController(text: user?.age?.toString() ?? '');
-    postalCodeController =
-        TextEditingController(text: user?.postalCode ?? '');
+    ageController = TextEditingController(text: user?.age?.toString() ?? '');
+    postalCodeController = TextEditingController(text: user?.postalCode ?? '');
     bioController = TextEditingController(text: user?.bio ?? '');
   }
 
@@ -127,19 +125,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       final postalText = postalCodeController.text.trim();
       final auth = context.read<AuthProvider>();
       await auth.updateProfile(
-            firstName: firstNameController.text,
-            lastName: lastNameController.text,
-            age: ageText.isEmpty ? null : int.parse(ageText),
-            postalCode: postalText.isEmpty ? null : postalText,
-          );
+        firstName: firstNameController.text,
+        lastName: lastNameController.text,
+        age: ageText.isEmpty ? null : int.parse(ageText),
+        postalCode: postalText.isEmpty ? null : postalText,
+      );
       // Bio is a separate update so the existing `updateProfile` contract
       // (which doesn't know about bio) stays unchanged. Persist whatever
       // the user typed — `updateBio` normalises empty/whitespace to null.
       await auth.updateBio(bioController.text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile saved')));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -174,8 +172,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         TextField(
           controller: controller,
           style: AppTextStyles.body.copyWith(fontSize: 16),
-          keyboardType:
-              maxLines > 1 ? TextInputType.multiline : keyboardType,
+          keyboardType: maxLines > 1 ? TextInputType.multiline : keyboardType,
           inputFormatters: inputFormatters,
           textCapitalization: textCapitalization,
           minLines: maxLines > 1 ? maxLines : null,
@@ -290,15 +287,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   ) {
     if (availability.isEmpty) return 'No availability set';
     const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final orderedDays =
-        order.where(availability.containsKey).toList(growable: false);
+    final orderedDays = order
+        .where(availability.containsKey)
+        .toList(growable: false);
     if (orderedDays.length > 3) {
       return '${orderedDays.take(3).join(', ')} +${orderedDays.length - 3} more';
     }
-    return orderedDays.map((day) {
-      final slot = availability[day]!;
-      return '$day ${_formatTime12h(context, slot.start)}–${_formatTime12h(context, slot.end)}';
-    }).join(' · ');
+    return orderedDays
+        .map((day) {
+          final slot = availability[day]!;
+          return '$day ${_formatTime12h(context, slot.start)}–${_formatTime12h(context, slot.end)}';
+        })
+        .join(' · ');
   }
 
   @override
@@ -307,7 +307,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final initials = user?.initials ?? 'UP';
     final avatarId = user?.avatarId;
     final sports = user?.sports ?? const <String>[];
-    final availability = user?.availability ?? const <String, AvailabilitySlot>{};
+    final availability =
+        user?.availability ?? const <String, AvailabilitySlot>{};
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -442,9 +443,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 errorText: _postalCodeError,
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
-                  LengthLimitingTextInputFormatter(
-                    AppUser.maxPostalCodeLength,
-                  ),
+                  LengthLimitingTextInputFormatter(AppUser.maxPostalCodeLength),
                 ],
               ),
               const SizedBox(height: 18),
@@ -482,9 +481,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const EditSportsScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const EditSportsScreen()),
                   );
                 },
               ),

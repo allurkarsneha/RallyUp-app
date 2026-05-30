@@ -89,8 +89,9 @@ class BookingConfirmedPage extends StatelessWidget {
     if (parts.length != 2) return hhmm;
     final h = int.tryParse(parts[0]) ?? 0;
     final m = int.tryParse(parts[1]) ?? 0;
-    return MaterialLocalizations.of(context)
-        .formatTimeOfDay(TimeOfDay(hour: h, minute: m));
+    return MaterialLocalizations.of(
+      context,
+    ).formatTimeOfDay(TimeOfDay(hour: h, minute: m));
   }
 
   @override
@@ -164,15 +165,13 @@ class BookingConfirmedPage extends StatelessWidget {
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       booking.courtName,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
+                                      style: AppTextStyles.bodyMedium.copyWith(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textPrimary,
@@ -186,16 +185,15 @@ class BookingConfirmedPage extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                         style: AppTextStyles.bodyMedium
                                             .copyWith(
-                                          fontSize: 11,
-                                          color: AppColors.textSecondary,
-                                        ),
+                                              fontSize: 11,
+                                              color: AppColors.textSecondary,
+                                            ),
                                       ),
                                     ],
                                     const SizedBox(height: 6),
                                     Text(
                                       '$emoji  ${booking.sportType}',
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
+                                      style: AppTextStyles.bodyMedium.copyWith(
                                         fontSize: 12,
                                         color: AppColors.textSecondary,
                                       ),
@@ -203,8 +201,7 @@ class BookingConfirmedPage extends StatelessWidget {
                                     const SizedBox(height: 10),
                                     Text(
                                       dateText,
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
+                                      style: AppTextStyles.bodyMedium.copyWith(
                                         fontSize: 12,
                                         color: AppColors.textPrimary,
                                       ),
@@ -212,8 +209,7 @@ class BookingConfirmedPage extends StatelessWidget {
                                     const SizedBox(height: 6),
                                     Text(
                                       timeText,
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
+                                      style: AppTextStyles.bodyMedium.copyWith(
                                         fontSize: 12,
                                         color: AppColors.textPrimary,
                                         height: 1.25,
@@ -242,11 +238,7 @@ class BookingConfirmedPage extends StatelessWidget {
                       value: '\$${booking.pricePerHour.toStringAsFixed(2)}',
                     ),
                     const SizedBox(height: 14),
-                    _SummaryRow(
-                      label: 'Total',
-                      value: totalText,
-                      isBold: true,
-                    ),
+                    _SummaryRow(label: 'Total', value: totalText, isBold: true),
                     const SizedBox(height: 24),
                     PrimaryButton(
                       text: 'Share Match',

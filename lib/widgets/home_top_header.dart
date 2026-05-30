@@ -27,8 +27,9 @@ class HomeTopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final greeting =
-        firstName.trim().isEmpty ? 'Welcome 👋' : 'Hi ${firstName.trim()} 👋';
+    final greeting = firstName.trim().isEmpty
+        ? 'Welcome 👋'
+        : 'Hi ${firstName.trim()} 👋';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -50,10 +51,7 @@ class HomeTopHeader extends StatelessWidget {
               const SizedBox(width: 10),
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
-                  colors: [
-                    Color(0xFF0B6B43),
-                    Color(0xFF59C42A),
-                  ],
+                  colors: [Color(0xFF0B6B43), Color(0xFF59C42A)],
                 ).createShader(bounds),
                 child: Text(
                   'RallyUp',

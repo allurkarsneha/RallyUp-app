@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'package:provider/provider.dart';
+
 import '../../models/app_user.dart';
 import '../../models/id_verification.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/feedback_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
@@ -36,10 +40,7 @@ class PlayerProfilePage extends StatelessWidget {
   }
 
   void _openMessage(BuildContext context) {
-    Navigator.push(
-      context,
-      _fadeRoute<void>(MessagePage(otherUser: user)),
-    );
+    Navigator.push(context, _fadeRoute<void>(MessagePage(otherUser: user)));
   }
 
   void _openInviteToMatch(BuildContext context) {
@@ -134,7 +135,8 @@ class PlayerProfilePage extends StatelessWidget {
                         PlayerDetailsChip(
                           label: verificationLabel,
                           icon: Icons.verified_user_outlined,
-                          selected: user.idVerification?.status ==
+                          selected:
+                              user.idVerification?.status ==
                               IdVerificationStatus.verified,
                         ),
                       ],
@@ -218,6 +220,38 @@ class _PlayerProfileHero extends StatelessWidget {
             ),
           ),
           Positioned(
+            right: AppSpacing.xs,
+            top: AppSpacing.xl,
+            child: PopupMenuButton<String>(
+              tooltip: 'More',
+              icon: const Icon(
+                Icons.more_vert_rounded,
+                color: AppColors.textPrimary,
+              ),
+              onSelected: (value) {
+                if (value == 'report') {
+                  _showReportPlayerDialog(context, user);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'report',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.flag_outlined,
+                        color: AppColors.textPrimary,
+                        size: 20,
+                      ),
+                      SizedBox(width: 10),
+                      Text('Report user'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
             left: 0,
             right: 0,
             bottom: 0,
@@ -249,6 +283,106 @@ class _PlayerProfileHero extends StatelessWidget {
   }
 }
 
+/// Captures a free-text reason and persists a report against [target]
+/// via [FeedbackService.reportUser]. Shows a confirmation SnackBar
+/// once the write lands. Anonymous reports (no signed-in user) are
+/// blocked with a clear message so the moderator queue stays useful.
+Future<void> _showReportPlayerDialog(
+  BuildContext context,
+  AppUser target,
+) async {
+  final me = context.read<AuthProvider>().currentUser;
+  final messenger = ScaffoldMessenger.of(context);
+  if (me == null) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Sign in to report a user.')),
+    );
+    return;
+  }
+  if (me.uid == target.uid) {
+    // Can't really happen via UI (the profile page is for other
+    // users) but guard anyway.
+    return;
+  }
+
+  final controller = TextEditingController();
+  final reason = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) {
+      String? error;
+      return StatefulBuilder(
+        builder: (statefulContext, setLocal) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            title: Text('Report ${target.displayName}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tell us what happened. The RallyUp team will review '
+                  'every report.',
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: controller,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Reason',
+                    hintText: 'Spam, harassment, no-show, …',
+                    errorText: error,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, null),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final entered = controller.text.trim();
+                  if (entered.isEmpty) {
+                    setLocal(() => error = 'Please describe the issue.');
+                    return;
+                  }
+                  Navigator.pop(dialogContext, entered);
+                },
+                child: const Text('Submit'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+  controller.dispose();
+  if (reason == null) return;
+  try {
+    await FeedbackService().reportUser(
+      reporterId: me.uid,
+      reporterName: me.displayName,
+      reportedUserId: target.uid,
+      reportedUserName: target.displayName,
+      reason: reason,
+    );
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Thanks. Your report has been submitted.')),
+    );
+  } catch (_) {
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text("Couldn't submit the report. Please try again."),
+      ),
+    );
+  }
+}
+
 /// About section that renders the user's bio if they wrote one, otherwise
 /// a single "No bio added yet." line. Sports are rendered as real pills
 /// using the user's actual sports list — there is no skill-level field
@@ -266,8 +400,9 @@ class _PlayerProfileAbout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final aboutTitle =
-        firstName.trim().isEmpty ? 'About' : 'About ${firstName.trim()}';
+    final aboutTitle = firstName.trim().isEmpty
+        ? 'About'
+        : 'About ${firstName.trim()}';
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -369,8 +504,9 @@ class _PlayerProfileAvailability extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeDays =
-        _weekOrder.where(availability.containsKey).toList(growable: false);
+    final activeDays = _weekOrder
+        .where(availability.containsKey)
+        .toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -401,8 +537,7 @@ class _PlayerProfileAvailability extends StatelessWidget {
               spacing: AppSpacing.xs,
               runSpacing: AppSpacing.xs,
               children: [
-                for (final day in activeDays)
-                  AvailabilityDayChip(label: day),
+                for (final day in activeDays) AvailabilityDayChip(label: day),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),

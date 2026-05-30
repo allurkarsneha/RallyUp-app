@@ -69,9 +69,9 @@ class _NameScreenState extends State<NameScreen> {
     if (firstNameValid != null || lastNameValid != null) return;
 
     context.read<SignupFormProvider>().setName(
-          firstName: firstNameController.text,
-          lastName: lastNameController.text,
-        );
+      firstName: firstNameController.text,
+      lastName: lastNameController.text,
+    );
 
     Navigator.push(
       context,
@@ -123,7 +123,9 @@ class _NameScreenState extends State<NameScreen> {
                           controller: firstNameController,
                           textCapitalization: TextCapitalization.words,
                           inputFormatters: [
-                            LengthLimitingTextInputFormatter(AppUser.maxNameLength),
+                            LengthLimitingTextInputFormatter(
+                              AppUser.maxNameLength,
+                            ),
                           ],
                         ),
                         if (firstNameError != null) ...[
@@ -142,7 +144,9 @@ class _NameScreenState extends State<NameScreen> {
                           controller: lastNameController,
                           textCapitalization: TextCapitalization.words,
                           inputFormatters: [
-                            LengthLimitingTextInputFormatter(AppUser.maxNameLength),
+                            LengthLimitingTextInputFormatter(
+                              AppUser.maxNameLength,
+                            ),
                           ],
                         ),
                         if (lastNameError != null) ...[
@@ -161,8 +165,9 @@ class _NameScreenState extends State<NameScreen> {
                             text: 'Continue',
                             width: 180,
                             height: 48,
-                            backgroundColor:
-                                AppColors.darkGreen.withValues(alpha: 0.75),
+                            backgroundColor: AppColors.darkGreen.withValues(
+                              alpha: 0.75,
+                            ),
                             onPressed: continueToPhoto,
                           ),
                         ),

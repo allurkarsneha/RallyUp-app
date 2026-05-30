@@ -70,9 +70,7 @@ class _MessagePageState extends State<MessagePage> {
       // new messages that arrive while the user is sitting in the chat.
       // Fire-and-forget; failures are non-fatal (the next snapshot will
       // try again).
-      _chatService
-          .markThreadRead(threadId: id, uid: me.uid)
-          .catchError((_) {});
+      _chatService.markThreadRead(threadId: id, uid: me.uid).catchError((_) {});
     } catch (e) {
       if (!mounted) return;
       setState(() => _initError = 'Could not open this conversation.');
@@ -92,9 +90,7 @@ class _MessagePageState extends State<MessagePage> {
     if (latest.id == _lastMarkedMessageId) return;
     _lastMarkedMessageId = latest.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _chatService
-          .markThreadRead(threadId: id, uid: myUid)
-          .catchError((_) {});
+      _chatService.markThreadRead(threadId: id, uid: myUid).catchError((_) {});
     });
   }
 
@@ -168,9 +164,7 @@ class _MessagePageState extends State<MessagePage> {
                 ),
               )
             else if (_threadId == null)
-              const Expanded(
-                child: Center(child: CircularProgressIndicator()),
-              )
+              const Expanded(child: Center(child: CircularProgressIndicator()))
             else
               Expanded(
                 child: StreamBuilder<List<ChatMessage>>(
@@ -202,8 +196,7 @@ class _MessagePageState extends State<MessagePage> {
                     // ListView together. `reverse: true` keeps the latest
                     // message anchored to the bottom of the viewport and
                     // auto-sticks the input bar to the most recent reply.
-                    final reversed =
-                        messages.reversed.toList(growable: false);
+                    final reversed = messages.reversed.toList(growable: false);
                     return ListView.builder(
                       controller: _scrollController,
                       reverse: true,
@@ -216,8 +209,7 @@ class _MessagePageState extends State<MessagePage> {
                       itemCount: reversed.length,
                       itemBuilder: (context, i) {
                         final msg = reversed[i];
-                        final isMine =
-                            myUid != null && msg.senderUid == myUid;
+                        final isMine = myUid != null && msg.senderUid == myUid;
                         return _ChatBubble(
                           text: msg.text,
                           time: _formatClockTime(context, msg.sentAt),
@@ -323,8 +315,9 @@ class _ChatBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment:
-            isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isMine) ...[
             UserAvatar(
@@ -337,8 +330,9 @@ class _ChatBubble extends StatelessWidget {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMine
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
                   constraints: BoxConstraints(maxWidth: maxBubbleWidth),
@@ -347,8 +341,7 @@ class _ChatBubble extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color:
-                        isMine ? const Color(0xFFE8F5EA) : AppColors.surface,
+                    color: isMine ? const Color(0xFFE8F5EA) : AppColors.surface,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -359,8 +352,7 @@ class _ChatBubble extends StatelessWidget {
                         ? null
                         : [
                             BoxShadow(
-                              color:
-                                  AppColors.black.withValues(alpha: 0.07),
+                              color: AppColors.black.withValues(alpha: 0.07),
                               blurRadius: 4,
                               offset: const Offset(0, 1),
                             ),
@@ -442,8 +434,7 @@ class _MessageInput extends StatelessWidget {
                     color: AppColors.muted,
                   ),
                   border: InputBorder.none,
-                  contentPadding:
-                      const EdgeInsets.fromLTRB(16, 8, 8, 10),
+                  contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 10),
                 ),
               ),
             ),
@@ -467,8 +458,9 @@ class _MessageInput extends StatelessWidget {
               color: AppColors.white,
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                disabledBackgroundColor:
-                    AppColors.primary.withValues(alpha: 0.4),
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.4,
+                ),
                 padding: EdgeInsets.zero,
               ),
               tooltip: 'Send',

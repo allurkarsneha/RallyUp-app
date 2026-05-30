@@ -18,6 +18,7 @@ class Booking {
   final String courtId;
   final String courtName;
   final String courtAddress;
+
   /// First image from the court's `imageUrls` at booking time, captured
   /// for stable list/confirmation rendering. May be empty if the court
   /// had no images. Not on the originally-specified field list but
@@ -26,6 +27,7 @@ class Booking {
   final String courtImageUrl;
   final String sportType;
   final DateTime date;
+
   /// 24-hour `HH:mm`, e.g. `"18:00"`. Display-side formatting (12-hour
   /// with AM/PM) is the caller's job — keeps Firestore values stable.
   final String startTime;
@@ -57,10 +59,7 @@ class Booking {
   bool get isConfirmed => status == BookingStatus.confirmed;
   bool get isCancelled => status == BookingStatus.cancelled;
 
-  Booking copyWith({
-    String? status,
-    DateTime? updatedAt,
-  }) {
+  Booking copyWith({String? status, DateTime? updatedAt}) {
     return Booking(
       id: id,
       userId: userId,
@@ -81,21 +80,21 @@ class Booking {
   }
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
-        'courtId': courtId,
-        'courtName': courtName,
-        'courtAddress': courtAddress,
-        'courtImageUrl': courtImageUrl,
-        'sportType': sportType,
-        'date': Timestamp.fromDate(date),
-        'startTime': startTime,
-        'endTime': endTime,
-        'pricePerHour': pricePerHour,
-        'totalPrice': totalPrice,
-        'status': status,
-        if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
-        if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
-      };
+    'userId': userId,
+    'courtId': courtId,
+    'courtName': courtName,
+    'courtAddress': courtAddress,
+    'courtImageUrl': courtImageUrl,
+    'sportType': sportType,
+    'date': Timestamp.fromDate(date),
+    'startTime': startTime,
+    'endTime': endTime,
+    'pricePerHour': pricePerHour,
+    'totalPrice': totalPrice,
+    'status': status,
+    if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+    if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
+  };
 
   factory Booking.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const <String, dynamic>{};

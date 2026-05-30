@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/booking_draft.dart';
 import '../../models/court.dart';
 import '../../screens/confirm_booking_page.dart';
+import '../../services/court_availability_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/booking_slots.dart';
@@ -49,6 +50,8 @@ enum _MatchType { privateMatch, openMatch }
 class _BookCourtSheetState extends State<BookCourtSheet> {
   late String _selectedSport;
   late DateTime _selectedDate;
+  final CourtAvailabilityService _availability = CourtAvailabilityService();
+
   /// We persist the picked slot itself, not its index into
   /// [bookingSlots]. Reason: once we filter past slots for today, the
   /// visible grid no longer maps 1:1 onto `bookingSlots`, so an
@@ -120,13 +123,15 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
     if (dayOnly.isBefore(today)) return const [];
     if (dayOnly.isAfter(today)) return bookingSlots;
     // dayOnly == today → keep slots whose start is after `now`.
-    return bookingSlots.where((slot) {
-      final parts = slot.start.split(':');
-      final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
-      final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
-      final slotStart = DateTime(date.year, date.month, date.day, h, m);
-      return slotStart.isAfter(now);
-    }).toList(growable: false);
+    return bookingSlots
+        .where((slot) {
+          final parts = slot.start.split(':');
+          final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+          final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+          final slotStart = DateTime(date.year, date.month, date.day, h, m);
+          return slotStart.isAfter(now);
+        })
+        .toList(growable: false);
   }
 
   /// Validate the form, then branch on match type. Captures any
@@ -152,8 +157,9 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
     // Defensive recheck — the user may have left the sheet open
     // past the slot's start time. Re-validate against the live
     // availability list before any booking write happens downstream.
-    final stillAvailable = _availableSlotsFor(_selectedDate)
-        .any((s) => s.start == slot.start && s.end == slot.end);
+    final stillAvailable = _availableSlotsFor(
+      _selectedDate,
+    ).any((s) => s.start == slot.start && s.end == slot.end);
     if (!stillAvailable) {
       setState(() {
         _selectedSlot = null;
@@ -493,42 +499,58 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              if (visibleSlots.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(
-                    'No more slots available today. Please choose another date.',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                )
-              else
-                GridView.builder(
-                  itemCount: visibleSlots.length,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisExtent: 48,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  itemBuilder: (context, index) {
-                    return _buildTimeChip(visibleSlots[index], context);
-                  },
+              // Live availability against occupied bookings/matches.
+              // While the fetch is in flight we still render the
+              // time-only filtered slots so the grid never blanks —
+              // an in-flight tap is also re-validated in
+              // [_continue].
+              FutureBuilder<List<BookingSlot>>(
+                future: _availability.availableSlotsFor(
+                  courtId: court.id,
+                  date: _selectedDate,
                 ),
+                builder: (context, snap) {
+                  final showSlots = snap.data ?? visibleSlots;
+                  if (showSlots.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Text(
+                        snap.connectionState == ConnectionState.waiting
+                            ? 'Checking availability…'
+                            : 'No slots available for this date. Please choose another date.',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    );
+                  }
+                  return GridView.builder(
+                    itemCount: showSlots.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisExtent: 48,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                    itemBuilder: (context, index) {
+                      return _buildTimeChip(showSlots[index], context);
+                    },
+                  );
+                },
+              ),
               const SizedBox(height: 22),
               Text(
                 'Match type',
@@ -575,8 +597,9 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
                   onPressed: _busy ? null : _continue,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    disabledBackgroundColor:
-                        AppColors.primary.withValues(alpha: 0.4),
+                    disabledBackgroundColor: AppColors.primary.withValues(
+                      alpha: 0.4,
+                    ),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),

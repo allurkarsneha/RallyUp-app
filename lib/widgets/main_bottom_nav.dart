@@ -31,10 +31,7 @@ class MainBottomNav extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
-          top: BorderSide(
-            color: Color.fromARGB(255, 236, 239, 243),
-            width: 1,
-          ),
+          top: BorderSide(color: Color.fromARGB(255, 236, 239, 243), width: 1),
         ),
       ),
       child: Row(
@@ -52,8 +49,9 @@ class MainBottomNav extends StatelessWidget {
                     width: 84,
                     height: 40,
                     decoration: BoxDecoration(
-                      color:
-                          isSelected ? AppColors.primaryLight : Colors.transparent,
+                      color: isSelected
+                          ? AppColors.primaryLight
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Icon(
@@ -69,8 +67,9 @@ class MainBottomNav extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                       color: AppColors.textPrimary,
                     ),
                   ),

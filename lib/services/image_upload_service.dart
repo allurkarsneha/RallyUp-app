@@ -11,7 +11,8 @@ class ImageUploadException implements Exception {
   ImageUploadException(this.message, {this.statusCode});
 
   @override
-  String toString() => 'ImageUploadException: $message'
+  String toString() =>
+      'ImageUploadException: $message'
       '${statusCode != null ? ' (HTTP $statusCode)' : ''}';
 }
 
@@ -29,10 +30,7 @@ class ImageUploadService {
   ImageUploadService({http.Client? client}) : _client = client ?? http.Client();
 
   Future<String> uploadProfilePhoto(File file, {required String uid}) {
-    return _upload(
-      file,
-      folder: '${CloudinaryConfig.profilePhotoFolder}/$uid',
-    );
+    return _upload(file, folder: '${CloudinaryConfig.profilePhotoFolder}/$uid');
   }
 
   Future<String> uploadIdDocument(
@@ -58,9 +56,10 @@ class ImageUploadService {
       );
     }
 
-    final request = http.MultipartRequest('POST', CloudinaryConfig.uploadEndpoint)
-      ..fields['upload_preset'] = CloudinaryConfig.uploadPreset
-      ..fields['folder'] = folder;
+    final request =
+        http.MultipartRequest('POST', CloudinaryConfig.uploadEndpoint)
+          ..fields['upload_preset'] = CloudinaryConfig.uploadPreset
+          ..fields['folder'] = folder;
 
     if (tags.isNotEmpty) {
       request.fields['tags'] = tags.join(',');
@@ -70,7 +69,9 @@ class ImageUploadService {
 
     http.StreamedResponse streamed;
     try {
-      streamed = await _client.send(request).timeout(const Duration(seconds: 30));
+      streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 30));
     } on SocketException {
       throw ImageUploadException('No internet connection.');
     } catch (e) {

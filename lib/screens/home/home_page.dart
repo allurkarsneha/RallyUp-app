@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:rallyup/models/app_user.dart';
 import 'package:rallyup/models/booking.dart';
 import 'package:rallyup/models/court.dart';
+import 'package:rallyup/models/open_match.dart';
 import 'package:rallyup/models/user_location.dart';
 import 'package:rallyup/providers/auth_provider.dart';
 import 'package:rallyup/screens/booking_confirmed_page.dart';
@@ -23,6 +24,7 @@ import 'package:rallyup/services/booking_service.dart';
 import 'package:rallyup/services/court_service.dart';
 import 'package:rallyup/services/location_picker_handler.dart';
 import 'package:rallyup/services/location_service.dart';
+import 'package:rallyup/services/open_match_service.dart';
 import 'package:rallyup/services/user_service.dart';
 import 'package:rallyup/utils/sport_emoji.dart';
 
@@ -51,6 +53,7 @@ class _HomePageState extends State<HomePage> {
   final UserService _userService = UserService();
   final CourtService _courtService = CourtService();
   final BookingService _bookingService = BookingService();
+  final OpenMatchService _openMatchService = OpenMatchService();
   bool _locationCaptureStarted = false;
 
   // Maximum entries in the home preview row; "View all" goes to the
@@ -97,65 +100,6 @@ class _HomePageState extends State<HomePage> {
     'Swimming',
   ];
 
-  List<Map<String, String>> get _allSuggestedOpenMatches => [
-        {
-          'title': 'SCU Tennis Court A',
-          'sport': 'Tennis',
-          'emoji': '🎾',
-          'image': 'assets/images/player_details/open_matches/tennis_court.png',
-          'date': 'Mon, 17 Aug 2025',
-          'time': '6:00 PM',
-          'players': '3/4 players',
-          'location': 'SCU Tennis Court A',
-          'address': '500 El Camino Real, Santa Clara, CA',
-          'level': 'Intermediate',
-          'host': 'Alex',
-          'hostAvatar':
-              'assets/images/player_details/open_matches/alex_avatar.png',
-          'about':
-              'Looking for 1 more player for a fun evening doubles match. Let us have a great game!',
-          'spots': '1 spot left',
-        },
-        {
-          'title': 'Bay Badminton Area',
-          'sport': 'Badminton',
-          'emoji': '🏸',
-          'image':
-              'assets/images/player_details/open_matches/badminton_court.png',
-          'date': 'Mon, 18 Aug 2025',
-          'time': '6:00 PM',
-          'players': '2/4 players',
-          'location': 'Bay Badminton Arena',
-          'address': '123 Lawrence Expwy, Sunnyvale, CA',
-          'level': 'Beginner',
-          'host': 'Priya',
-          'hostAvatar':
-              'assets/images/player_details/open_matches/priya_avatar.png',
-          'about':
-              'Beginner-friendly doubles game. Looking for two more players to join and have a relaxed match.',
-          'spots': '2 spots left',
-        },
-        {
-          'title': 'Downtown Basketball Run',
-          'sport': 'Basketball',
-          'emoji': '🏀',
-          'image':
-              'assets/images/player_details/open_matches/basketball_court.png',
-          'date': 'Mon, 19 Aug 2025',
-          'time': '6:00 PM',
-          'players': '7/10 players',
-          'location': 'Downtown Basketball Court',
-          'address': '456 Market St, San Jose, CA',
-          'level': 'Casual',
-          'host': 'Kevin',
-          'hostAvatar':
-              'assets/images/player_details/open_matches/kevin_avatar.png',
-          'about':
-              'Weekend basketball run with a casual group. Open to all players who want to join.',
-          'spots': '3 spots left',
-        },
-      ];
-
   /// Returns the subset of streamed users that should appear in the
   /// home preview. When a specific sport is selected, players whose
   /// `sports` list contains that sport surface first; users with a
@@ -168,21 +112,20 @@ class _HomePageState extends State<HomePage> {
     final filtered = _selectedSport == 'All'
         ? users
         : users
-            .where(
-              (u) => u.sports.any(
-                (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
-              ),
-            )
-            .toList();
-    final ranked = filtered
-        .map((u) => _HomeRankedPlayer.from(u, myLocation))
-        .toList()
-      ..sort((a, b) {
-        if (a.sameCity != b.sameCity) return a.sameCity ? -1 : 1;
-        final aD = a.distanceKm ?? double.infinity;
-        final bD = b.distanceKm ?? double.infinity;
-        return aD.compareTo(bD);
-      });
+              .where(
+                (u) => u.sports.any(
+                  (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
+                ),
+              )
+              .toList();
+    final ranked =
+        filtered.map((u) => _HomeRankedPlayer.from(u, myLocation)).toList()
+          ..sort((a, b) {
+            if (a.sameCity != b.sameCity) return a.sameCity ? -1 : 1;
+            final aD = a.distanceKm ?? double.infinity;
+            final bD = b.distanceKm ?? double.infinity;
+            return aD.compareTo(bD);
+          });
     return ranked.length > _homeNearbyPreviewLimit
         ? ranked.sublist(0, _homeNearbyPreviewLimit)
         : ranked;
@@ -217,12 +160,12 @@ class _HomePageState extends State<HomePage> {
     final filtered = _selectedSport == 'All'
         ? courts
         : courts
-            .where(
-              (c) => c.sportTypes.any(
-                (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
-              ),
-            )
-            .toList();
+              .where(
+                (c) => c.sportTypes.any(
+                  (s) => s.toLowerCase() == _selectedSport.toLowerCase(),
+                ),
+              )
+              .toList();
     final ranked =
         filtered.map((c) => _HomeRankedCourt.from(c, myLocation)).toList()
           ..sort((a, b) {
@@ -237,11 +180,49 @@ class _HomePageState extends State<HomePage> {
         : ranked;
   }
 
-  List<Map<String, String>> get _filteredSuggestedOpenMatches {
-    if (_selectedSport == 'All') return _allSuggestedOpenMatches;
-    return _allSuggestedOpenMatches
-        .where((match) => match['sport'] == _selectedSport)
-        .toList();
+  /// Filter the real open-matches stream by the selected sport chip
+  /// and drop cancelled/full so the rail only surfaces joinable
+  /// matches. Also hides:
+  ///   * matches hosted by [currentUid] — they belong in MyBookings.
+  ///   * matches [currentUid] has already joined — showing them here
+  ///     let users tap "Join" on a match they were already in.
+  /// Capped to six per spec.
+  List<OpenMatch> _rankOpenMatchesForHome(
+    List<OpenMatch> matches,
+    String? currentUid,
+  ) {
+    final now = DateTime.now();
+    final filtered = matches.where((m) {
+      if (m.isCancelled) return false;
+      if (m.isFull) return false;
+      // Drop matches that have already ended. Combine `date`
+      // (midnight) with `endTime` ("HH:mm") so a 5–6 PM match
+      // disappears at 6 PM, not at midnight.
+      final endParts = m.endTime.split(':');
+      final endH = int.tryParse(endParts.isNotEmpty ? endParts[0] : '') ?? 0;
+      final endMin = int.tryParse(endParts.length > 1 ? endParts[1] : '') ?? 0;
+      final endsAt = DateTime(
+        m.date.year,
+        m.date.month,
+        m.date.day,
+        endH,
+        endMin,
+      );
+      if (!endsAt.isAfter(now)) return false;
+      if (currentUid != null) {
+        if (m.hostUid == currentUid) return false;
+        if (m.joinedPlayerIds.contains(currentUid)) return false;
+      }
+      if (_selectedSport != 'All' &&
+          m.sportType.toLowerCase() != _selectedSport.toLowerCase()) {
+        return false;
+      }
+      return true;
+    }).toList();
+    const homeMatchesLimit = 6;
+    return filtered.length > homeMatchesLimit
+        ? filtered.sublist(0, homeMatchesLimit)
+        : filtered;
   }
 
   String _getSportImagePath(String sport) {
@@ -453,9 +434,30 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  DateTime _startOfToday() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
+  /// Combines `booking.date` (midnight) with `booking.endTime`
+  /// ("HH:mm") so a still-running booking stays in the Home rail up
+  /// to the actual end time, not just up to today's midnight.
+  /// Mirrors MyBookingsPage so the same row leads both lists.
+  DateTime _bookingEndDateTime(Booking booking) {
+    final parts = booking.endTime.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    return DateTime(
+      booking.date.year,
+      booking.date.month,
+      booking.date.day,
+      h,
+      m,
+    );
+  }
+
+  /// Same end-time computation for an [OpenMatch] — `date` + `endTime`
+  /// pairs across both the booking and open-match shapes.
+  DateTime _matchEndDateTime(OpenMatch match) {
+    final parts = match.endTime.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    return DateTime(match.date.year, match.date.month, match.date.day, h, m);
   }
 
   String _fmtClock(BuildContext context, String hhmm) {
@@ -463,8 +465,9 @@ class _HomePageState extends State<HomePage> {
     if (parts.length != 2) return hhmm;
     final h = int.tryParse(parts[0]) ?? 0;
     final m = int.tryParse(parts[1]) ?? 0;
-    return MaterialLocalizations.of(context)
-        .formatTimeOfDay(TimeOfDay(hour: h, minute: m));
+    return MaterialLocalizations.of(
+      context,
+    ).formatTimeOfDay(TimeOfDay(hour: h, minute: m));
   }
 
   void _openBookingDetails(Booking booking) {
@@ -477,6 +480,20 @@ class _HomePageState extends State<HomePage> {
         },
       ),
     );
+  }
+
+  /// Dispatches Home rail card taps to the right detail page based on
+  /// which side of the row union is populated. Private bookings go
+  /// to BookingConfirmedPage; open matches go to MatchDetailsPage —
+  /// same routing rule MyBookingsPage uses.
+  void _openHomeBookingRow(_HomeBookingRow row) {
+    final booking = row.booking;
+    final match = row.match;
+    if (booking != null) {
+      _openBookingDetails(booking);
+    } else if (match != null) {
+      _openMatchDetailsPage(match);
+    }
   }
 
   void _openCourtDetails(_HomeRankedCourt ranked) {
@@ -494,25 +511,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _openMatchDetailsPage(Map<String, String> match) {
+  void _openMatchDetailsPage(OpenMatch match) {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => MatchDetailsPage(
-          title: match['title']!,
-          sport: match['sport']!,
-          sportEmoji: match['emoji']!,
-          when: '${match['date']}, ${match['time']}',
-          location: match['location']!,
-          address: match['address']!,
-          players: match['players']!.replaceAll(' players', ''),
-          level: match['level']!,
-          host: match['host']!,
-          imagePath: match['image']!,
-          hostAvatarPath: match['hostAvatar']!,
-          about: match['about']!,
-          spotsLeftLabel: match['spots']!,
-        ),
+        pageBuilder: (_, _, _) => MatchDetailsPage(match: match),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -531,12 +534,10 @@ class _HomePageState extends State<HomePage> {
     if (currentUser == null) {
       return const SizedBox.shrink();
     }
-    final suggestedOpenMatches = _filteredSuggestedOpenMatches;
     final firstName = currentUser.firstName;
     final initials = currentUser.initials;
     final avatarId = currentUser.avatarId;
-    final locationLabel =
-        currentUser.location?.displayLabel ?? 'Set location';
+    final locationLabel = currentUser.location?.displayLabel ?? 'Set location';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -558,10 +559,7 @@ class _HomePageState extends State<HomePage> {
               ),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'All Sports',
-                  style: AppTextStyles.sectionTitle,
-                ),
+                child: Text('All Sports', style: AppTextStyles.sectionTitle),
               ),
             ),
             const SizedBox(height: 14),
@@ -615,111 +613,174 @@ class _HomePageState extends State<HomePage> {
                   SizedBox(
                     height: 232,
                     child: StreamBuilder<List<Booking>>(
-                      stream:
-                          _bookingService.streamBookingsForUser(currentUser.uid),
-                      builder: (context, snapshot) {
-                        final waitingFirst = snapshot.connectionState ==
-                                ConnectionState.waiting &&
-                            !snapshot.hasData;
-                        if (waitingFirst) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        final todayStart = _startOfToday();
-                        final upcoming = (snapshot.data ?? const <Booking>[])
-                            .where((b) =>
-                                !b.isCancelled &&
-                                !b.date.isBefore(todayStart))
-                            .toList()
-                          // Soonest first matches MyBookingsPage's
-                          // upcoming-tab ordering.
-                          ..sort((a, b) {
-                            final byDate = a.date.compareTo(b.date);
-                            if (byDate != 0) return byDate;
-                            return a.startTime.compareTo(b.startTime);
-                          });
-                        // Filter by selected sport AFTER the upcoming
-                        // filter so the rail still shows other-sport
-                        // bookings when "All" is selected.
-                        final filtered = _selectedSport == 'All'
-                            ? upcoming
-                            : upcoming
-                                .where((b) =>
-                                    b.sportType.toLowerCase() ==
-                                    _selectedSport.toLowerCase())
-                                .toList();
-                        final preview = filtered.take(6).toList();
-
-                        if (preview.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.pageHorizontal,
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(18),
-                                border:
-                                    Border.all(color: AppColors.border),
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'No bookings yet',
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Book a court to see it here',
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-
-                        return ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.pageHorizontal,
+                      stream: _bookingService.streamBookingsForUser(
+                        currentUser.uid,
+                      ),
+                      builder: (context, bookingSnap) {
+                        return StreamBuilder<List<OpenMatch>>(
+                          stream: _openMatchService.streamMatchesForUser(
+                            currentUser.uid,
                           ),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: preview.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(width: 16),
-                          itemBuilder: (context, index) {
-                            final booking = preview[index];
-                            final dateText = DateFormat(
-                              'EEE, MMM d',
-                            ).format(booking.date);
-                            final timeText =
-                                '${_fmtClock(context, booking.startTime)}'
-                                ' - '
-                                '${_fmtClock(context, booking.endTime)}';
-                            return BookingPreviewCard(
-                              imageUrl: booking.courtImageUrl,
-                              title: booking.courtName,
-                              sport:
-                                  '${sportEmojiFor(booking.sportType)}  '
-                                  '${booking.sportType}',
-                              dateText: dateText,
-                              timeText: timeText,
-                              onTap: () => _openBookingDetails(booking),
-                              onViewDetailsTap: () =>
-                                  _openBookingDetails(booking),
+                          builder: (context, matchSnap) {
+                            // Only show the spinner while BOTH streams are
+                            // still waiting on their first frame — once
+                            // either side has data the rail can render
+                            // partial results instead of blocking.
+                            final bothWaiting =
+                                bookingSnap.connectionState ==
+                                    ConnectionState.waiting &&
+                                !bookingSnap.hasData &&
+                                matchSnap.connectionState ==
+                                    ConnectionState.waiting &&
+                                !matchSnap.hasData;
+                            if (bothWaiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            final now = DateTime.now();
+                            final bookings =
+                                bookingSnap.data ?? const <Booking>[];
+                            final matches =
+                                matchSnap.data ?? const <OpenMatch>[];
+
+                            final rows = <_HomeBookingRow>[];
+
+                            // Private bookings: same upcoming rule as
+                            // MyBookingsPage — confirmed + endDateTime
+                            // still in the future. Cancelled rows
+                            // drop out of the rail entirely.
+                            for (final b in bookings) {
+                              if (b.isCancelled) continue;
+                              if (!b.isConfirmed) continue;
+                              final endsAt = _bookingEndDateTime(b);
+                              if (!endsAt.isAfter(now)) continue;
+                              rows.add(
+                                _HomeBookingRow(
+                                  endsAt: endsAt,
+                                  startTime: b.startTime,
+                                  sportType: b.sportType,
+                                  booking: b,
+                                ),
+                              );
+                            }
+
+                            // Open matches I host or joined: same
+                            // upcoming rule the MyBookings rail uses.
+                            // Cancelled and past matches are skipped.
+                            for (final m in matches) {
+                              if (m.isCancelled) continue;
+                              final isHost = m.hostUid == currentUser.uid;
+                              final isJoined = m.joinedPlayerIds.contains(
+                                currentUser.uid,
+                              );
+                              if (!isHost && !isJoined) continue;
+                              final endsAt = _matchEndDateTime(m);
+                              if (!endsAt.isAfter(now)) continue;
+                              rows.add(
+                                _HomeBookingRow(
+                                  endsAt: endsAt,
+                                  startTime: m.startTime,
+                                  sportType: m.sportType,
+                                  match: m,
+                                ),
+                              );
+                            }
+
+                            // Sport chip filter is applied after the
+                            // upcoming filter, same way as the prior
+                            // bookings-only path, so switching sports
+                            // doesn't drop unrelated bookings out of
+                            // the "All" view.
+                            final filtered = _selectedSport == 'All'
+                                ? rows
+                                : rows
+                                      .where(
+                                        (r) =>
+                                            r.sportType.toLowerCase() ==
+                                            _selectedSport.toLowerCase(),
+                                      )
+                                      .toList();
+                            // Soonest end-time first — matches the
+                            // MyBookingsPage upcoming-tab ordering so
+                            // the same row leads both lists.
+                            filtered.sort((a, b) {
+                              final byEnd = a.endsAt.compareTo(b.endsAt);
+                              if (byEnd != 0) return byEnd;
+                              return a.startTime.compareTo(b.startTime);
+                            });
+                            final preview = filtered.take(6).toList();
+
+                            if (preview.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.pageHorizontal,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'No bookings yet',
+                                          style: AppTextStyles.bodyMedium
+                                              .copyWith(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Book a court to see it here',
+                                          style: AppTextStyles.bodyMedium
+                                              .copyWith(
+                                                fontSize: 13,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.pageHorizontal,
+                              ),
+                              scrollDirection: Axis.horizontal,
+                              itemCount: preview.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: 16),
+                              itemBuilder: (context, index) {
+                                final row = preview[index];
+                                final dateText = DateFormat(
+                                  'EEE, MMM d',
+                                ).format(row.date);
+                                final timeText =
+                                    '${_fmtClock(context, row.startTime)}'
+                                    ' - '
+                                    '${_fmtClock(context, row.endTime)}';
+                                return BookingPreviewCard(
+                                  imageUrl: row.imageUrl,
+                                  title: row.title,
+                                  sport:
+                                      '${sportEmojiFor(row.sportType)}  '
+                                      '${row.sportType}',
+                                  dateText: dateText,
+                                  timeText: timeText,
+                                  onTap: () => _openHomeBookingRow(row),
+                                  onViewDetailsTap: () =>
+                                      _openHomeBookingRow(row),
+                                );
+                              },
                             );
                           },
                         );
@@ -741,8 +802,8 @@ class _HomePageState extends State<HomePage> {
                       builder: (context, snapshot) {
                         final waitingFirst =
                             snapshot.connectionState ==
-                                    ConnectionState.waiting &&
-                                !snapshot.hasData;
+                                ConnectionState.waiting &&
+                            !snapshot.hasData;
                         if (waitingFirst) {
                           return const Center(
                             child: CircularProgressIndicator(),
@@ -761,8 +822,7 @@ class _HomePageState extends State<HomePage> {
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(18),
-                                border:
-                                    Border.all(color: AppColors.border),
+                                border: Border.all(color: AppColors.border),
                               ),
                               child: Center(
                                 child: Text(
@@ -781,8 +841,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           scrollDirection: Axis.horizontal,
                           itemCount: ranked.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(width: 16),
+                          separatorBuilder: (_, _) => const SizedBox(width: 16),
                           itemBuilder: (context, index) {
                             final r = ranked[index];
                             final subtitleParts = <String>[
@@ -795,8 +854,7 @@ class _HomePageState extends State<HomePage> {
                               initials: r.user.initials,
                               photoUrl: r.user.photoUrl,
                               avatarId: r.user.avatarId,
-                              onConnectTap: () =>
-                                  _openPlayerProfileFromHome(r),
+                              onConnectTap: () => _openPlayerProfileFromHome(r),
                             );
                           },
                         );
@@ -814,7 +872,8 @@ class _HomePageState extends State<HomePage> {
                     child: StreamBuilder<List<Court>>(
                       stream: _courtService.streamActiveCourts(),
                       builder: (context, snapshot) {
-                        final waitingFirst = snapshot.connectionState ==
+                        final waitingFirst =
+                            snapshot.connectionState ==
                                 ConnectionState.waiting &&
                             !snapshot.hasData;
                         if (waitingFirst) {
@@ -835,8 +894,7 @@ class _HomePageState extends State<HomePage> {
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(18),
-                                border:
-                                    Border.all(color: AppColors.border),
+                                border: Border.all(color: AppColors.border),
                               ),
                               child: Center(
                                 child: Text(
@@ -855,8 +913,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           scrollDirection: Axis.horizontal,
                           itemCount: ranked.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(width: 16),
+                          separatorBuilder: (_, _) => const SizedBox(width: 16),
                           itemBuilder: (context, index) {
                             final r = ranked[index];
                             // Sport label: when a sport is selected
@@ -864,14 +921,17 @@ class _HomePageState extends State<HomePage> {
                             // the court's first sport so the rail
                             // never reads as "Tennis" for a basketball
                             // court.
-                            final sportLabel = _selectedSport != 'All' &&
-                                    r.court.sportTypes.any((s) =>
-                                        s.toLowerCase() ==
-                                        _selectedSport.toLowerCase())
+                            final sportLabel =
+                                _selectedSport != 'All' &&
+                                    r.court.sportTypes.any(
+                                      (s) =>
+                                          s.toLowerCase() ==
+                                          _selectedSport.toLowerCase(),
+                                    )
                                 ? _selectedSport
                                 : (r.court.sportTypes.isNotEmpty
-                                    ? r.court.sportTypes.first
-                                    : 'Tennis');
+                                      ? r.court.sportTypes.first
+                                      : 'Tennis');
                             return HomeSuggestedCourtPreviewCard(
                               imageUrl: r.court.imageUrls.isNotEmpty
                                   ? r.court.imageUrls.first
@@ -879,8 +939,9 @@ class _HomePageState extends State<HomePage> {
                               sport:
                                   '${sportEmojiFor(sportLabel)}  $sportLabel',
                               distanceText: r.distanceText,
-                              ratingText: (r.court.rating ?? 0)
-                                  .toStringAsFixed(1),
+                              ratingText: (r.court.rating ?? 0).toStringAsFixed(
+                                1,
+                              ),
                               onViewDetailsTap: () => _openCourtDetails(r),
                             );
                           },
@@ -896,8 +957,24 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 252,
-                    child: suggestedOpenMatches.isEmpty
-                        ? Padding(
+                    child: StreamBuilder<List<OpenMatch>>(
+                      stream: _openMatchService.streamOpenMatches(),
+                      builder: (context, snapshot) {
+                        final waitingFirst =
+                            snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            !snapshot.hasData;
+                        if (waitingFirst) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final matches = _rankOpenMatchesForHome(
+                          snapshot.data ?? const <OpenMatch>[],
+                          currentUser.uid,
+                        );
+                        if (matches.isEmpty) {
+                          return Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.pageHorizontal,
                             ),
@@ -909,36 +986,46 @@ class _HomePageState extends State<HomePage> {
                               ),
                               child: Center(
                                 child: Text(
-                                  'No open matches for this sport',
+                                  _selectedSport == 'All'
+                                      ? 'No open matches yet'
+                                      : 'No open matches for this sport',
                                   style: AppTextStyles.bodyMedium.copyWith(
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
                               ),
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.pageHorizontal,
-                            ),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: suggestedOpenMatches.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 16),
-                            itemBuilder: (context, index) {
-                              final match = suggestedOpenMatches[index];
-                              return HomeSuggestedOpenMatchPreviewCard(
-                                imagePath: match['image']!,
-                                title: match['title']!,
-                                sport: match['sport']!,
-                                players: match['players']!,
-                                dateText: match['date']!,
-                                timeText: match['time']!,
-                                onViewDetailsTap: () =>
-                                    _openMatchDetailsPage(match),
-                              );
-                            },
+                          );
+                        }
+                        return ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.pageHorizontal,
                           ),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: matches.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final m = matches[index];
+                            final dateText = DateFormat(
+                              'EEE, MMM d',
+                            ).format(m.date);
+                            final timeText = _fmtClock(context, m.startTime);
+                            final emoji = sportEmojiFor(m.sportType);
+                            return HomeSuggestedOpenMatchPreviewCard(
+                              imageUrl: m.courtImageUrl.isEmpty
+                                  ? null
+                                  : m.courtImageUrl,
+                              title: m.courtName,
+                              sport: '$emoji  ${m.sportType}',
+                              players: '${m.joinedCount}/${m.playersRequired}',
+                              dateText: dateText,
+                              timeText: timeText,
+                              onViewDetailsTap: () => _openMatchDetailsPage(m),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -947,6 +1034,46 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+}
+
+/// Unified Home rail row used by the merged bookings + open-matches
+/// stream. Exactly one of [booking] or [match] is non-null. Letting
+/// both shapes flow through a single ListView keeps private bookings
+/// and open matches interleaved by end time without merging the two
+/// Firestore collections at the storage layer.
+///
+/// The status mapping per spec is:
+///   * private booking → "Confirmed"
+///   * open match where I'm the host → "Hosting"
+///   * open match I joined → "Joined"
+///
+/// The current [BookingPreviewCard] doesn't expose a tag slot, so the
+/// status is conceptual rather than rendered — preserving the
+/// existing Home rail card UI exactly as it was.
+class _HomeBookingRow {
+  final DateTime endsAt;
+  final String startTime;
+  final String sportType;
+  final Booking? booking;
+  final OpenMatch? match;
+
+  _HomeBookingRow({
+    required this.endsAt,
+    required this.startTime,
+    required this.sportType,
+    this.booking,
+    this.match,
+  });
+
+  DateTime get date => booking?.date ?? match!.date;
+  String get endTime => booking?.endTime ?? match!.endTime;
+  String get title => booking?.courtName ?? match!.courtName;
+  String? get imageUrl {
+    final b = booking;
+    if (b != null) return b.courtImageUrl;
+    final m = match!;
+    return m.courtImageUrl.isEmpty ? null : m.courtImageUrl;
   }
 }
 
@@ -1016,8 +1143,14 @@ class _HomeRankedPlayer {
     }
     return _HomeRankedPlayer(
       user: u,
-      distanceKm: _haversineKm(me.lat, me.lng, u.location!.lat, u.location!.lng),
-      sameCity: u.location!.city.isNotEmpty &&
+      distanceKm: _haversineKm(
+        me.lat,
+        me.lng,
+        u.location!.lat,
+        u.location!.lng,
+      ),
+      sameCity:
+          u.location!.city.isNotEmpty &&
           u.location!.city.toLowerCase() == me.city.toLowerCase(),
     );
   }
@@ -1037,7 +1170,8 @@ double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
   double toRad(double d) => d * math.pi / 180;
   final dLat = toRad(lat2 - lat1);
   final dLng = toRad(lng2 - lng1);
-  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+  final a =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
       math.cos(toRad(lat1)) *
           math.cos(toRad(lat2)) *
           math.sin(dLng / 2) *
@@ -1062,16 +1196,13 @@ class _HomeRankedCourt {
 
   factory _HomeRankedCourt.from(Court court, UserLocation? me) {
     if (me == null) {
-      return _HomeRankedCourt(
-        court: court,
-        distanceKm: null,
-        sameCity: false,
-      );
+      return _HomeRankedCourt(court: court, distanceKm: null, sameCity: false);
     }
     return _HomeRankedCourt(
       court: court,
       distanceKm: _haversineKm(me.lat, me.lng, court.lat, court.lng),
-      sameCity: me.city.isNotEmpty &&
+      sameCity:
+          me.city.isNotEmpty &&
           me.city.toLowerCase() == court.city.toLowerCase(),
     );
   }

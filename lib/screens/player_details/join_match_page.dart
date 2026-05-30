@@ -4,7 +4,6 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/player_details/player_details_components.dart';
-import 'match_joined_page.dart';
 
 class JoinMatchPage extends StatelessWidget {
   const JoinMatchPage({super.key});
@@ -55,32 +54,22 @@ class JoinMatchPage extends StatelessWidget {
                     PlayerDetailsPrimaryButton(
                       label: 'Yes, Join',
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          PageRouteBuilder<void>(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    const MatchJoinedPage(),
-                            transitionsBuilder:
-                                (
-                                  context,
-                                  animation,
-                                  secondaryAnimation,
-                                  child,
-                                ) {
-                                  return FadeTransition(
-                                    opacity: animation,
-                                    child: child,
-                                  );
-                                },
-                            transitionDuration: const Duration(
-                              milliseconds: 220,
-                            ),
-                            reverseTransitionDuration: const Duration(
-                              milliseconds: 180,
+                        // Legacy entry point — the real join flow now
+                        // lives inside MatchDetailsPage, which calls
+                        // OpenMatchService.joinOpenMatch and pushes
+                        // MatchJoinedPage(match: ...). This screen is
+                        // not wired into the active route stack, but
+                        // we keep its UI compilable so any orphan
+                        // navigation still pops back cleanly.
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Open Match data unavailable from this screen. '
+                              'Tap an open match from the Open Matches tab.',
                             ),
                           ),
                         );
+                        Navigator.maybePop(context);
                       },
                     ),
                     const SizedBox(height: AppSpacing.sm),

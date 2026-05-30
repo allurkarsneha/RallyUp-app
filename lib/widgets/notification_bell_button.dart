@@ -54,11 +54,7 @@ class NotificationBellButton extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Icon(
-            Icons.notifications_none_rounded,
-            size: size,
-            color: color,
-          ),
+          Icon(Icons.notifications_none_rounded, size: size, color: color),
           if (me != null)
             // Only subscribe to the unread stream when a user is
             // signed in. When signed out we still show the bell (a
@@ -69,8 +65,7 @@ class NotificationBellButton extends StatelessWidget {
               right: -2,
               top: -1,
               child: StreamBuilder<int>(
-                stream:
-                    NotificationService().streamUnreadCount(me.uid),
+                stream: NotificationService().streamUnreadCount(me.uid),
                 builder: (context, snap) {
                   final count = snap.data ?? 0;
                   if (count <= 0) return const SizedBox.shrink();
@@ -80,10 +75,7 @@ class NotificationBellButton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.brightGreen,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.surface,
-                        width: 2,
-                      ),
+                      border: Border.all(color: AppColors.surface, width: 2),
                     ),
                   );
                 },

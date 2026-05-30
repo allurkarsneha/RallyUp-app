@@ -109,10 +109,7 @@ class _OtpScreenState extends State<OtpScreen> {
               const SizedBox(height: 10),
               Text(
                 'Sent to ${widget.phoneNumber}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.grayText,
-                ),
+                style: const TextStyle(fontSize: 14, color: AppColors.grayText),
               ),
               const SizedBox(height: 28),
               LoginTextField(

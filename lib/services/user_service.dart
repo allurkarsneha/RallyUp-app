@@ -7,7 +7,8 @@ class UserService {
 
   UserService({FirebaseFirestore? db}) : _db = db ?? FirebaseFirestore.instance;
 
-  CollectionReference<Map<String, dynamic>> get _users => _db.collection('users');
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _db.collection('users');
 
   Future<AppUser?> getUser(String uid) async {
     final snap = await _users.doc(uid).get();

@@ -12,7 +12,7 @@ class NotificationService {
   final FirebaseFirestore _db;
 
   NotificationService({FirebaseFirestore? db})
-      : _db = db ?? FirebaseFirestore.instance;
+    : _db = db ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _notifications =>
       _db.collection('notifications');
@@ -22,12 +22,12 @@ class NotificationService {
   /// treated as "now" — so a freshly-written notification stays at
   /// the top until the server confirms its timestamp.
   Stream<List<AppNotification>> streamNotificationsForUser(String userId) {
-    return _notifications
-        .where('userId', isEqualTo: userId)
-        .snapshots()
-        .map((snap) {
-      final list =
-          snap.docs.map((doc) => AppNotification.fromDoc(doc)).toList();
+    return _notifications.where('userId', isEqualTo: userId).snapshots().map((
+      snap,
+    ) {
+      final list = snap.docs
+          .map((doc) => AppNotification.fromDoc(doc))
+          .toList();
       list.sort((a, b) {
         final aT = a.createdAt ?? DateTime.now();
         final bT = b.createdAt ?? DateTime.now();

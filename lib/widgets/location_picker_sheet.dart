@@ -99,17 +99,15 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
             borderRadius: index == 0
                 ? const BorderRadius.vertical(top: Radius.circular(20))
                 : index == locations.length - 1
-                    ? const BorderRadius.vertical(bottom: Radius.circular(20))
-                    : BorderRadius.zero,
+                ? const BorderRadius.vertical(bottom: Radius.circular(20))
+                : BorderRadius.zero,
             onTap: () => _pickManual(location),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 border: index == locations.length - 1
                     ? null
-                    : const Border(
-                        bottom: BorderSide(color: AppColors.border),
-                      ),
+                    : const Border(bottom: BorderSide(color: AppColors.border)),
               ),
               child: Row(
                 children: [

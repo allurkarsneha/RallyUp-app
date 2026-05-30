@@ -1,7 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/login_text_field.dart';
@@ -58,9 +59,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _busy = true);
     try {
       await context.read<AuthService>().signInWithEmail(
-            email: email,
-            password: password,
-          );
+        email: email,
+        password: password,
+      );
       if (!mounted) return;
       // AuthProvider's listener will detect the auth user and the gate
       // will route to MainShell (or onboarding if no profile yet).
@@ -93,6 +94,98 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const PhoneScreen()),
+    );
+  }
+
+  /// Forgot-password flow. Prefills the email from the login form
+  /// if the user already typed one, lets them confirm/edit it, then
+  /// calls `AuthProvider.sendPasswordResetEmail`. We show a generic
+  /// "if an account exists" message regardless of the actual result
+  /// so we don't leak which emails are registered.
+  Future<void> _openForgotPasswordDialog() async {
+    final controller = TextEditingController(text: emailController.text.trim());
+    final email = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        String? localError;
+        bool sending = false;
+        return StatefulBuilder(
+          builder: (statefulContext, setLocal) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: const Text('Reset password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "We'll email you a secure link to set a new "
+                    'password.',
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.emailAddress,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      errorText: localError,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: sending
+                      ? null
+                      : () => Navigator.pop(dialogContext, null),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: sending
+                      ? null
+                      : () async {
+                          final entered = controller.text.trim();
+                          if (entered.isEmpty || !_isValidEmail(entered)) {
+                            setLocal(() => localError = 'Enter a valid email');
+                            return;
+                          }
+                          setLocal(() {
+                            sending = true;
+                            localError = null;
+                          });
+                          final err = await context
+                              .read<AuthProvider>()
+                              .sendPasswordResetEmail(entered);
+                          if (!statefulContext.mounted) return;
+                          if (err != null) {
+                            setLocal(() {
+                              sending = false;
+                              localError = err;
+                            });
+                            return;
+                          }
+                          Navigator.pop(dialogContext, entered);
+                        },
+                  child: const Text('Send link'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    if (!mounted || email == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'If an account exists for $email, a reset link is on its way.',
+        ),
+      ),
     );
   }
 
@@ -132,10 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 34),
 
-                LoginTextField(
-                  label: 'Email',
-                  controller: emailController,
-                ),
+                LoginTextField(label: 'Email', controller: emailController),
 
                 if (emailError != null) ...[
                   const SizedBox(height: 8),
@@ -169,14 +259,38 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
 
-                const SizedBox(height: 60),
+                const SizedBox(height: 12),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _busy ? null : _openForgotPasswordDialog,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 36),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: AppColors.darkGreen,
+                    ),
+                    child: const Text(
+                      'Forgot password?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 36),
 
                 Center(
                   child: PrimaryButton(
                     text: _busy ? 'Logging in…' : 'Login',
                     width: 230,
                     height: 56,
-                    backgroundColor: AppColors.darkGreen.withValues(alpha: 0.75),
+                    backgroundColor: AppColors.darkGreen.withValues(
+                      alpha: 0.75,
+                    ),
                     onPressed: _busy ? () {} : _login,
                   ),
                 ),

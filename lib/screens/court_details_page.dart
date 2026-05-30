@@ -143,11 +143,13 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
   Widget build(BuildContext context) {
     final court = widget.court;
     final emoji = sportEmojiFor(_selectedSport);
-    final ratingText =
-        court.rating == null ? '—' : court.rating!.toStringAsFixed(1);
+    final ratingText = court.rating == null
+        ? '—'
+        : court.rating!.toStringAsFixed(1);
     final priceText = '\$${court.pricePerHour.toStringAsFixed(0)}/hr';
-    final locationText =
-        court.city.isEmpty ? court.address : '${court.city}, ${court.region}';
+    final locationText = court.city.isEmpty
+        ? court.address
+        : '${court.city}, ${court.region}';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -194,10 +196,7 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                   // single fixed image when only one, placeholder
                   // when none. Keeps the same 210px image area the
                   // page had with a single Image.asset before.
-                  CourtImageCarousel(
-                    imageUrls: court.imageUrls,
-                    height: 210,
-                  ),
+                  CourtImageCarousel(imageUrls: court.imageUrls, height: 210),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.pageHorizontal,
@@ -273,8 +272,7 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                             const SizedBox(width: 10),
                             const Text(
                               '•',
-                              style:
-                                  TextStyle(color: AppColors.textSecondary),
+                              style: TextStyle(color: AppColors.textSecondary),
                             ),
                             const SizedBox(width: 10),
                             Flexible(
@@ -366,8 +364,7 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
                               _buildSelectableChip(
                                 label: s,
                                 isSelected: _selectedSport == s,
-                                onTap: () =>
-                                    setState(() => _selectedSport = s),
+                                onTap: () => setState(() => _selectedSport = s),
                               ),
                           ],
                         ),

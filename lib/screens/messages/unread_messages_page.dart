@@ -9,17 +9,23 @@ import '../../services/user_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/courts/court_network_image.dart';
 import '../../widgets/player_details/messages/messages_widgets.dart';
 import '../../widgets/user_avatar.dart';
+import '../player_details/group_chat_page.dart';
 import '../player_details/message_page.dart';
 import 'group_messages_page.dart';
 
-/// Unread Messages tab. Streams the same thread collection as the main
-/// Messages tab and filters to threads where the current user hasn't
-/// seen the latest message yet (see [ChatThread.isUnreadFor]).
+/// Unread Messages tab. Streams BOTH direct and group threads the
+/// signed-in user participates in, filters client-side to
+/// [ChatThread.isUnreadFor], and routes each row to its proper
+/// detail screen:
 ///
-/// Intentionally simple — no per-thread unread counts (we don't track
-/// per-message read state), no group threads, no read receipts UI.
+///   * Direct unread → MessagePage(otherUser).
+///   * Group unread → GroupChatPage(threadId).
+///
+/// Mark-as-read still only fires when the user actually opens the
+/// underlying chat page. Visiting this list doesn't clear unread.
 class UnreadMessagesPage extends StatefulWidget {
   const UnreadMessagesPage({super.key});
 
@@ -30,8 +36,10 @@ class UnreadMessagesPage extends StatefulWidget {
 class _UnreadMessagesPageState extends State<UnreadMessagesPage> {
   final ChatService _chatService = ChatService();
   final UserService _userService = UserService();
-  // Lookup cache for the other participant. Identical pattern to the
-  // main Messages tab so resolved users survive snapshot churn.
+
+  // Lookup cache for the other participant on direct threads.
+  // Identical pattern to the main Messages tab so resolved users
+  // survive snapshot churn.
   final Map<String, AppUser?> _userCache = {};
 
   Future<AppUser?> _resolveOther(String uid) async {
@@ -41,10 +49,14 @@ class _UnreadMessagesPageState extends State<UnreadMessagesPage> {
     return user;
   }
 
-  void _openThread(AppUser other) {
+  void _openDirectThread(AppUser other) {
+    Navigator.push(context, _fadeRoute<void>(MessagePage(otherUser: other)));
+  }
+
+  void _openGroupThread(ChatThread thread) {
     Navigator.push(
       context,
-      _fadeRoute<void>(MessagePage(otherUser: other)),
+      _fadeRoute<void>(GroupChatPage(threadId: thread.id)),
     );
   }
 
@@ -74,111 +86,146 @@ class _UnreadMessagesPageState extends State<UnreadMessagesPage> {
                         ),
                       ),
                     )
+                  // Nested StreamBuilders so we get unread direct +
+                  // unread group threads merged into one list. Both
+                  // streams already filter to threads where this user
+                  // is a participant; we just filter client-side to
+                  // `isUnreadFor` and sort by latest activity.
                   : StreamBuilder<List<ChatThread>>(
                       stream: _chatService.streamThreadsForUser(me.uid),
-                      builder: (context, snapshot) {
-                        final waitingFirst =
-                            snapshot.connectionState ==
-                                    ConnectionState.waiting &&
-                                !snapshot.hasData;
-                        final allThreads =
-                            snapshot.data ?? const <ChatThread>[];
-                        // Filter to threads the current user hasn't seen
-                        // the latest message of. `isUnreadFor` already
-                        // excludes threads whose latest message was sent
-                        // by the current user.
-                        final unread = allThreads
-                            .where((t) => t.isUnreadFor(me.uid))
-                            .toList();
-
-                        return ListView(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.pageHorizontal,
-                            AppSpacing.lg,
-                            AppSpacing.pageHorizontal,
-                            AppSpacing.xxl,
+                      builder: (context, directSnap) {
+                        return StreamBuilder<List<ChatThread>>(
+                          stream: _chatService.streamGroupThreadsForUser(
+                            me.uid,
                           ),
-                          children: [
-                            const MessageSearchBar(),
-                            const SizedBox(height: AppSpacing.md),
-                            MessageFilterTabs(
-                              selectedFilter: 'Unread',
-                              onAllTap: () => Navigator.maybePop(context),
-                              onUnreadTap: () {},
-                              onGroupsTap: () {
-                                Navigator.of(context).pushReplacement(
-                                  _fadeRoute<void>(
-                                    const GroupMessagesPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                            if (waitingFirst)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: AppSpacing.xxl,
-                                ),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              )
-                            else if (unread.isEmpty)
-                              Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: AppSpacing.xxl,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.mark_email_read_outlined,
-                                        size: 56,
-                                        color: AppColors.textSecondary
-                                            .withValues(alpha: 0.6),
-                                      ),
-                                      const SizedBox(
-                                          height: AppSpacing.md),
-                                      Text(
-                                        'No unread messages yet',
-                                        style: AppTextStyles.bodyMedium
-                                            .copyWith(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                          height: AppSpacing.xs),
-                                      Text(
-                                        "When you receive new messages, "
-                                        "they'll show up here.",
-                                        textAlign: TextAlign.center,
-                                        style: AppTextStyles.body.copyWith(
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else ...[
-                              Text(
-                                'Unread conversations',
-                                style: AppTextStyles.sectionTitle
-                                    .copyWith(fontSize: 18),
+                          builder: (context, groupSnap) {
+                            final bothWaiting =
+                                directSnap.connectionState ==
+                                    ConnectionState.waiting &&
+                                !directSnap.hasData &&
+                                groupSnap.connectionState ==
+                                    ConnectionState.waiting &&
+                                !groupSnap.hasData;
+                            final directThreads =
+                                directSnap.data ?? const <ChatThread>[];
+                            final groupThreads =
+                                groupSnap.data ?? const <ChatThread>[];
+                            // Filter to threads the current user
+                            // hasn't seen the latest message of.
+                            // `isUnreadFor` already excludes threads
+                            // whose latest message was sent by the
+                            // current user.
+                            final unread = <ChatThread>[
+                              ...directThreads.where(
+                                (t) => t.isUnreadFor(me.uid),
                               ),
-                              const SizedBox(height: AppSpacing.md),
-                              for (final thread in unread)
-                                _UnreadThreadTile(
-                                  key: ValueKey(thread.id),
-                                  thread: thread,
-                                  myUid: me.uid,
-                                  resolveOther: _resolveOther,
-                                  onTap: _openThread,
+                              ...groupThreads.where(
+                                (t) => t.isUnreadFor(me.uid),
+                              ),
+                            ];
+                            // Sort newest activity first.
+                            unread.sort((a, b) {
+                              final aT = a.lastMessageAt ?? a.updatedAt;
+                              final bT = b.lastMessageAt ?? b.updatedAt;
+                              return bT.compareTo(aT);
+                            });
+
+                            return ListView(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.pageHorizontal,
+                                AppSpacing.lg,
+                                AppSpacing.pageHorizontal,
+                                AppSpacing.xxl,
+                              ),
+                              children: [
+                                const MessageSearchBar(),
+                                const SizedBox(height: AppSpacing.md),
+                                MessageFilterTabs(
+                                  selectedFilter: 'Unread',
+                                  onAllTap: () => Navigator.maybePop(context),
+                                  onUnreadTap: () {},
+                                  onGroupsTap: () {
+                                    Navigator.of(context).pushReplacement(
+                                      _fadeRoute<void>(
+                                        const GroupMessagesPage(),
+                                      ),
+                                    );
+                                  },
                                 ),
-                            ],
-                          ],
+                                const SizedBox(height: AppSpacing.lg),
+                                if (bothWaiting)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: AppSpacing.xxl,
+                                    ),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                else if (unread.isEmpty)
+                                  Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: AppSpacing.xxl,
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.mark_email_read_outlined,
+                                            size: 56,
+                                            color: AppColors.textSecondary
+                                                .withValues(alpha: 0.6),
+                                          ),
+                                          const SizedBox(height: AppSpacing.md),
+                                          Text(
+                                            'No unread messages yet',
+                                            style: AppTextStyles.bodyMedium
+                                                .copyWith(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                          ),
+                                          const SizedBox(height: AppSpacing.xs),
+                                          Text(
+                                            "When you receive new messages, "
+                                            "they'll show up here.",
+                                            textAlign: TextAlign.center,
+                                            style: AppTextStyles.body.copyWith(
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                else ...[
+                                  Text(
+                                    'Unread conversations',
+                                    style: AppTextStyles.sectionTitle.copyWith(
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                  for (final thread in unread)
+                                    if (thread.isGroup)
+                                      _UnreadGroupTile(
+                                        key: ValueKey('group:${thread.id}'),
+                                        thread: thread,
+                                        onTap: () => _openGroupThread(thread),
+                                      )
+                                    else
+                                      _UnreadDirectTile(
+                                        key: ValueKey('direct:${thread.id}'),
+                                        thread: thread,
+                                        myUid: me.uid,
+                                        resolveOther: _resolveOther,
+                                        onTap: _openDirectThread,
+                                      ),
+                                ],
+                              ],
+                            );
+                          },
                         );
                       },
                     ),
@@ -201,17 +248,16 @@ PageRouteBuilder<T> _fadeRoute<T>(Widget page) {
   );
 }
 
-/// Per-row widget for the unread list. Mirrors the visual treatment of
-/// the unread variant in the main Messages tab (bolded name + last
-/// message, primary-tinted border, green dot) so the two views feel
-/// like the same conversation, just filtered.
-class _UnreadThreadTile extends StatefulWidget {
+/// Per-row widget for an unread DIRECT thread. Mirrors the visual
+/// treatment of the unread variant in the main Messages tab (bolded
+/// name + last message, primary-tinted border, green dot).
+class _UnreadDirectTile extends StatefulWidget {
   final ChatThread thread;
   final String myUid;
   final Future<AppUser?> Function(String uid) resolveOther;
   final void Function(AppUser other) onTap;
 
-  const _UnreadThreadTile({
+  const _UnreadDirectTile({
     super.key,
     required this.thread,
     required this.myUid,
@@ -220,10 +266,10 @@ class _UnreadThreadTile extends StatefulWidget {
   });
 
   @override
-  State<_UnreadThreadTile> createState() => _UnreadThreadTileState();
+  State<_UnreadDirectTile> createState() => _UnreadDirectTileState();
 }
 
-class _UnreadThreadTileState extends State<_UnreadThreadTile> {
+class _UnreadDirectTileState extends State<_UnreadDirectTile> {
   AppUser? _other;
   bool _loading = true;
   String? _resolvedUid;
@@ -235,7 +281,7 @@ class _UnreadThreadTileState extends State<_UnreadThreadTile> {
   }
 
   @override
-  void didUpdateWidget(covariant _UnreadThreadTile oldWidget) {
+  void didUpdateWidget(covariant _UnreadDirectTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     final otherUid = widget.thread.otherParticipant(widget.myUid);
     if (otherUid != _resolvedUid) _resolve();
@@ -362,6 +408,156 @@ class _UnreadThreadTileState extends State<_UnreadThreadTile> {
                                 color: AppColors.surface,
                                 width: 2,
                               ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Per-row widget for an unread GROUP thread. Mirrors the direct
+/// variant visually (primary-tinted border, green dot) but uses the
+/// match's court image + title from the thread snapshot.
+class _UnreadGroupTile extends StatelessWidget {
+  final ChatThread thread;
+  final VoidCallback onTap;
+
+  const _UnreadGroupTile({
+    super.key,
+    required this.thread,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(AppSpacing.cardRadius);
+    final title = (thread.title?.isNotEmpty == true)
+        ? thread.title!
+        : 'Open match group';
+    final preview = (thread.lastMessage?.isNotEmpty == true)
+        ? thread.lastMessage!
+        : 'New conversation';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: borderRadius,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: borderRadius,
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.16),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.black.withValues(alpha: 0.07),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    width: 54,
+                    height: 54,
+                    child: CourtNetworkImage(
+                      url: (thread.imageUrl?.isNotEmpty == true)
+                          ? thread.imageUrl
+                          : null,
+                      iconSize: 22,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            _formatThreadTime(thread.lastMessageAt),
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              preview,
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: AppColors.brightGreen,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.surface,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.groups_2_outlined,
+                            size: 15,
+                            color: AppColors.brightGreen,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Group chat',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],

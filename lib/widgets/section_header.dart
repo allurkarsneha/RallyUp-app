@@ -22,10 +22,7 @@ class SectionHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(
-            title,
-            style: AppTextStyles.sectionTitle,
-          ),
+          Text(title, style: AppTextStyles.sectionTitle),
           const Spacer(),
           InkWell(
             onTap: onViewAllTap,
@@ -35,10 +32,7 @@ class SectionHeader extends StatelessWidget {
                 horizontal: AppSpacing.xs,
                 vertical: 4,
               ),
-              child: Text(
-                actionLabel,
-                style: AppTextStyles.action,
-              ),
+              child: Text(actionLabel, style: AppTextStyles.action),
             ),
           ),
         ],

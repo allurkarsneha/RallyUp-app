@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../models/app_user.dart';
 import '../models/booking.dart';
+import '../models/open_match.dart';
 import '../providers/auth_provider.dart';
 import '../services/booking_service.dart';
+import '../services/invite_service.dart';
+import '../services/open_match_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
@@ -15,6 +19,7 @@ import '../widgets/notification_bell_button.dart';
 import '../widgets/side_menu_drawer.dart';
 import 'booking_confirmed_page.dart';
 import 'main_shell_nav.dart';
+import 'player_details/match_details_page.dart';
 
 /// Real bookings list for the signed-in user. Replaces the prior
 /// hard-coded `_upcomingBookings` / `_pastBookings` lists.
@@ -33,6 +38,8 @@ class MyBookingsPage extends StatefulWidget {
 
 class _MyBookingsPageState extends State<MyBookingsPage> {
   final BookingService _bookingService = BookingService();
+  final OpenMatchService _openMatchService = OpenMatchService();
+  final InviteService _inviteService = InviteService();
   bool _showUpcoming = true;
 
   void _openBookingDetails(Booking booking) {
@@ -45,6 +52,183 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         },
       ),
     );
+  }
+
+  void _openMatchDetails(OpenMatch match) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => MatchDetailsPage(match: match),
+        transitionsBuilder: (_, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  /// Bottom-sheet shown for an open match the current user HOSTS.
+  /// Cancels the match through the transactional
+  /// [OpenMatchService.cancelOpenMatch], which fans out
+  /// `typeOpenMatchCancelled` notifications to every other joined
+  /// player. Success → match flips to `cancelled`, MyBookings row
+  /// moves to Past with the "Cancelled" tag, public lists drop it.
+  void _openMatchHostOptions(OpenMatch match, AppUser host) {
+    if (match.isCancelled) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.cancel_outlined, color: Colors.red),
+                title: Text(
+                  'Cancel match',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red,
+                  ),
+                ),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(sheetContext);
+                  try {
+                    await _openMatchService.cancelOpenMatch(
+                      match: match,
+                      host: host,
+                    );
+                    // Sweep pending invites for the cancelled
+                    // match into the `cancelled` state so they
+                    // disappear from both the host's Sent and the
+                    // invitees' Received pending lists. Done from
+                    // the UI handler rather than OpenMatchService
+                    // to avoid a service-layer circular import
+                    // (InviteService → OpenMatchService).
+                    _inviteService
+                        .cancelInvitesForMatch(match.id)
+                        .catchError((_) {});
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Match cancelled')),
+                    );
+                  } on StateError catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(_cancelErrorText(e))),
+                    );
+                  } catch (_) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text("Couldn't cancel this match. Try again."),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Bottom-sheet shown for an open match the current user JOINED.
+  /// Removes the user from the parallel `joinedPlayerIds` /
+  /// `joinedPlayerNames` arrays inside a transaction so the host
+  /// can't race the leave with a cancel and produce a desynced doc.
+  void _openMatchJoinedOptions(OpenMatch match, AppUser user) {
+    if (match.isCancelled) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.exit_to_app_rounded,
+                  color: Colors.red,
+                ),
+                title: Text(
+                  'Leave match',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red,
+                  ),
+                ),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(sheetContext);
+                  try {
+                    await _openMatchService.leaveOpenMatch(
+                      match: match,
+                      user: user,
+                    );
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('You left the match')),
+                    );
+                  } on StateError catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(_leaveErrorText(e))),
+                    );
+                  } catch (_) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text("Couldn't leave this match. Try again."),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _cancelErrorText(StateError e) {
+    switch (e.message) {
+      case 'match-not-found':
+        return 'This match no longer exists.';
+      case 'not-host':
+        return "You're not the host of this match.";
+      case 'already-cancelled':
+        return 'This match is already cancelled.';
+      default:
+        return "Couldn't cancel this match. Try again.";
+    }
+  }
+
+  String _leaveErrorText(StateError e) {
+    switch (e.message) {
+      case 'match-not-found':
+        return 'This match no longer exists.';
+      case 'match-cancelled':
+        return 'The host cancelled this match.';
+      case 'host-cannot-leave':
+        return 'Hosts cancel the match instead of leaving.';
+      case 'not-joined':
+        return "You aren't part of this match.";
+      default:
+        return "Couldn't leave this match. Try again.";
+    }
   }
 
   void _openBookingOptions(Booking booking) {
@@ -109,8 +293,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     if (parts.length != 2) return hhmm;
     final h = int.tryParse(parts[0]) ?? 0;
     final m = int.tryParse(parts[1]) ?? 0;
-    return MaterialLocalizations.of(context)
-        .formatTimeOfDay(TimeOfDay(hour: h, minute: m));
+    return MaterialLocalizations.of(
+      context,
+    ).formatTimeOfDay(TimeOfDay(hour: h, minute: m));
   }
 
   /// Combines `booking.date` (midnight) with the booking's
@@ -130,6 +315,39 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     );
   }
 
+  /// Same idea as [_bookingEndDateTime] but for an [OpenMatch] — the
+  /// match doc stores `date` (midnight) + `endTime` ("HH:mm"), so we
+  /// combine them to make the upcoming/past comparison honest.
+  DateTime _matchEndDateTime(OpenMatch match) {
+    final parts = match.endTime.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    return DateTime(match.date.year, match.date.month, match.date.day, h, m);
+  }
+
+  /// Wall-clock start time. Used to detect the "in progress" window
+  /// (`start <= now < end`) so a 6–7 PM booking at 6:30 reads as
+  /// "In progress" instead of just "Confirmed".
+  DateTime _bookingStartDateTime(Booking booking) {
+    final parts = booking.startTime.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    return DateTime(
+      booking.date.year,
+      booking.date.month,
+      booking.date.day,
+      h,
+      m,
+    );
+  }
+
+  DateTime _matchStartDateTime(OpenMatch match) {
+    final parts = match.startTime.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    return DateTime(match.date.year, match.date.month, match.date.day, h, m);
+  }
+
   /// Three-way bucket the bookings stream lands in. Cancelled rows
   /// always belong to Past regardless of date so they disappear from
   /// Upcoming the moment cancel succeeds.
@@ -141,12 +359,22 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       return (isUpcoming: false, isPast: true, isCancelled: true);
     }
     final endsAt = _bookingEndDateTime(booking);
-    final isUpcoming =
-        booking.isConfirmed && endsAt.isAfter(now);
+    final isUpcoming = booking.isConfirmed && endsAt.isAfter(now);
     final isPast = booking.isConfirmed && endsAt.isBefore(now);
+    return (isUpcoming: isUpcoming, isPast: isPast, isCancelled: false);
+  }
+
+  ({bool isUpcoming, bool isPast, bool isCancelled}) _matchBucketFor(
+    OpenMatch match,
+    DateTime now,
+  ) {
+    if (match.isCancelled) {
+      return (isUpcoming: false, isPast: true, isCancelled: true);
+    }
+    final endsAt = _matchEndDateTime(match);
     return (
-      isUpcoming: isUpcoming,
-      isPast: isPast,
+      isUpcoming: endsAt.isAfter(now),
+      isPast: !endsAt.isAfter(now),
       isCancelled: false,
     );
   }
@@ -154,8 +382,95 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
   String _tagFor(Booking booking, DateTime now) {
     if (booking.isCancelled) return 'Cancelled';
     final endsAt = _bookingEndDateTime(booking);
-    if (booking.isConfirmed && endsAt.isAfter(now)) return 'Confirmed';
-    return 'Completed';
+    if (!booking.isConfirmed || !endsAt.isAfter(now)) return 'Completed';
+    // start <= now < end → the session is happening right now.
+    final startsAt = _bookingStartDateTime(booking);
+    if (!startsAt.isAfter(now)) return 'In progress';
+    return 'Confirmed';
+  }
+
+  /// Tags differ from private bookings because an open match has a
+  /// host/joined distinction the private-booking flow doesn't have:
+  ///   * Upcoming + I'm the host → "Hosting"
+  ///   * Upcoming + I joined → "Joined"
+  ///   * In progress (start ≤ now < end) → "In progress" regardless
+  ///     of host/joined so the row obviously stands out in the list
+  ///   * Past + not cancelled → "Completed"
+  ///   * Cancelled → "Cancelled"
+  String _matchTagFor(OpenMatch match, DateTime now, String myUid) {
+    if (match.isCancelled) return 'Cancelled';
+    final endsAt = _matchEndDateTime(match);
+    if (!endsAt.isAfter(now)) return 'Completed';
+    final startsAt = _matchStartDateTime(match);
+    if (!startsAt.isAfter(now)) return 'In progress';
+    return match.isHost(myUid) ? 'Hosting' : 'Joined';
+  }
+
+  /// Renders one card. The unified [_Row] hides whether the
+  /// underlying source is a private booking or an open match — the
+  /// card itself only needs the strings + callbacks. Routing back
+  /// to the original detail page (BookingConfirmedPage vs
+  /// MatchDetailsPage) happens here.
+  ///
+  /// [me] is the signed-in [AppUser] — passed in so the open-match
+  /// More menu can pick the right action (Cancel match for the
+  /// host, Leave match for a joined player) without re-reading from
+  /// the provider per row.
+  Widget _buildRow(_Row row, DateTime now, AppUser me) {
+    if (row.booking != null) {
+      final b = row.booking!;
+      final bucket = _bucketFor(b, now);
+      final dateText = DateFormat('EEE, MMM d, y').format(b.date);
+      final timeText =
+          '${_formatTime(context, b.startTime)} - '
+          '${_formatTime(context, b.endTime)}';
+      return MyBookingListCard(
+        imageUrl: b.courtImageUrl,
+        title: b.courtName,
+        sport: b.sportType,
+        sportEmoji: sportEmojiFor(b.sportType),
+        dateText: dateText,
+        timeText: timeText,
+        tagText: _tagFor(b, now),
+        onTap: () => _openBookingDetails(b),
+        onViewDetailsTap: () => _openBookingDetails(b),
+        // Only future, confirmed private bookings expose the
+        // More menu (cancel). Past / cancelled rows hide it.
+        onMoreTap: bucket.isUpcoming ? () => _openBookingOptions(b) : null,
+      );
+    }
+    final m = row.match!;
+    final bucket = _matchBucketFor(m, now);
+    final dateText = DateFormat('EEE, MMM d, y').format(m.date);
+    final timeText =
+        '${_formatTime(context, m.startTime)} - '
+        '${_formatTime(context, m.endTime)}';
+
+    // Pick the More-menu action for this row:
+    //   * Upcoming + I host → Cancel match
+    //   * Upcoming + I joined → Leave match
+    //   * Past / cancelled → hide menu entirely
+    VoidCallback? onMoreTap;
+    if (bucket.isUpcoming && !m.isCancelled) {
+      if (m.isHost(me.uid)) {
+        onMoreTap = () => _openMatchHostOptions(m, me);
+      } else if (m.hasJoined(me.uid)) {
+        onMoreTap = () => _openMatchJoinedOptions(m, me);
+      }
+    }
+
+    return MyBookingListCard(
+      imageUrl: m.courtImageUrl.isEmpty ? null : m.courtImageUrl,
+      title: m.courtName,
+      sport: m.sportType,
+      sportEmoji: sportEmojiFor(m.sportType),
+      dateText: dateText,
+      timeText: timeText,
+      tagText: _matchTagFor(m, now, me.uid),
+      onTap: () => _openMatchDetails(m),
+      onViewDetailsTap: () => _openMatchDetails(m),
+      onMoreTap: onMoreTap,
+    );
   }
 
   @override
@@ -251,129 +566,142 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                     )
                   : StreamBuilder<List<Booking>>(
                       stream: _bookingService.streamBookingsForUser(me.uid),
-                      builder: (context, snapshot) {
-                        final waitingFirst =
-                            snapshot.connectionState ==
+                      builder: (context, bookingSnap) {
+                        return StreamBuilder<List<OpenMatch>>(
+                          stream: _openMatchService.streamMatchesForUser(
+                            me.uid,
+                          ),
+                          builder: (context, matchSnap) {
+                            // Wait for the first frame of either
+                            // stream so we don't flash the empty
+                            // state before Firestore has had a
+                            // chance to return anything.
+                            final bothWaiting =
+                                bookingSnap.connectionState ==
                                     ConnectionState.waiting &&
-                                !snapshot.hasData;
-                        if (waitingFirst) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        final all = snapshot.data ?? const <Booking>[];
-                        // Recompute "now" inside the builder so the
-                        // bucketing is fresh each rebuild — a
-                        // booking that ends while the user is on
-                        // this page will move to Past on the next
-                        // snapshot.
-                        final now = DateTime.now();
-                        final visible = all.where((b) {
-                          final bucket = _bucketFor(b, now);
-                          return _showUpcoming
-                              ? bucket.isUpcoming
-                              : (bucket.isPast || bucket.isCancelled);
-                        }).toList();
-                        // Sort:
-                        //   Upcoming → soonest-end first.
-                        //   Past → newest-end first (most recently
-                        //   completed/cancelled at the top).
-                        if (_showUpcoming) {
-                          visible.sort((a, b) =>
-                              _bookingEndDateTime(a)
-                                  .compareTo(_bookingEndDateTime(b)));
-                        } else {
-                          visible.sort((a, b) =>
-                              _bookingEndDateTime(b)
-                                  .compareTo(_bookingEndDateTime(a)));
-                        }
+                                !bookingSnap.hasData &&
+                                matchSnap.connectionState ==
+                                    ConnectionState.waiting &&
+                                !matchSnap.hasData;
+                            if (bothWaiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            // Recompute "now" inside the builder
+                            // so the bucketing is fresh each
+                            // rebuild — a row that ends while the
+                            // user is on this page moves to Past
+                            // on the next snapshot.
+                            final now = DateTime.now();
+                            final bookings =
+                                bookingSnap.data ?? const <Booking>[];
+                            final matches =
+                                matchSnap.data ?? const <OpenMatch>[];
 
-                        return Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.pageHorizontal,
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    sectionTitle,
-                                    style: AppTextStyles.sectionTitle
-                                        .copyWith(fontSize: 18),
+                            final rows = <_Row>[];
+                            for (final b in bookings) {
+                              final bucket = _bucketFor(b, now);
+                              final include = _showUpcoming
+                                  ? bucket.isUpcoming
+                                  : (bucket.isPast || bucket.isCancelled);
+                              if (!include) continue;
+                              rows.add(
+                                _Row(
+                                  endsAt: _bookingEndDateTime(b),
+                                  isUpcomingBucket: bucket.isUpcoming,
+                                  booking: b,
+                                ),
+                              );
+                            }
+                            for (final m in matches) {
+                              final bucket = _matchBucketFor(m, now);
+                              final include = _showUpcoming
+                                  ? bucket.isUpcoming
+                                  : (bucket.isPast || bucket.isCancelled);
+                              if (!include) continue;
+                              rows.add(
+                                _Row(
+                                  endsAt: _matchEndDateTime(m),
+                                  isUpcomingBucket: bucket.isUpcoming,
+                                  match: m,
+                                ),
+                              );
+                            }
+
+                            // Sort:
+                            //   Upcoming → soonest-end first.
+                            //   Past → newest-end first.
+                            rows.sort(
+                              (a, b) => _showUpcoming
+                                  ? a.endsAt.compareTo(b.endsAt)
+                                  : b.endsAt.compareTo(a.endsAt),
+                            );
+
+                            return Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.pageHorizontal,
                                   ),
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryLight,
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                    child: Text(
-                                      '${visible.length} bookings',
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        sectionTitle,
+                                        style: AppTextStyles.sectionTitle
+                                            .copyWith(fontSize: 18),
                                       ),
-                                    ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryLight,
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${rows.length} bookings',
+                                          style: AppTextStyles.bodyMedium
+                                              .copyWith(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.primary,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: visible.isEmpty
-                                  ? _EmptyState(showUpcoming: _showUpcoming)
-                                  : ListView.separated(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        AppSpacing.pageHorizontal,
-                                        0,
-                                        AppSpacing.pageHorizontal,
-                                        24,
-                                      ),
-                                      itemCount: visible.length,
-                                      separatorBuilder: (_, _) =>
-                                          const SizedBox(height: 18),
-                                      itemBuilder: (context, index) {
-                                        final b = visible[index];
-                                        final bucket = _bucketFor(b, now);
-                                        final dateText = DateFormat(
-                                          'EEE, MMM d, y',
-                                        ).format(b.date);
-                                        final timeText =
-                                            '${_formatTime(context, b.startTime)}'
-                                            ' - '
-                                            '${_formatTime(context, b.endTime)}';
-                                        return MyBookingListCard(
-                                          imageUrl: b.courtImageUrl,
-                                          title: b.courtName,
-                                          sport: b.sportType,
-                                          sportEmoji:
-                                              sportEmojiFor(b.sportType),
-                                          dateText: dateText,
-                                          timeText: timeText,
-                                          tagText: _tagFor(b, now),
-                                          onTap: () =>
-                                              _openBookingDetails(b),
-                                          onViewDetailsTap: () =>
-                                              _openBookingDetails(b),
-                                          // Only future, confirmed
-                                          // bookings can be cancelled.
-                                          // Past + already-cancelled
-                                          // rows hide the More menu.
-                                          onMoreTap: bucket.isUpcoming
-                                              ? () =>
-                                                  _openBookingOptions(b)
-                                              : null,
-                                        );
-                                      },
-                                    ),
-                            ),
-                          ],
+                                ),
+                                const SizedBox(height: 16),
+                                Expanded(
+                                  child: rows.isEmpty
+                                      ? _EmptyState(showUpcoming: _showUpcoming)
+                                      : ListView.separated(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            AppSpacing.pageHorizontal,
+                                            0,
+                                            AppSpacing.pageHorizontal,
+                                            24,
+                                          ),
+                                          itemCount: rows.length,
+                                          separatorBuilder: (_, _) =>
+                                              const SizedBox(height: 18),
+                                          itemBuilder: (context, index) {
+                                            return _buildRow(
+                                              rows[index],
+                                              now,
+                                              me,
+                                            );
+                                          },
+                                        ),
+                                ),
+                              ],
+                            );
+                          },
                         );
                       },
                     ),
@@ -387,6 +715,25 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       ),
     );
   }
+}
+
+/// Unified row used by the bucketed/sorted list. Exactly one of
+/// [booking] or [match] is non-null. We keep them in the same list
+/// so a single ListView can interleave private bookings and open
+/// matches by chronological end-time without merging the two
+/// Firestore collections at the storage layer.
+class _Row {
+  final DateTime endsAt;
+  final bool isUpcomingBucket;
+  final Booking? booking;
+  final OpenMatch? match;
+
+  _Row({
+    required this.endsAt,
+    required this.isUpcomingBucket,
+    this.booking,
+    this.match,
+  });
 }
 
 class _SegmentButton extends StatelessWidget {
@@ -422,8 +769,7 @@ class _SegmentButton extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color:
-                  isSelected ? AppColors.primary : AppColors.textPrimary,
+              color: isSelected ? AppColors.primary : AppColors.textPrimary,
             ),
             const SizedBox(width: 8),
             Text(
@@ -431,9 +777,7 @@ class _SegmentButton extends StatelessWidget {
               style: AppTextStyles.bodyMedium.copyWith(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.textPrimary,
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
               ),
             ),
           ],

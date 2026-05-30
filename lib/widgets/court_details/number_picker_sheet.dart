@@ -76,8 +76,9 @@ class _NumberPickerSheetState extends State<NumberPickerSheet> {
                         '$value',
                         style: AppTextStyles.pageTitle.copyWith(
                           fontSize: isSelected ? 26 : 22,
-                          fontWeight:
-                              isSelected ? FontWeight.w800 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w500,
                           color: isSelected
                               ? AppColors.textPrimary
                               : AppColors.textSecondary,

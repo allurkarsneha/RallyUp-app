@@ -38,9 +38,7 @@ class ProfilePage extends StatelessWidget {
       // Auth deletion failed — local state is intact (the user is still
       // signed in with the same profile). Show a readable explanation and
       // let them retry. We never surface raw Firebase backend strings.
-      messenger.showSnackBar(
-        SnackBar(content: Text(_readableDeleteError(e))),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(_readableDeleteError(e))));
     } catch (_) {
       messenger.showSnackBar(
         const SnackBar(
@@ -219,8 +217,9 @@ class ProfilePage extends StatelessWidget {
     if (user == null) {
       return const SizedBox.shrink();
     }
-    final headerName =
-        user.displayName.trim().isNotEmpty ? user.displayName.trim() : '';
+    final headerName = user.displayName.trim().isNotEmpty
+        ? user.displayName.trim()
+        : '';
     final headerInitials = user.initials;
     final headerContact = user.email ?? user.phone ?? '';
 

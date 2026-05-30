@@ -36,12 +36,7 @@ class RallyHeader extends StatelessWidget {
         children: [
           _buildLeading(),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              title,
-              style: AppTextStyles.pageTitle,
-            ),
-          ),
+          Expanded(child: Text(title, style: AppTextStyles.pageTitle)),
           if (showNotificationButton)
             // The bell carries its own tap target + unread-dot stream,
             // wrapped to roughly match the 48dp IconButton hit slop

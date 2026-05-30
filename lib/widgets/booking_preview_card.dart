@@ -147,4 +147,3 @@ class BookingPreviewCard extends StatelessWidget {
     );
   }
 }
-

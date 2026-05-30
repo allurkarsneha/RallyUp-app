@@ -120,16 +120,12 @@ class _MessagesPageState extends State<MessagesPage> {
                               onAllTap: () {},
                               onUnreadTap: () {
                                 Navigator.of(context).push(
-                                  _fadeRoute<void>(
-                                    const UnreadMessagesPage(),
-                                  ),
+                                  _fadeRoute<void>(const UnreadMessagesPage()),
                                 );
                               },
                               onGroupsTap: () {
                                 Navigator.of(context).push(
-                                  _fadeRoute<void>(
-                                    const GroupMessagesPage(),
-                                  ),
+                                  _fadeRoute<void>(const GroupMessagesPage()),
                                 );
                               },
                             ),
@@ -422,15 +418,7 @@ String _formatThreadTime(DateTime? t) {
   }
   if (diff == 1) return 'Yesterday';
   if (diff < 7) {
-    const weekdays = [
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ];
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return weekdays[t.weekday - 1];
   }
   final mm = t.month.toString().padLeft(2, '0');

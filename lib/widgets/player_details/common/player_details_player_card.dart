@@ -5,20 +5,24 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../user_avatar.dart';
 import 'player_details_card.dart';
-import 'player_details_chip.dart';
 import 'player_details_primary_button.dart';
 
+/// Nearby-players list card.
+///
+/// Previously rendered a hardcoded skill-level chip plus a dummy
+/// "Available this week · 6 PM - 8 PM" row. AppUser has no level or
+/// availability-summary fields yet, so those props were fake — they
+/// have been removed rather than displayed as static text on every
+/// card. Rating stays for now per spec (no real data backing either,
+/// but explicitly kept).
 class PlayerDetailsPlayerCard extends StatelessWidget {
   final String name;
   final String initials;
   final String? photoUrl;
   final String? avatarId;
   final String sport;
-  final String level;
   final String distance;
   final String bio;
-  final String availability;
-  final String time;
   final String actionLabel;
   final double rating;
   final VoidCallback? onViewProfileTap;
@@ -31,11 +35,8 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
     this.photoUrl,
     this.avatarId,
     required this.sport,
-    required this.level,
     required this.distance,
     required this.bio,
-    required this.availability,
-    required this.time,
     this.actionLabel = 'Connect',
     this.rating = 4.8,
     this.onViewProfileTap,
@@ -91,7 +92,6 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           _MetaText(label: sport, icon: Icons.sports_tennis),
-                          PlayerDetailsChip(label: level),
                           _MetaText(
                             label: distance,
                             icon: Icons.location_on_outlined,
@@ -102,27 +102,6 @@ class PlayerDetailsPlayerCard extends StatelessWidget {
                       Text(bio, style: AppTextStyles.caption),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColors.border),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: PlayerDetailsChip(
-                    label: availability,
-                    icon: Icons.event_available_outlined,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Flexible(
-                  child: _MetaText(label: time, icon: Icons.schedule_rounded),
                 ),
               ],
             ),

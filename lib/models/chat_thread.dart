@@ -1,12 +1,27 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// A direct (1-to-1) chat thread between two users. Group chats are
-/// intentionally out of scope for this phase — the data model already
-/// supports >2 ids in `participantIds` so a future group implementation
-/// won't require a migration, but the `directThreadId` helper assumes
-/// exactly two participants.
+/// One chat thread document under `threads/{threadId}`.
+///
+/// Two thread shapes are supported:
+///   * [typeDirect] — 1-to-1 chat between two users. `participantIds`
+///     has exactly two uids. This is the original shape — the
+///     `directThreadId` helper assumes two participants and the
+///     direct UI looks them up by hitting `users/{uid}`.
+///   * [typeGroup] — open-match group thread. `participantIds` can
+///     grow as players join the match. Group threads carry extra
+///     snapshot fields (`matchId`, `title`, `imageUrl`, `sportType`,
+///     `courtName`) so the threads list can render an avatar/title
+///     row without a per-card open-match read.
+///
+/// Backward compatibility: docs written before the group split don't
+/// have a `type` field. They're treated as [typeDirect] so the
+/// existing MessagesPage keeps showing them.
 class ChatThread {
+  static const String typeDirect = 'direct';
+  static const String typeGroup = 'group';
+
   final String id;
+  final String type;
   final List<String> participantIds;
   final String? lastMessage;
   final DateTime? lastMessageAt;
@@ -22,8 +37,16 @@ class ChatThread {
   /// as unread so the indicator doesn't briefly flash off.
   final Map<String, DateTime> lastReadAtByUser;
 
+  /// Group-only metadata. `null` on direct threads.
+  final String? matchId;
+  final String? title;
+  final String? imageUrl;
+  final String? sportType;
+  final String? courtName;
+
   const ChatThread({
     required this.id,
+    required this.type,
     required this.participantIds,
     required this.lastMessage,
     required this.lastMessageAt,
@@ -31,11 +54,22 @@ class ChatThread {
     required this.createdAt,
     required this.updatedAt,
     this.lastReadAtByUser = const {},
+    this.matchId,
+    this.title,
+    this.imageUrl,
+    this.sportType,
+    this.courtName,
   });
+
+  bool get isDirect => type == typeDirect;
+  bool get isGroup => type == typeGroup;
 
   /// Returns the participant uid that is NOT [currentUid], or `null` if
   /// the thread somehow only contains the current user. Useful for
   /// resolving "the other person" in 1-to-1 list rendering.
+  ///
+  /// For group threads this is meaningless (there is no single
+  /// "other"); callers should branch on [isGroup] before calling.
   String? otherParticipant(String currentUid) {
     for (final id in participantIds) {
       if (id != currentUid) return id;
@@ -66,24 +100,30 @@ class ChatThread {
     return readAt.isBefore(lastAt);
   }
 
-  factory ChatThread.fromDoc(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+  factory ChatThread.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const <String, dynamic>{};
-    final ids = (data['participantIds'] as List<dynamic>?)
-            ?.cast<String>() ??
+    final ids =
+        (data['participantIds'] as List<dynamic>?)?.cast<String>() ??
         const <String>[];
+    // Missing `type` field on legacy docs → direct. New direct writes
+    // include the type explicitly, but the absence of it must never
+    // route an old direct thread into the groups list.
+    final type = (data['type'] as String?) ?? typeDirect;
     return ChatThread(
       id: doc.id,
+      type: type,
       participantIds: ids,
       lastMessage: data['lastMessage'] as String?,
       lastMessageAt: (data['lastMessageAt'] as Timestamp?)?.toDate(),
       lastSenderId: data['lastSenderId'] as String?,
-      createdAt:
-          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastReadAtByUser: _parseReadMap(data['lastReadAtByUser']),
+      matchId: data['matchId'] as String?,
+      title: data['title'] as String?,
+      imageUrl: data['imageUrl'] as String?,
+      sportType: data['sportType'] as String?,
+      courtName: data['courtName'] as String?,
     );
   }
 

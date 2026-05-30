@@ -34,7 +34,8 @@ class _EditSportsScreenState extends State<EditSportsScreen> {
   @override
   void initState() {
     super.initState();
-    final current = context.read<AuthProvider>().currentUser?.sports ?? const [];
+    final current =
+        context.read<AuthProvider>().currentUser?.sports ?? const [];
     _selected = current.toSet();
   }
 
@@ -107,8 +108,7 @@ class _EditSportsScreenState extends State<EditSportsScreen> {
                 child: GridView.builder(
                   padding: const EdgeInsets.only(bottom: 80),
                   itemCount: _sports.length,
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 22,
                     crossAxisSpacing: 22,

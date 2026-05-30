@@ -17,7 +17,8 @@ class LocationFailure implements Exception {
   const LocationFailure(this.reason, [this.detail]);
 
   @override
-  String toString() => 'LocationFailure($reason${detail != null ? ': $detail' : ''})';
+  String toString() =>
+      'LocationFailure($reason${detail != null ? ': $detail' : ''})';
 }
 
 /// Thin wrapper around `geolocator` + `geocoding` returning a fully-formed
@@ -37,7 +38,9 @@ class LocationService {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.deniedForever) {
-      throw const LocationFailure(LocationFailureReason.permissionDeniedForever);
+      throw const LocationFailure(
+        LocationFailureReason.permissionDeniedForever,
+      );
     }
     if (permission == LocationPermission.denied) {
       throw const LocationFailure(LocationFailureReason.permissionDenied);
@@ -59,14 +62,13 @@ class LocationService {
     String region = '';
     String country = '';
     try {
-      final placemarks =
-          await gc.placemarkFromCoordinates(pos.latitude, pos.longitude);
+      final placemarks = await gc.placemarkFromCoordinates(
+        pos.latitude,
+        pos.longitude,
+      );
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
-        city = p.locality ??
-            p.subAdministrativeArea ??
-            p.subLocality ??
-            '';
+        city = p.locality ?? p.subAdministrativeArea ?? p.subLocality ?? '';
         region = p.administrativeArea ?? '';
         country = p.country ?? '';
       }
@@ -139,10 +141,7 @@ class LocationService {
       final placemarks = await gc.placemarkFromCoordinates(lat, lng);
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
-        city = p.locality ??
-            p.subAdministrativeArea ??
-            p.subLocality ??
-            '';
+        city = p.locality ?? p.subAdministrativeArea ?? p.subLocality ?? '';
         region = p.administrativeArea ?? '';
         country = p.country ?? '';
       }

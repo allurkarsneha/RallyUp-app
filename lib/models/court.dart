@@ -89,22 +89,22 @@ class Court {
   }
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'sportTypes': sportTypes,
-        'address': address,
-        'city': city,
-        'region': region,
-        'lat': lat,
-        'lng': lng,
-        'imageUrls': imageUrls,
-        'rating': rating,
-        'pricePerHour': pricePerHour,
-        'amenities': amenities,
-        'description': description,
-        'isActive': isActive,
-        if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
-        if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
-      };
+    'name': name,
+    'sportTypes': sportTypes,
+    'address': address,
+    'city': city,
+    'region': region,
+    'lat': lat,
+    'lng': lng,
+    'imageUrls': imageUrls,
+    'rating': rating,
+    'pricePerHour': pricePerHour,
+    'amenities': amenities,
+    'description': description,
+    'isActive': isActive,
+    if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+    if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
+  };
 
   factory Court.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const <String, dynamic>{};

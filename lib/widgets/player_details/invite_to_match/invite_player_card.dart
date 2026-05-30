@@ -14,8 +14,9 @@ class InvitePlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primarySport =
-        user.sports.isNotEmpty ? user.sports.first : 'Multi-sport';
+    final primarySport = user.sports.isNotEmpty
+        ? user.sports.first
+        : 'Multi-sport';
     final locationLabel = user.location?.displayLabel;
 
     return InviteToMatchSurface(

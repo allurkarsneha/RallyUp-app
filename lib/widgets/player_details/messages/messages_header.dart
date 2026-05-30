@@ -7,15 +7,17 @@ import '../../../theme/app_text_styles.dart';
 /// Top bar used on every Messages-tab variant.
 ///
 /// Right-side action:
-///   * Callers that need a different right-side widget (e.g. the
-///     primary Messages tab now wants a NotificationBellButton) pass
-///     [trailing]. That widget is rendered as-is inside the same
-///     52×52 circular slot the compose icon used to occupy, keeping
-///     the header rhythm identical.
-///   * If [trailing] is null we fall back to the legacy compose icon
-///     wired through [onComposeTap]. The Unread and Group variants
-///     still rely on this fallback, so removing the compose icon
-///     wholesale would change layouts we haven't reviewed.
+///   * Callers that need a real right-side widget (e.g. the primary
+///     Messages tab wants a NotificationBellButton) pass [trailing].
+///     That widget is rendered as-is inside the same 52×52 slot the
+///     compose icon used to occupy, keeping the header rhythm
+///     identical.
+///   * Callers that want the legacy compose icon pass
+///     [onComposeTap]; the pencil button only renders when a tap
+///     callback is actually wired.
+///   * If both are null (Unread / Group variants today) we render an
+///     empty 52×52 spacer so the title/back alignment stays balanced
+///     without a misleading nonfunctional pencil control.
 class MessagesHeader extends StatelessWidget {
   final String title;
   final bool showBackButton;
@@ -86,7 +88,7 @@ class MessagesHeader extends StatelessWidget {
               alignment: Alignment.center,
               child: trailing,
             )
-          else
+          else if (onComposeTap != null)
             GestureDetector(
               onTap: onComposeTap,
               child: Container(
@@ -102,7 +104,9 @@ class MessagesHeader extends StatelessWidget {
                   size: 24,
                 ),
               ),
-            ),
+            )
+          else
+            const SizedBox(width: 52, height: 52),
         ],
       ),
     );

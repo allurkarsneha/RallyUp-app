@@ -15,11 +15,14 @@ class BookingDraft {
   final Court court;
   final String sportType;
   final DateTime date;
+
   /// 24-hour `HH:mm`, e.g. `'18:00'`.
   final String startTime;
   final String endTime;
+
   /// One of `BookingDraft.matchTypePrivate` / `matchTypeOpen`.
   final String matchType;
+
   /// Only meaningful for [matchTypeOpen] drafts. Private drafts may
   /// leave these null.
   final int? playersRequired;
