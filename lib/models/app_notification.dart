@@ -1,21 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// In-app notification record stored under `notifications/{id}`.
+/// `notifications/{id}`. Per-event records keyed by `userId`. The
+/// push Cloud Function reads the same fields server-side.
 ///
-/// Per-event records (booking confirmed, booking cancelled, invite
-/// received, ...) keyed by `userId`. This model only describes the
-/// Firestore document — the push delivery path (FCM) reads the same
-/// fields server-side in a later phase.
-///
-/// Shape decisions:
-///
-///   * `type` is a string rather than an enum so a server-side
-///     process (Cloud Function, admin tool) can introduce a new type
-///     without forcing a client model migration.
-///   * `targetType` + `targetId` are deliberately untyped pointers.
-///     The client decides at tap-time how to route based on
-///     `targetType`. Avoids embedding entire object snapshots inside
-///     each notification.
+/// `type` is a string (not an enum) so a server process can
+/// introduce a new event without forcing a client migration.
+/// `targetType` + `targetId` are untyped pointers — the client
+/// resolves them at tap time, avoiding embedded snapshots.
 class AppNotification {
   static const String typeBookingConfirmed = 'booking_confirmed';
   static const String typeBookingCancelled = 'booking_cancelled';
@@ -93,8 +84,8 @@ class AppNotification {
       type: (map['type'] as String?) ?? AppNotification.typeSystem,
       targetType: map['targetType'] as String?,
       targetId: map['targetId'] as String?,
-      // Missing isRead → unread. Conservative: never accidentally
-      // pre-mark a server-written notification as already seen.
+      // Missing isRead → unread; never silently mark a new
+      // server-written notification as already seen.
       isRead: (map['isRead'] as bool?) ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
     );

@@ -129,13 +129,19 @@ class _ResetPasswordRowState extends State<_ResetPasswordRow> {
     );
     if (!mounted) return;
     setState(() => _sending = false);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          err ?? 'Reset link sent to ${widget.email}. Check your inbox.',
+    // Defer the SnackBar so it doesn't insert into the tree on the
+    // same frame as the `_sending` rebuild above. Showing it in the
+    // same microtask races the rebuild and triggers a framework
+    // `_dependents.isEmpty` assertion.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            err ?? 'Reset link sent to ${widget.email}. Check your inbox.',
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   @override

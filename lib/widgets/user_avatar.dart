@@ -11,10 +11,8 @@ const Map<String, List<Color>> kAvatarGradients = {
   'avatar_6': [Color(0xFFEC4899), Color(0xFFFFB300)],
 };
 
-/// Per-avatar local asset path. Drop the six PNGs into
-/// `assets/images/avatars/` (see README in that folder). Until the files
-/// exist, the widget's `errorBuilder` falls back to the gradient + initials
-/// rendering so the app stays usable.
+/// Bundle paths for the curated avatar set. Missing files fall back
+/// to the gradient + initials in the widget's `errorBuilder`.
 const Map<String, String> kAvatarAssets = {
   'avatar_1': 'assets/images/avatars/avatar_1.png',
   'avatar_2': 'assets/images/avatars/avatar_2.png',
@@ -45,13 +43,9 @@ String? avatarAssetFor(String? avatarId) {
   return kAvatarAssets[avatarId];
 }
 
-/// Priority chain (highest first):
-///   1. `photoUrl` — uploaded photo (Cloudinary URL).
-///   2. `avatarId` — preset image asset from `kAvatarAssets`.
-///   3. `initials` — gradient circle with first/last initials.
-///
-/// Network and asset failures gracefully fall through to the next tier so
-/// the user never sees a broken-image placeholder.
+/// Priority chain: `photoUrl` (Cloudinary) → `avatarId` (preset) →
+/// initials. Network / asset failures fall through to the next tier
+/// so we never render a broken-image placeholder.
 class UserAvatar extends StatelessWidget {
   final double size;
   final String initials;
@@ -120,8 +114,6 @@ class UserAvatar extends StatelessWidget {
           child: Image.asset(
             assetPath,
             fit: BoxFit.cover,
-            // Falls back to the gradient+initials if the PNG isn't in the
-            // bundle yet (see assets/images/avatars/README.md).
             errorBuilder: (_, _, _) => _initialsCircle(),
           ),
         ),
@@ -135,16 +127,9 @@ class UserAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final avatar = _build();
     if (onTap == null) return avatar;
-    // Canonical "tappable image" pattern: GestureDetector with
-    // HitTestBehavior.opaque wrapping a fixed-size box. The `opaque`
-    // flag is what makes this reliable for the photoUrl path —
-    // CachedNetworkImage's loaded subtree (OctoImage / placeholder /
-    // image / error layers) does not always propagate hit-tests up to a
-    // GestureDetector ancestor, but `opaque` makes the GestureDetector
-    // itself report a hit anywhere within its declared bounds regardless
-    // of what its children do. That's why this works equally for
-    // CachedNetworkImage, Image.asset, and the gradient `Container`
-    // initials path.
+    // `HitTestBehavior.opaque` so the tap hits at the GestureDetector
+    // bounds regardless of which subtree (CachedNetworkImage / asset /
+    // gradient container) is currently rendering inside.
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,

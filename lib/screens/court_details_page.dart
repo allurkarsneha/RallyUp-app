@@ -11,11 +11,8 @@ import '../widgets/main_bottom_nav.dart';
 import '../widgets/notification_bell_button.dart';
 import 'main_shell_nav.dart';
 
-/// Detail page for a single Court. Was previously fed raw display
-/// strings from the hard-coded courts list; now takes a real
-/// [Court] object plus a pre-formatted distance string from the
-/// caller (so the same haversine-derived label that the Courts list
-/// row uses appears here without re-computing).
+/// Court details. Takes a real [Court] plus the caller's
+/// pre-computed distance label so we don't redo haversine.
 class CourtDetailsPage extends StatefulWidget {
   final Court court;
   final String distanceText;
@@ -43,10 +40,6 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
       builder: (sheetContext) {
         return BookCourtSheet(
           court: widget.court,
-          // Seed the sheet with whatever sport the user had selected on
-          // the details page. They can still change it inside the
-          // overlay — the overlay always re-validates against
-          // `court.sportTypes` before writing the booking.
           initialSport: _selectedSport,
         );
       },
@@ -57,12 +50,8 @@ class _CourtDetailsPageState extends State<CourtDetailsPage> {
     switchToMainShellTab(context, index);
   }
 
-  /// Single-line sport label for the top metadata row of CourtDetails.
-  /// `selectedEmoji` is the emoji for [_selectedSport]; we lead with
-  /// it + the selected sport's name, then trail the remaining sports
-  /// joined with `· `. Single-sport courts collapse to just
-  /// `{emoji}  {name}` so the row reads identically to the
-  /// pre-multi-sport build for single-sport venues.
+  /// "🎾  Tennis · Badminton · Pickleball". Single-sport courts
+  /// collapse to just `{emoji}  {name}`.
   String _topSportLabel(List<String> sportTypes, String selectedEmoji) {
     if (sportTypes.length <= 1) {
       return '$selectedEmoji  $_selectedSport';

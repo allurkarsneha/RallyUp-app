@@ -48,11 +48,9 @@ class _CourtsPageState extends State<CourtsPage> {
     'Swimming',
   ];
 
-  /// Filters by sport using `sportTypes.contains(selectedSport)` so
-  /// multi-sport venues (e.g. Cupertino Sports Center) surface for
-  /// every sport they support — never just the "primary" one.
-  /// Then applies search across name / city / sports, then sorts by
-  /// the current sort key.
+  /// Sport via `sportTypes.contains(...)` (multi-sport venues
+  /// surface for every supported sport), then search across name /
+  /// city / sports, then sort by the current key.
   List<_RankedCourt> _filterAndSort(
     List<Court> courts,
     UserLocation? myLocation,
@@ -101,8 +99,7 @@ class _CourtsPageState extends State<CourtsPage> {
         break;
       case 'default':
       default:
-        // Default ordering: same-city first then nearest, mirroring
-        // the rest of the app's "near you" heuristic.
+        // Default: same-city → nearest.
         ranked.sort((a, b) {
           if (a.sameCity != b.sameCity) return a.sameCity ? -1 : 1;
           final aD = a.distanceKm ?? double.infinity;
@@ -113,13 +110,8 @@ class _CourtsPageState extends State<CourtsPage> {
     return ranked;
   }
 
-  /// Build the small sport label that fits inside the court card's
-  /// metadata row. When the court only supports one sport we just
-  /// show it; for multi-sport venues we lead with [primary] (the
-  /// sport the card is currently being surfaced for) and append
-  /// "+N" for the rest. Two-sport venues read as "Tennis +1",
-  /// three-sport ones as "Tennis +2" — short enough to stay on the
-  /// metadata row without overflowing into the price column.
+  /// "Tennis", "Tennis +1", "Tennis +2", … — compact enough to
+  /// stay on the metadata row without pushing the price column.
   String _multiSportLabel(List<String> sportTypes, {required String primary}) {
     if (sportTypes.isEmpty) return primary;
     if (sportTypes.length == 1) return sportTypes.first;
@@ -425,11 +417,8 @@ class _CourtsPageState extends State<CourtsPage> {
                       else
                         ...courts.map((ranked) {
                           final court = ranked.court;
-                          // For the multi-sport filter row, use the
-                          // selected sport's emoji when possible — it
-                          // signals the venue is being surfaced for
-                          // that sport. Falls back to the court's
-                          // first declared sport otherwise.
+                          // Use the selected sport's emoji when the
+                          // court supports it.
                           final emojiSport =
                               _selectedSport != 'All' &&
                                   court.sportTypes.any(
@@ -441,12 +430,8 @@ class _CourtsPageState extends State<CourtsPage> {
                               : (court.sportTypes.isNotEmpty
                                     ? court.sportTypes.first
                                     : 'Tennis');
-                          // Multi-sport label: when the user has a
-                          // specific sport filter active and the court
-                          // supports it, lead with that sport and
-                          // append "+N" for the others so a Cupertino
-                          // Sports Center card filtered by "Tennis"
-                          // reads "Tennis +2" instead of hiding the
+                          // Multi-sport label leads with the active
+                          // sport and appends "+N" for the rest, so
                           // other sports entirely.
                           final sportsLabel = _multiSportLabel(
                             court.sportTypes,

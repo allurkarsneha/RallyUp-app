@@ -1,17 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Status values stored on `bookings/{id}.status`. String constants
-/// rather than an enum so a future "completed" or "rescheduled" value
-/// added by a server-side process doesn't crash the client model.
+/// String constants rather than an enum so a future server-added
+/// status (e.g. 'completed') doesn't crash the client.
 class BookingStatus {
   static const String confirmed = 'confirmed';
   static const String cancelled = 'cancelled';
 }
 
-/// A user's court booking. Stores a small snapshot of court fields
-/// (`courtName`, `courtAddress`, `courtImageUrl`) so the bookings list
-/// can render without a per-row `courts/{courtId}` round trip — and
-/// without breaking if the court doc is later renamed or deleted.
+/// `bookings/{id}`. Carries a small court snapshot so list rendering
+/// doesn't need a per-row `courts/{courtId}` lookup.
 class Booking {
   final String id;
   final String userId;
@@ -19,17 +16,12 @@ class Booking {
   final String courtName;
   final String courtAddress;
 
-  /// First image from the court's `imageUrls` at booking time, captured
-  /// for stable list/confirmation rendering. May be empty if the court
-  /// had no images. Not on the originally-specified field list but
-  /// required for the cards we already ship — see the BookingService
-  /// note above `createBooking`.
+  /// First court image at booking time. May be empty.
   final String courtImageUrl;
   final String sportType;
   final DateTime date;
 
-  /// 24-hour `HH:mm`, e.g. `"18:00"`. Display-side formatting (12-hour
-  /// with AM/PM) is the caller's job — keeps Firestore values stable.
+  /// 24-hour `HH:mm`. 12-hour display formatting is the caller's job.
   final String startTime;
   final String endTime;
   final double pricePerHour;
@@ -115,9 +107,8 @@ class Booking {
       endTime: (map['endTime'] as String?) ?? '',
       pricePerHour: _parseDouble(map['pricePerHour']) ?? 0,
       totalPrice: _parseDouble(map['totalPrice']) ?? 0,
-      // Default a missing/malformed status to `confirmed`; a write that
-      // landed without a status is far more likely to be a transient
-      // partial than a cancellation.
+      // Missing status → confirmed. A partial write is far more
+      // likely than a cancellation that lost its field.
       status: (map['status'] as String?) ?? BookingStatus.confirmed,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),

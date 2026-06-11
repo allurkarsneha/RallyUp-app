@@ -3,37 +3,35 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking.dart';
 import '../models/open_match.dart';
 
-/// Checks two independent kinds of schedule conflict against the live
-/// Firestore state, before a write goes through:
+/// Pre-flight schedule checks against the live Firestore state.
 ///
-///   * **Court occupancy** — a physical court cannot host two
-///     overlapping reservations. Active confirmed private bookings
-///     and non-cancelled open matches on the same court both count.
+/// Two independent conflicts are enforced:
 ///
-///   * **User schedule** — a real user cannot be in two overlapping
-///     active sessions, even at different courts. Active sources:
-///     confirmed private bookings owned by them, open matches they
-///     host, and open matches where their uid is in
-///     `joinedPlayerIds`. Anonymous `confirmedGuestCount` guests are
-///     intentionally NOT checked because they have no real uid.
+///   * **Court occupancy** — no two reservations on the same court
+///     during an overlapping window. Confirmed private bookings and
+///     non-cancelled open matches both count.
 ///
-/// The overlap rule is the canonical interval-overlap test:
+///   * **User schedule** — no two overlapping sessions for the same
+///     real user, even at different courts. Sources: their confirmed
+///     bookings, the matches they host, and the matches their uid is
+///     in `joinedPlayerIds` for. Anonymous `confirmedGuestCount`
+///     guests aren't checked — they have no real uid.
+///
+/// The overlap test is the canonical interval check:
 ///
 /// ```dart
 /// existingStart < newEnd && newStart < existingEnd
 /// ```
 ///
-/// String equality of `startTime`/`endTime` is NOT a substitute —
-/// 6:00–7:00 PM and 6:30–7:30 PM are exact-equality miss but real
-/// overlap.
+/// String equality on HH:mm is not a substitute — 6:00–7:00 PM and
+/// 6:30–7:30 PM are an exact-equality miss but real overlap.
 ///
-/// Throws `StateError('schedule-conflict')` on detection. Callers
-/// translate that into a user-friendly SnackBar message.
+/// Throws `StateError('court-occupied')` or
+/// `StateError('schedule-conflict')` on detection so callers can pick
+/// the right SnackBar copy.
 ///
-/// Queries are intentionally simple (`where('userId', ...)`,
-/// `where('hostUid', ...)`, etc.) so we don't ship any new composite
-/// indexes — overlap testing happens client-side after a small
-/// per-user fetch.
+/// All Firestore queries are single-field equality so no new
+/// composite indexes are required.
 class ScheduleConflictService {
   final FirebaseFirestore _db;
 
@@ -45,11 +43,8 @@ class ScheduleConflictService {
   CollectionReference<Map<String, dynamic>> get _matches =>
       _db.collection('open_matches');
 
-  // ─────────────────────────────────────────────────────────────
-  // Pure helpers
-  // ─────────────────────────────────────────────────────────────
+  // ─── Pure helpers ───────────────────────────────────────────────
 
-  /// Build a wall-clock DateTime from `date` (midnight) + `HH:mm`.
   static DateTime _combine(DateTime date, String hhmm) {
     final parts = hhmm.split(':');
     final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
@@ -57,9 +52,7 @@ class ScheduleConflictService {
     return DateTime(date.year, date.month, date.day, h, m);
   }
 
-  /// Canonical `existingStart < newEnd && newStart < existingEnd`.
-  /// Returns false when intervals only touch at endpoints
-  /// (6–7 / 7–8 is allowed, by spec).
+  /// Endpoint-touch is NOT overlap — 6–7 PM next to 7–8 PM is allowed.
   static bool intervalsOverlap({
     required DateTime aStart,
     required DateTime aEnd,
@@ -69,8 +62,6 @@ class ScheduleConflictService {
     return aStart.isBefore(bEnd) && bStart.isBefore(aEnd);
   }
 
-  /// Convenience wrapper for callers that have `(date, startStr,
-  /// endStr)` pairs and want the same overlap test.
   static bool dayTimesOverlap({
     required DateTime aDate,
     required String aStart,
@@ -87,17 +78,8 @@ class ScheduleConflictService {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // Court occupancy
-  // ─────────────────────────────────────────────────────────────
+  // ─── Court occupancy ────────────────────────────────────────────
 
-  /// Returns true when [courtId] already has an active confirmed
-  /// booking OR active non-cancelled open match overlapping the
-  /// proposed window.
-  ///
-  /// `excludeBookingId` / `excludeMatchId` let callers skip the doc
-  /// they're about to update — currently unused (we don't edit
-  /// existing reservations) but they make the helper future-proof.
   Future<bool> isCourtOccupied({
     required String courtId,
     required DateTime date,
@@ -109,9 +91,6 @@ class ScheduleConflictService {
     final newStart = _combine(date, startTime);
     final newEnd = _combine(date, endTime);
 
-    // Confirmed bookings on this court. We don't combine `courtId +
-    // date` into a composite index — the per-court active set is
-    // small, so client filtering is fine here.
     final bookingsSnap = await _bookings
         .where('courtId', isEqualTo: courtId)
         .get();
@@ -130,7 +109,6 @@ class ScheduleConflictService {
       }
     }
 
-    // Non-cancelled open matches on this court.
     final matchesSnap = await _matches
         .where('courtId', isEqualTo: courtId)
         .get();
@@ -151,16 +129,8 @@ class ScheduleConflictService {
     return false;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // User schedule
-  // ─────────────────────────────────────────────────────────────
+  // ─── User schedule ──────────────────────────────────────────────
 
-  /// Returns true when [userId] already has another active session
-  /// overlapping the proposed window: a confirmed private booking,
-  /// a hosted open match, or an open match they joined.
-  ///
-  /// Each Firestore query is single-field-equality so no new
-  /// composite indexes are introduced.
   Future<bool> hasUserConflict({
     required String userId,
     required DateTime date,
@@ -172,7 +142,7 @@ class ScheduleConflictService {
     final newStart = _combine(date, startTime);
     final newEnd = _combine(date, endTime);
 
-    // 1) confirmed bookings owned by this user
+    // Confirmed bookings owned by this user.
     final bookingsSnap = await _bookings
         .where('userId', isEqualTo: userId)
         .get();
@@ -191,7 +161,7 @@ class ScheduleConflictService {
       }
     }
 
-    // 2) hosted open matches
+    // Hosted matches.
     final hostedSnap = await _matches.where('hostUid', isEqualTo: userId).get();
     for (final doc in hostedSnap.docs) {
       if (excludeMatchId != null && doc.id == excludeMatchId) continue;
@@ -208,11 +178,8 @@ class ScheduleConflictService {
       }
     }
 
-    // 3) joined open matches — `arrayContains` on `joinedPlayerIds`
-    //    is a single-index query, available by default. We still
-    //    deduplicate against `excludeMatchId` so a host-also-joined
-    //    record (which can't actually happen but is cheap to guard)
-    //    doesn't false-positive.
+    // Joined matches. Skip host-self entries so they don't double-
+    // count against the hosted query above.
     final joinedSnap = await _matches
         .where('joinedPlayerIds', arrayContains: userId)
         .get();
@@ -220,7 +187,6 @@ class ScheduleConflictService {
       if (excludeMatchId != null && doc.id == excludeMatchId) continue;
       final m = OpenMatch.fromDoc(doc);
       if (m.isCancelled) continue;
-      // Skip host-self entries (already covered by query 2).
       if (m.hostUid == userId) continue;
       if (!_isSameDay(m.date, date)) continue;
       if (intervalsOverlap(
@@ -236,14 +202,11 @@ class ScheduleConflictService {
     return false;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // High-level guards (throw on conflict)
-  // ─────────────────────────────────────────────────────────────
+  // ─── High-level guards (throw on conflict) ──────────────────────
 
-  /// Combined pre-flight for a "new booking" or "new open match"
-  /// flow. Runs the court-occupancy check then the user-schedule
-  /// check. Throws `StateError` with a distinct message per kind
-  /// so callers can produce the right SnackBar copy.
+  /// Combined pre-flight for "new booking" / "new open match" flows.
+  /// Throws `court-occupied` or `schedule-conflict` so callers can
+  /// show the right message.
   Future<void> assertNoConflictForNewReservation({
     required String userId,
     required String courtId,
@@ -269,9 +232,9 @@ class ScheduleConflictService {
     }
   }
 
-  /// For "join an existing open match" and "accept invite". The
-  /// court is already booked by the host's match — only the user's
-  /// own schedule needs validating.
+  /// For "join existing match" / "accept invite" — the court is
+  /// already booked by the host's match, so only the user's own
+  /// schedule needs checking.
   Future<void> assertNoUserConflict({
     required String userId,
     required DateTime date,

@@ -62,13 +62,9 @@ extension IdVerificationStatusX on IdVerificationStatus {
   }
 }
 
-/// Submit-for-review ID verification record.
-///
-/// Phase 2 only writes records in the `submitted` state. Approval / rejection
-/// are admin-only transitions that will land in a later phase. This model is
-/// **not** a full identity verification implementation — there is no OCR,
-/// face match, or third-party verifier. It captures what the user submitted
-/// so a reviewer can act on it later.
+/// Submit-for-review ID record. The user-side submit flow only writes
+/// `submitted`; verified/rejected transitions belong to the admin
+/// flow ([AdminService.setVerificationStatus]).
 class IdVerification {
   final IdDocumentType documentType;
   final String documentFrontUrl;
@@ -131,10 +127,7 @@ class IdVerification {
     );
   }
 
-  /// Single source of truth for the short verification label shown next to
-  /// the user's name (drawer header today; any other surface that wants a
-  /// quick "Verified player" / "Verification pending" / "Unverified player"
-  /// chip should call this so wording stays consistent everywhere.
+  /// Short status label shown alongside the user's name.
   static String labelFor(IdVerification? record) {
     if (record == null) return 'Unverified player';
     switch (record.status) {

@@ -16,16 +16,9 @@ import '../player_details/group_chat_page.dart';
 import '../player_details/message_page.dart';
 import 'group_messages_page.dart';
 
-/// Unread Messages tab. Streams BOTH direct and group threads the
-/// signed-in user participates in, filters client-side to
-/// [ChatThread.isUnreadFor], and routes each row to its proper
-/// detail screen:
-///
-///   * Direct unread → MessagePage(otherUser).
-///   * Group unread → GroupChatPage(threadId).
-///
-/// Mark-as-read still only fires when the user actually opens the
-/// underlying chat page. Visiting this list doesn't clear unread.
+/// Streams both direct and group threads, filters client-side to
+/// `isUnreadFor`. Opening this page does NOT mark anything read —
+/// only opening the underlying chat does.
 class UnreadMessagesPage extends StatefulWidget {
   const UnreadMessagesPage({super.key});
 
@@ -37,9 +30,7 @@ class _UnreadMessagesPageState extends State<UnreadMessagesPage> {
   final ChatService _chatService = ChatService();
   final UserService _userService = UserService();
 
-  // Lookup cache for the other participant on direct threads.
-  // Identical pattern to the main Messages tab so resolved users
-  // survive snapshot churn.
+  /// Cache so resolved direct-thread users survive snapshot churn.
   final Map<String, AppUser?> _userCache = {};
 
   Future<AppUser?> _resolveOther(String uid) async {
@@ -86,11 +77,8 @@ class _UnreadMessagesPageState extends State<UnreadMessagesPage> {
                         ),
                       ),
                     )
-                  // Nested StreamBuilders so we get unread direct +
-                  // unread group threads merged into one list. Both
-                  // streams already filter to threads where this user
-                  // is a participant; we just filter client-side to
-                  // `isUnreadFor` and sort by latest activity.
+                  // Nested StreamBuilders merge direct + group
+                  // threads; we filter to `isUnreadFor` client-side.
                   : StreamBuilder<List<ChatThread>>(
                       stream: _chatService.streamThreadsForUser(me.uid),
                       builder: (context, directSnap) {
@@ -110,11 +98,8 @@ class _UnreadMessagesPageState extends State<UnreadMessagesPage> {
                                 directSnap.data ?? const <ChatThread>[];
                             final groupThreads =
                                 groupSnap.data ?? const <ChatThread>[];
-                            // Filter to threads the current user
-                            // hasn't seen the latest message of.
-                            // `isUnreadFor` already excludes threads
-                            // whose latest message was sent by the
-                            // current user.
+                            // `isUnreadFor` already excludes the
+                            // user's own outgoing messages.
                             final unread = <ChatThread>[
                               ...directThreads.where(
                                 (t) => t.isUnreadFor(me.uid),

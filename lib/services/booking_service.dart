@@ -8,8 +8,7 @@ import '../models/court.dart';
 import 'notification_service.dart';
 import 'schedule_conflict_service.dart';
 
-/// Real Firestore-backed booking layer. Replaces the hard-coded maps
-/// that the bookings screens used during the static-mock phase.
+/// Firestore layer for `bookings/{id}` (private court reservations).
 class BookingService {
   final FirebaseFirestore _db;
   final NotificationService _notifications;
@@ -28,11 +27,9 @@ class BookingService {
   CollectionReference<Map<String, dynamic>> get _bookings =>
       _db.collection('bookings');
 
-  /// Streams every booking belonging to [userId]. Sorting is
-  /// client-side rather than via a Firestore `orderBy('date',
-  /// descending: false)` so we don't pay for a composite index on
-  /// `userId + date`. The dataset per user is small in scope (tens of
-  /// bookings) and sort cost is negligible.
+  /// Every booking belonging to [userId], sorted by date + start
+  /// time. Sort happens client-side to avoid a composite index on
+  /// `userId + date`.
   Stream<List<Booking>> streamBookingsForUser(String userId) {
     return _bookings.where('userId', isEqualTo: userId).snapshots().map((snap) {
       final bookings = snap.docs.map((doc) => Booking.fromDoc(doc)).toList();
@@ -45,17 +42,15 @@ class BookingService {
     });
   }
 
-  /// Persists a confirmed booking from the Book Court overlay flow.
+  /// Persist a confirmed booking.
   ///
   /// Snapshot fields (`courtName`, `courtAddress`, `courtImageUrl`,
-  /// `pricePerHour`) are captured at booking time so the list / detail
-  /// views can render without an extra `courts/{id}` read, and so a
-  /// later rename or deactivation of the court doesn't retroactively
-  /// rewrite history.
+  /// `pricePerHour`) are baked into the doc at write time so list /
+  /// detail views render without a follow-up `courts/{id}` read, and
+  /// so a later rename of the court can't rewrite history.
   ///
-  /// For now `totalPrice` is just `court.pricePerHour` (every generated
-  /// slot is 1 hour). When variable-length bookings ship, multiply by
-  /// hours-in-slot here.
+  /// `totalPrice == pricePerHour` for now because every slot is one
+  /// hour. When variable-length bookings ship, multiply by hours.
   Future<Booking> createBooking({
     required String userId,
     required Court court,
@@ -64,10 +59,6 @@ class BookingService {
     required String startTime,
     required String endTime,
   }) async {
-    // Schedule conflict guards run BEFORE the doc write so we never
-    // persist a colliding booking. Distinct StateError messages
-    // ('court-occupied' vs 'schedule-conflict') let the UI surface
-    // the right SnackBar copy.
     await _conflicts.assertNoConflictForNewReservation(
       userId: userId,
       courtId: court.id,
@@ -101,12 +92,6 @@ class BookingService {
 
     await ref.set(payload);
 
-    // Best-effort booking-confirmed in-app notification. We swallow
-    // errors here on purpose — if Firestore rules / network blip
-    // prevents the notification write, the booking itself already
-    // succeeded and we don't want to roll it back. The bell badge
-    // simply doesn't tick up for this event; the booking is still
-    // visible in MyBookings / BookingConfirmedPage.
     _safeNotify(
       userId: userId,
       title: 'Court booked',
@@ -118,9 +103,9 @@ class BookingService {
     );
 
     // Return a hydrated model so the caller can route straight into
-    // BookingConfirmedPage. `createdAt`/`updatedAt` are best-effort
-    // from the client clock — the next `streamBookingsForUser` snapshot
-    // will replace them with the server values.
+    // BookingConfirmedPage. createdAt/updatedAt are client-clock
+    // estimates; the next stream snapshot replaces them with the
+    // server values.
     return Booking(
       id: ref.id,
       userId: userId,
@@ -140,9 +125,6 @@ class BookingService {
     );
   }
 
-  /// Fetch a single booking by id. Returns `null` if the doc is
-  /// missing or empty — callers (e.g. tapping a `booking_*`
-  /// notification) should handle the null case gracefully.
   Future<Booking?> getBooking(String bookingId) async {
     final snap = await _bookings.doc(bookingId).get();
     if (!snap.exists) return null;
@@ -151,19 +133,14 @@ class BookingService {
     return Booking.fromMap({...data, 'id': snap.id});
   }
 
-  /// Soft-cancel a booking. We don't delete the doc — keeping it
-  /// makes "Past" bookings still visible and lets us reason about
-  /// cancellations vs. attended sessions in a later phase.
+  /// Soft cancel — flip the status, keep the doc. Past bookings stay
+  /// visible in MyBookings under their Cancelled tag.
   Future<void> cancelBooking(String bookingId) async {
     await _bookings.doc(bookingId).update({
       'status': BookingStatus.cancelled,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    // Best-effort cancellation notification — same swallow-errors
-    // rationale as createBooking. Read the doc back to get the court
-    // name + userId for the notification body; if that read fails,
-    // the cancellation still stands.
     try {
       final booking = await getBooking(bookingId);
       if (booking != null) {
@@ -181,10 +158,9 @@ class BookingService {
     }
   }
 
-  /// Fire-and-forget notification write. Swallows + debugPrints any
-  /// error so a Firestore rules / network failure on the
-  /// notifications collection can never cascade into a booking
-  /// write/cancel failure.
+  /// Fire-and-forget notification. Swallows errors so a Firestore
+  /// rules / network blip on `notifications` can never cascade into
+  /// a booking write failure.
   void _safeNotify({
     required String userId,
     required String title,
@@ -207,9 +183,6 @@ class BookingService {
         });
   }
 
-  /// Human-readable "EEE, MMM d · 6:00 PM - 7:00 PM" for notification
-  /// bodies. Standalone (not member of Booking) because we use it on
-  /// the in-memory draft before the Booking object exists.
   String _humanWhen(DateTime date, String startTime, String endTime) {
     final d = DateFormat('EEE, MMM d').format(date);
     return '$d · $startTime - $endTime';

@@ -17,20 +17,12 @@ import '../../widgets/player_details/player_details_components.dart';
 import '../../widgets/user_avatar.dart';
 import 'match_joined_page.dart';
 
-/// Which tab to surface when [InvitesPage] is first opened. The page
-/// flips between Sent and Received via internal state — there is no
-/// second screen and no pop-based tab switching, which used to bounce
-/// users back to whoever pushed ReceivedInvitesPage (e.g.
-/// NotificationsPage) when they tapped "Sent Invites".
+/// Which tab the page opens on. Tab switching is internal state —
+/// one screen, no pop-based navigation.
 enum InviteTab { sent, received }
 
-/// One-stop Invites page: Sent + Received tabs, real Firestore data
-/// for both, accept/decline wired on each pending row.
-///
-/// Open with `InvitesPage(initialTab: InviteTab.sent)` from
-/// InviteSentPage's "View Invites" button, and with
-/// `InvitesPage(initialTab: InviteTab.received)` from a pending-invite
-/// notification.
+/// Sent + Received tabs over real Firestore. Accept / decline are
+/// wired on each pending row.
 class InvitesPage extends StatefulWidget {
   final InviteTab initialTab;
 
@@ -46,9 +38,7 @@ class _InvitesPageState extends State<InvitesPage> {
 
   late InviteTab _selectedTab = widget.initialTab;
 
-  /// Per-invite "I'm currently calling accept/decline" lock keyed by
-  /// invite id. Prevents a double-tap from racing two server writes
-  /// for the same invite.
+  /// Per-invite in-flight lock so a double-tap can't race the server.
   final Set<String> _busyInviteIds = <String>{};
 
   void _onBottomNavTap(int index) {
@@ -323,10 +313,9 @@ class _ReceivedInvitesList extends StatelessWidget {
   }
 }
 
-/// One sent-invite row. Subscribes to the underlying open_match so the
-/// "X / Y players joined · N spots left" line is live — the invite
-/// snapshot is only used as a backstop when the match has been
-/// deleted server-side.
+/// One sent-invite row. Subscribes to the underlying open_match
+/// so the live "X / Y joined · N spots left" stays honest. The
+/// invite's own snapshot is backstop only.
 class _SentInviteRow extends StatelessWidget {
   final Invite invite;
   final OpenMatchService openMatchService;

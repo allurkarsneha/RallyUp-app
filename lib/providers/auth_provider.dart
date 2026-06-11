@@ -46,11 +46,11 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    // Mid-session safety: if we already have a valid user object for this
-    // same uid, treat fetch failures or transient missing-doc reads as
-    // "keep what we have". Without this, a network blip or a token refresh
-    // that re-triggers this listener can null out _currentUser and make
-    // every part of the UI fall back to "Welcome / U".
+    // Mid-session safety: if we already have a valid user for this
+    // uid, treat fetch failures / transient missing-doc reads as
+    // "keep what we have". Otherwise a network blip during a token
+    // refresh would null _currentUser and the whole UI would fall
+    // back to the "Welcome / U" empty state.
     final hadGoodUser =
         _currentUser != null &&
         _currentUser!.uid == firebaseUser.uid &&
@@ -61,29 +61,22 @@ class AuthProvider extends ChangeNotifier {
       if (user != null) {
         _currentUser = user;
         _status = AuthStatus.authenticated;
-      } else if (hadGoodUser) {
-        // Doc missing this read but we have a valid user already — likely
-        // a transient Firestore read or a write-in-flight. Keep the user.
-      } else {
+      } else if (!hadGoodUser) {
         _currentUser = null;
         _status = AuthStatus.needsOnboarding;
       }
     } catch (e) {
       _lastError = e.toString();
-      if (hadGoodUser) {
-        // Same reasoning — don't kick a signed-in user out on transient
-        // errors. Stay authenticated with the last known user.
-      } else {
+      if (!hadGoodUser) {
         _currentUser = null;
         _status = AuthStatus.needsOnboarding;
       }
     }
     notifyListeners();
 
-    // Best-effort FCM init once we've settled on an authenticated user.
-    // Fire-and-forget — PushNotificationService swallows + debugPrints
-    // its own errors so a missing APNs key (iOS simulator) or denied
-    // permission can never crash this listener.
+    // Best-effort FCM init. PushNotificationService swallows its own
+    // errors so a denied permission or missing APNs key can't crash
+    // this listener.
     if (_status == AuthStatus.authenticated && _currentUser != null) {
       // ignore: unawaited_futures
       _pushNotificationService.initForUser(_currentUser!.uid);
@@ -100,13 +93,10 @@ class AuthProvider extends ChangeNotifier {
     final lastName = formData.lastName.trim();
     final sports = formData.selectedSports.toList();
 
-    // Defensive check — if a doc already exists for this uid, the user is
-    // re-entering the onboarding flow (e.g. a transient getUser failure
-    // earlier flipped status to needsOnboarding). We must NOT call
-    // `createUser` here because that does a full `doc.set()` which would
-    // overwrite every existing field — wiping idVerification, location,
-    // profileVisible, etc. server-side. Instead, partial-update only the
-    // fields onboarding actually collects.
+    // If a doc already exists this is a re-entry into onboarding —
+    // partial-update only the fields onboarding collects. A full
+    // `createUser` would overwrite idVerification, location,
+    // profileVisible, etc.
     final existing = await _userService.getUser(fbUser.uid);
     if (existing != null) {
       final displayName = AppUser.buildDisplayName(firstName, lastName);
@@ -147,10 +137,9 @@ class AuthProvider extends ChangeNotifier {
       updatedAt: now,
     );
 
-    // The nested `location` object is written by `user.toMap()`. The top-level
-    // shadow fields below are intentionally duplicated so we can later run
-    // Firestore where()/range queries (e.g. by city, or lat/lng bounding box)
-    // without having to backfill every document.
+    // Top-level location shadow fields are stored alongside the
+    // nested `location` so future geo queries can use them without
+    // a backfill.
     await _userService.createUser(
       user,
       extras: _locationShadow(formData.location),
@@ -160,11 +149,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Flattened, top-level Firestore copies of the user's location fields.
-  /// Stored alongside the nested `location` object so future geo-bounded
-  /// queries (city match, lat/lng box) don't require composite-indexing
-  /// inside the nested map. Returns `{}` if there is no location to write,
-  /// so spread operators stay no-ops in that case.
+  /// Top-level Firestore copies of the nested `location` fields, so
+  /// future geo queries don't need to index inside a nested map.
   Map<String, dynamic> _locationShadow(UserLocation? loc) {
     if (loc == null) return const {};
     return {
@@ -176,9 +162,7 @@ class AuthProvider extends ChangeNotifier {
     };
   }
 
-  /// Persist editable profile fields (name + age + postal code) through the
-  /// same Firestore path the rest of the app uses. Pass `null` for `age` or
-  /// `postalCode` to clear them.
+  /// Pass `null` for `age` or `postalCode` to clear.
   Future<void> updateProfile({
     required String firstName,
     required String lastName,
@@ -202,12 +186,9 @@ class AuthProvider extends ChangeNotifier {
       'postalCode': newPostalCode,
     });
 
-    // CRITICAL: preserve every field that updateProfile doesn't touch
-    // (location, idVerification, profileVisible, bio). Earlier this method
-    // omitted those and they silently defaulted to null/null/true in the
-    // local AppUser, which is what caused ProfileSettings to show "Not
-    // started" right after the user saved an unrelated edit even though
-    // Firestore still had the record.
+    // Preserve every field updateProfile doesn't touch (location,
+    // idVerification, profileVisible, bio) so they don't get
+    // silently cleared from the local copy.
     _currentUser = AppUser(
       uid: user.uid,
       email: user.email,
@@ -231,10 +212,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Persist the player's About/Bio text. Trimmed; pass an empty/whitespace
-  /// string to clear. Length-clamped to [AppUser.maxBioLength] characters
-  /// at the call site (ProfileSettingsScreen enforces this with a
-  /// TextInputFormatter so we don't lose state by truncating here).
+  /// Trimmed; empty/whitespace clears. The call site enforces
+  /// [AppUser.maxBioLength] via a TextInputFormatter.
   Future<void> updateBio(String? bio) async {
     final user = _currentUser;
     if (user == null) return;
@@ -278,10 +257,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Apply an uploaded profile photo URL. Clears `avatarId` so the photo
-  /// wins cleanly in the UserAvatar priority chain (photoUrl > avatarId >
-  /// initials). Callers should already have uploaded the bytes via
-  /// `ImageUploadService.uploadProfilePhoto` and have a Cloudinary URL.
+  /// Clears `avatarId` so the photo wins in the UserAvatar priority
+  /// chain (photoUrl > avatarId > initials).
   Future<void> setProfilePhotoUrl(String url) async {
     final user = _currentUser;
     if (user == null) return;
@@ -312,8 +289,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Clear both the uploaded photo and the preset avatar, falling back to
-  /// initials.
+  /// Fall back to initials by clearing both photo and avatar.
   Future<void> clearProfileImage() async {
     final user = _currentUser;
     if (user == null) return;
@@ -363,18 +339,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Submit-for-review only. The caller has already uploaded the images and
-  /// must pass a record with `status: IdVerificationStatus.submitted` and
-  /// `submittedAt` set to now. Approval / rejection transitions are an
-  /// admin-side concern for a later phase — this method intentionally
-  /// rejects records with any other status to keep the contract explicit.
+  /// Submit-for-review only. Approve / reject transitions belong to
+  /// [AdminService.setVerificationStatus].
   Future<void> submitIdVerification(IdVerification record) async {
     final user = _currentUser;
     if (user == null) return;
     if (record.status != IdVerificationStatus.submitted) {
       throw ArgumentError(
-        'submitIdVerification only accepts records with status=submitted. '
-        'verified / rejected transitions belong to the admin flow.',
+        'submitIdVerification only accepts status=submitted.',
       );
     }
     await _userService.updateFields(user.uid, {
@@ -387,62 +359,37 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Deletes the Firebase Auth account, then (best-effort) the Firestore
-  /// profile doc.
-  ///
-  /// Invariant — **state is only torn down once auth deletion has
-  /// observably succeeded**:
-  ///
-  ///   * If `fbUser.delete()` throws (e.g. `requires-recent-login`,
-  ///     `network-request-failed`), the function rethrows immediately
-  ///     **without** touching `_currentUser` / `_status` / listeners. The
-  ///     user remains signed in with the same profile they had before, so
-  ///     the caller can show a snackbar and let them retry after
-  ///     re-authenticating. The UI never enters a "fake signed-out" state.
-  ///
-  ///   * If `fbUser.delete()` succeeds, the auth account is gone
-  ///     server-side. Only then do we clear local state synchronously and
-  ///     notify listeners, so AuthGate repaints to SignupScreen on the
-  ///     very next frame with no flash of "Your Profile" / "U" fallback
-  ///     in between. The Firestore doc delete is best-effort after that —
-  ///     a failure there just leaves an orphan that an admin job can reap;
-  ///     it can no longer affect the user-facing UI.
+  /// Auth-first delete. Local state is torn down only AFTER
+  /// `fbUser.delete()` succeeds, so a throw (e.g.
+  /// `requires-recent-login`) leaves the user signed in and the
+  /// caller can show a retry SnackBar. The Firestore doc delete is
+  /// best-effort after that — an orphaned doc is reaped by an admin
+  /// job and can't affect the UI.
   Future<void> deleteAccount() async {
     final fbUser = _authService.currentFirebaseUser;
     if (fbUser == null) return;
     final uid = fbUser.uid;
 
-    // ① Server-side delete. If this throws, control returns to the caller
-    //    with our local state untouched — the user is still signed in.
     await fbUser.delete();
 
-    // ② Auth deletion confirmed → it is now safe (and required) to clear
-    //    local state. Anything that runs below this line assumes the
-    //    server-side account is gone.
     _currentUser = null;
     _status = AuthStatus.unauthenticated;
     _lastError = null;
     notifyListeners();
 
-    // ③ Best-effort Firestore cleanup. Failure here cannot put us back
-    //    into a signed-in state; the user is already gone from auth.
     try {
       await _userService.deleteUser(uid);
     } catch (e) {
       debugPrint(
-        'deleteAccount: auth user $uid deleted, but Firestore doc cleanup '
-        'failed: $e. The user is effectively deleted; the orphan doc should '
-        'be reaped by a server-side cleanup job in a later phase.',
+        'deleteAccount: auth user $uid deleted, Firestore cleanup '
+        'failed: $e (orphan doc)',
       );
     }
   }
 
-  /// Sign out and clear local state synchronously. We don't wait for the
-  /// FirebaseAuth listener (`_onAuthChange`) to fire — that's an extra
-  /// async hop where the UI can briefly render with stale state. Clearing
-  /// here means by the time `await signOut()` returns, every widget that
-  /// watches AuthProvider has already been told to switch to the
-  /// unauthenticated branch.
+  /// Clears local state synchronously so listeners flip to the
+  /// unauthenticated branch by the time the await returns — no
+  /// reliance on the auth-state listener's async hop.
   Future<void> signOut() async {
     _currentUser = null;
     _status = AuthStatus.unauthenticated;
@@ -451,10 +398,11 @@ class AuthProvider extends ChangeNotifier {
     await _authService.signOut();
   }
 
-  /// Sends a Firebase Auth password-reset email. Returns null on
-  /// success or a friendly error string on failure so the calling
-  /// UI can surface a SnackBar without parsing FirebaseAuthException
-  /// codes itself.
+  /// Returns null on success or a friendly error string. We surface
+  /// `user-not-found` explicitly rather than silently treating it as
+  /// success — production would hide it to prevent email
+  /// enumeration, but the demo benefits from a clear "sign up first"
+  /// signal.
   Future<String?> sendPasswordResetEmail(String email) async {
     final trimmed = email.trim();
     if (trimmed.isEmpty) return 'Enter the email you signed up with.';
@@ -466,10 +414,9 @@ class AuthProvider extends ChangeNotifier {
         case 'invalid-email':
           return "That doesn't look like a valid email address.";
         case 'user-not-found':
-          // Firebase Auth returns this for unknown emails. We mirror
-          // the success-style message so we don't leak which emails
-          // are registered.
-          return null;
+          return "No account is registered for that email. "
+              'Sign up first, then try Reset Password from Account '
+              'Settings.';
         case 'too-many-requests':
           return 'Too many attempts. Try again in a few minutes.';
         default:

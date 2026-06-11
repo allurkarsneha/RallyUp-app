@@ -45,33 +45,18 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
     'Swimming',
   ];
 
-  /// Filters by sport + free-text search across court name, host
-  /// name, sport, and court address. Also hides:
-  ///   * cancelled matches (host pulled them).
-  ///   * full matches (no joinable spots left).
-  ///   * matches hosted by [currentUid] — they belong in MyBookings.
-  ///   * matches [currentUid] has already joined — they belong in
-  ///     MyBookings too. Showing them in the public list let users
-  ///     "re-join" a match they were already in.
-  /// Notification deep-links and MatchDetailsPage are unaffected
-  /// (those routes don't go through this filter).
-  /// Sorts:
-  ///   * `default` / `slots` → most spots-left first.
-  ///   * `distance` → fewest spots-left first (used to mean
-  ///     "earliest" in the static mock; we preserve the option but
-  ///     map it to spots-ascending so an already-existing call site
-  ///     doesn't break).
-  ///   * `rating` → most joined players first.
-  ///   * `price_low` → cheapest-per-player first.
+  /// Filters by sport + free-text search; hides cancelled, full,
+  /// past, host-own, and already-joined matches. Sort keys:
+  /// `slots`/`default` → most spots-left, `distance` → fewest
+  /// spots-left, `rating` → most joined, `price_low` → cheapest
+  /// per player.
   List<OpenMatch> _filterAndSort(List<OpenMatch> matches, String? currentUid) {
     final query = _searchController.text.trim().toLowerCase();
     final now = DateTime.now();
     final filtered = matches.where((m) {
       if (m.isCancelled) return false;
       if (m.isFull) return false;
-      // Drop matches that have already ended. Combine `date`
-      // (midnight) with `endTime` ("HH:mm") so a 5–6 PM match
-      // disappears at 6 PM, not at midnight.
+      // Drop already-ended matches by combining date + endTime.
       final endParts = m.endTime.split(':');
       final endH = int.tryParse(endParts.isNotEmpty ? endParts[0] : '') ?? 0;
       final endMin = int.tryParse(endParts.length > 1 ? endParts[1] : '') ?? 0;
@@ -114,8 +99,7 @@ class _OpenMatchesPageState extends State<OpenMatchesPage> {
         break;
       case 'default':
       default:
-        // Soonest start first — matches the page subtitle "Open
-        // Matches Near You" by surfacing the most imminent first.
+        // Soonest start first.
         break;
     }
     return filtered;

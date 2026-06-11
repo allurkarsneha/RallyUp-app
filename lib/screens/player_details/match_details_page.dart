@@ -22,15 +22,10 @@ import '../../widgets/player_details/player_details_components.dart';
 import '../../widgets/rally_header.dart';
 import '../../widgets/user_avatar.dart';
 
-/// Match details view for an [OpenMatch]. Visual rhythm matches the
-/// previous static-mock layout (image → title → sport → date/location
-/// info rows → players strip → CTA buttons); the data is now real
-/// Firestore.
-///
-/// Join is a single tap → confirmation dialog → transactional join
-/// via [OpenMatchService]. The transaction enforces host-can't-join,
-/// no-duplicate, no-full, no-cancelled inside the same atomic
-/// read-write so two devices racing for the last spot can't both
+/// Match details view. Join routes through
+/// [OpenMatchService.joinOpenMatch], whose transaction rejects
+/// host-self-join / duplicate / full / cancelled inside one atomic
+/// read-write — two devices racing for the last spot can't both
 /// succeed.
 class MatchDetailsPage extends StatefulWidget {
   final OpenMatch match;
@@ -56,15 +51,12 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     switchToMainShellTab(context, index);
   }
 
-  /// Loads the host's full [AppUser] and routes the current (non-host)
-  /// user into the existing direct-message flow. Open Matches only
-  /// carry a small host snapshot so we do a single `users/{hostUid}`
-  /// read here. If the read fails (rules / missing doc) we fall back
-  /// to a SnackBar — the page never silently dead-ends.
+  /// Reads the host's full [AppUser] and pushes the DM page.
+  /// Falls back to a SnackBar if the read fails.
   Future<void> _openHostMessage(BuildContext context) async {
     if (_openingHostMessage) return;
-    // Capture both before the async gap so we don't reach back
-    // through the BuildContext after `await`.
+    // Capture both before the await so we don't touch BuildContext
+    // across the async gap.
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     setState(() => _openingHostMessage = true);
@@ -95,10 +87,9 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   }
 
   void _openGroupChat(BuildContext context) {
-    // Push the real group chat for this open match. `_match` is the
-    // live snapshot (host create OR joined player) — GroupChatPage
-    // calls `createOrUpdateGroupThreadForMatch` on entry so a host
-    // who hasn't sent a message yet still lands in a usable thread.
+    // GroupChatPage calls `createOrUpdateGroupThreadForMatch` on
+    // entry so a host with no messages yet still lands in a usable
+    // thread.
     Navigator.push(
       context,
       PageRouteBuilder<void>(
@@ -109,8 +100,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     );
   }
 
-  /// Shows the confirm-join dialog; on tap of "Yes, Join" runs the
-  /// real transaction and routes to MatchJoinedPage on success.
+  /// Confirm-join dialog → transactional join → MatchJoinedPage.
   void _showJoinDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -223,8 +213,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
         match: _match,
         user: me,
       );
-      // Best-effort host notification — failures swallowed so the
-      // join itself isn't rolled back.
+      // Best-effort host notification.
       _notificationService
           .createNotification(
             userId: updated.hostUid,
@@ -544,10 +533,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
                     width: double.infinity,
                     height: 54,
                     child: OutlinedButton(
-                      // Host sees "View Group Chat" (real group thread
-                      // ships with the messaging-grouping phase, the
-                      // tap shows a placeholder until then). Non-host
-                      // keeps the existing "Message Host" affordance.
+                      // Host → View Group Chat. Non-host → Message Host.
                       onPressed: isHost
                           ? () => _openGroupChat(context)
                           : () => _openHostMessage(context),
@@ -578,8 +564,8 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   }
 }
 
-/// Renders the horizontal participants strip: host slot + each joined
-/// player + remaining empty slots up to `playersRequired`.
+/// Host slot → "+N others" placeholder → real joined players →
+/// empty slots up to `playersRequired`.
 class _PlayersStrip extends StatelessWidget {
   final OpenMatch match;
   final Widget Function({required Widget avatar, required String label})
@@ -598,9 +584,8 @@ class _PlayersStrip extends StatelessWidget {
     final names = match.joinedPlayerNames;
     final slots = <Widget>[];
 
-    // Render the host first so the "+N others" placeholder (when the
-    // host claimed extra confirmed guests on PlayersSetupSheet) sits
-    // directly after the host slot, before any real remote joiners.
+    // Host first so the "+N others" placeholder sits right after
+    // them, before any remote joiners.
     int hostIdx = -1;
     for (var i = 0; i < ids.length; i++) {
       if (ids[i] == match.hostUid) {
@@ -651,9 +636,8 @@ class _PlayersStrip extends StatelessWidget {
     for (var i = 0; i < ids.length; i++) {
       if (i == hostIdx) continue;
       final name = i < names.length ? names[i] : 'Player';
-      // We don't carry a full per-player snapshot in the open match
-      // doc on purpose (see model header). Fall back to initials
-      // built from the stored display name.
+      // Open matches only carry uid + display name per joined
+      // player — fall back to initials.
       slots.add(
         buildSlot(
           avatar: PlayerDetailsAvatar(initials: initialsFrom(name), size: 60),
@@ -664,11 +648,8 @@ class _PlayersStrip extends StatelessWidget {
 
     final remaining = match.playersRequired - match.effectiveJoinedCount;
     for (var i = 0; i < remaining; i++) {
-      // Label each empty slot by how many spots are still left
-      // counting itself: the first empty avatar shows "N spots",
-      // the last one shows "1 spot". The previous version only
-      // pluralized when `remaining == 1` total, which produced
-      // "1 spots" on the trailing slot whenever remaining > 1.
+      // Each empty slot labels itself by remaining spots. First
+      // empty reads "N spots", last reads "1 spot".
       final spotsHere = remaining - i;
       slots.add(
         buildSlot(

@@ -178,15 +178,31 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       },
     );
-    controller.dispose();
-    if (!mounted || email == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'If an account exists for $email, a reset link is on its way.',
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
+    // Capture the messenger while the BuildContext is still valid.
+    // Then defer EVERYTHING to the next frame — the controller
+    // dispose, the mounted recheck, and the SnackBar insertion.
+    // Calling `controller.dispose()` synchronously immediately after
+    // `await showDialog` fires while the dialog overlay route is
+    // still tearing down; descendant elements that depended on the
+    // dialog's InheritedWidgets haven't been deactivated yet, which
+    // is what the framework `_dependents.isEmpty` assertion is
+    // catching.
+    final messenger = ScaffoldMessenger.of(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+      if (email == null) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'If an account exists for $email, a reset link is on its way.',
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   @override

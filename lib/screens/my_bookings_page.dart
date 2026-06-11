@@ -21,14 +21,11 @@ import 'booking_confirmed_page.dart';
 import 'main_shell_nav.dart';
 import 'player_details/match_details_page.dart';
 
-/// Real bookings list for the signed-in user. Replaces the prior
-/// hard-coded `_upcomingBookings` / `_pastBookings` lists.
-///
-/// Upcoming vs. Past is computed off the booking's actual `date`:
-/// today-or-later goes to Upcoming, before-today goes to Past. Cancelled
-/// bookings stay in the list with a distinct tag so the user can see
-/// what they cancelled — same rationale as the soft-cancel in
-/// BookingService.
+/// Upcoming / Past view of the signed-in user's private bookings +
+/// open matches. Bucketing is wall-clock — combining `date` +
+/// `endTime` — so a session in progress reads correctly. Cancelled
+/// rows always belong to Past so they disappear from Upcoming the
+/// moment cancel succeeds.
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
 
@@ -66,12 +63,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     );
   }
 
-  /// Bottom-sheet shown for an open match the current user HOSTS.
-  /// Cancels the match through the transactional
-  /// [OpenMatchService.cancelOpenMatch], which fans out
-  /// `typeOpenMatchCancelled` notifications to every other joined
-  /// player. Success → match flips to `cancelled`, MyBookings row
-  /// moves to Past with the "Cancelled" tag, public lists drop it.
+  /// Host-only "Cancel match" sheet. Runs the transactional cancel
+  /// + sweeps pending invites into the cancelled state.
   void _openMatchHostOptions(OpenMatch match, AppUser host) {
     if (match.isCancelled) return;
     showModalBottomSheet(
@@ -106,12 +99,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                       match: match,
                       host: host,
                     );
-                    // Sweep pending invites for the cancelled
-                    // match into the `cancelled` state so they
-                    // disappear from both the host's Sent and the
-                    // invitees' Received pending lists. Done from
-                    // the UI handler rather than OpenMatchService
-                    // to avoid a service-layer circular import
+                    // Sweep pending invites into `cancelled`. Done
+                    // from the UI to avoid a service-layer cycle
                     // (InviteService → OpenMatchService).
                     _inviteService
                         .cancelInvitesForMatch(match.id)
@@ -139,10 +128,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     );
   }
 
-  /// Bottom-sheet shown for an open match the current user JOINED.
-  /// Removes the user from the parallel `joinedPlayerIds` /
-  /// `joinedPlayerNames` arrays inside a transaction so the host
-  /// can't race the leave with a cancel and produce a desynced doc.
+  /// "Leave match" sheet for a joined player. Transactional so a
+  /// host-cancel can't race the leave.
   void _openMatchJoinedOptions(OpenMatch match, AppUser user) {
     if (match.isCancelled) return;
     showModalBottomSheet(
@@ -258,7 +245,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   ),
                 ),
                 onTap: () async {
-                  // Capture before the sheet's context unmounts.
+                  // Capture before the sheet pops.
                   final messenger = ScaffoldMessenger.of(context);
                   Navigator.pop(sheetContext);
                   try {
@@ -298,10 +285,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     ).formatTimeOfDay(TimeOfDay(hour: h, minute: m));
   }
 
-  /// Combines `booking.date` (midnight) with the booking's
-  /// `endTime` ("HH:mm") so we can compare against
-  /// `DateTime.now()` exactly — a 6-7 PM booking on today's date
-  /// counts as "Upcoming" up to 7 PM and "Past" from 7 PM onward.
+  /// `date` + `endTime` → wall-clock. A 6–7 PM booking today reads
+  /// as Upcoming until 7 PM, then flips to Past.
   DateTime _bookingEndDateTime(Booking booking) {
     final parts = booking.endTime.split(':');
     final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
@@ -315,9 +300,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     );
   }
 
-  /// Same idea as [_bookingEndDateTime] but for an [OpenMatch] — the
-  /// match doc stores `date` (midnight) + `endTime` ("HH:mm"), so we
-  /// combine them to make the upcoming/past comparison honest.
   DateTime _matchEndDateTime(OpenMatch match) {
     final parts = match.endTime.split(':');
     final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
@@ -325,9 +307,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     return DateTime(match.date.year, match.date.month, match.date.day, h, m);
   }
 
-  /// Wall-clock start time. Used to detect the "in progress" window
-  /// (`start <= now < end`) so a 6–7 PM booking at 6:30 reads as
-  /// "In progress" instead of just "Confirmed".
+  /// Start as wall-clock — used for the in-progress detection
+  /// (`start ≤ now < end`).
   DateTime _bookingStartDateTime(Booking booking) {
     final parts = booking.startTime.split(':');
     final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
@@ -348,9 +329,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     return DateTime(match.date.year, match.date.month, match.date.day, h, m);
   }
 
-  /// Three-way bucket the bookings stream lands in. Cancelled rows
-  /// always belong to Past regardless of date so they disappear from
-  /// Upcoming the moment cancel succeeds.
   ({bool isUpcoming, bool isPast, bool isCancelled}) _bucketFor(
     Booking booking,
     DateTime now,
@@ -383,20 +361,12 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     if (booking.isCancelled) return 'Cancelled';
     final endsAt = _bookingEndDateTime(booking);
     if (!booking.isConfirmed || !endsAt.isAfter(now)) return 'Completed';
-    // start <= now < end → the session is happening right now.
     final startsAt = _bookingStartDateTime(booking);
     if (!startsAt.isAfter(now)) return 'In progress';
     return 'Confirmed';
   }
 
-  /// Tags differ from private bookings because an open match has a
-  /// host/joined distinction the private-booking flow doesn't have:
-  ///   * Upcoming + I'm the host → "Hosting"
-  ///   * Upcoming + I joined → "Joined"
-  ///   * In progress (start ≤ now < end) → "In progress" regardless
-  ///     of host/joined so the row obviously stands out in the list
-  ///   * Past + not cancelled → "Completed"
-  ///   * Cancelled → "Cancelled"
+  /// Cancelled / Completed / In progress / Hosting / Joined.
   String _matchTagFor(OpenMatch match, DateTime now, String myUid) {
     if (match.isCancelled) return 'Cancelled';
     final endsAt = _matchEndDateTime(match);
@@ -406,16 +376,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     return match.isHost(myUid) ? 'Hosting' : 'Joined';
   }
 
-  /// Renders one card. The unified [_Row] hides whether the
-  /// underlying source is a private booking or an open match — the
-  /// card itself only needs the strings + callbacks. Routing back
-  /// to the original detail page (BookingConfirmedPage vs
-  /// MatchDetailsPage) happens here.
-  ///
-  /// [me] is the signed-in [AppUser] — passed in so the open-match
-  /// More menu can pick the right action (Cancel match for the
-  /// host, Leave match for a joined player) without re-reading from
-  /// the provider per row.
+  /// Renders one card and routes its taps. [me] is passed so the
+  /// More menu picks Cancel (host) vs Leave (joined) per row.
   Widget _buildRow(_Row row, DateTime now, AppUser me) {
     if (row.booking != null) {
       final b = row.booking!;
@@ -434,8 +396,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         tagText: _tagFor(b, now),
         onTap: () => _openBookingDetails(b),
         onViewDetailsTap: () => _openBookingDetails(b),
-        // Only future, confirmed private bookings expose the
-        // More menu (cancel). Past / cancelled rows hide it.
+        // Only upcoming confirmed bookings expose the More menu.
         onMoreTap: bucket.isUpcoming ? () => _openBookingOptions(b) : null,
       );
     }
@@ -446,10 +407,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         '${_formatTime(context, m.startTime)} - '
         '${_formatTime(context, m.endTime)}';
 
-    // Pick the More-menu action for this row:
-    //   * Upcoming + I host → Cancel match
-    //   * Upcoming + I joined → Leave match
-    //   * Past / cancelled → hide menu entirely
+    // Upcoming + host → Cancel; upcoming + joined → Leave;
+    // past / cancelled → no menu.
     VoidCallback? onMoreTap;
     if (bucket.isUpcoming && !m.isCancelled) {
       if (m.isHost(me.uid)) {
@@ -572,10 +531,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                             me.uid,
                           ),
                           builder: (context, matchSnap) {
-                            // Wait for the first frame of either
-                            // stream so we don't flash the empty
-                            // state before Firestore has had a
-                            // chance to return anything.
+                            // Wait for both streams' first frame so
+                            // we don't flash the empty state.
                             final bothWaiting =
                                 bookingSnap.connectionState ==
                                     ConnectionState.waiting &&
@@ -588,11 +545,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                                 child: CircularProgressIndicator(),
                               );
                             }
-                            // Recompute "now" inside the builder
-                            // so the bucketing is fresh each
-                            // rebuild — a row that ends while the
-                            // user is on this page moves to Past
-                            // on the next snapshot.
+                            // Recompute `now` per rebuild so a row
+                            // that ends while the page is open
+                            // moves to Past on the next snapshot.
                             final now = DateTime.now();
                             final bookings =
                                 bookingSnap.data ?? const <Booking>[];
@@ -629,9 +584,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                               );
                             }
 
-                            // Sort:
-                            //   Upcoming → soonest-end first.
-                            //   Past → newest-end first.
+                            // Upcoming: soonest-end first.
+                            // Past: newest-end first.
                             rows.sort(
                               (a, b) => _showUpcoming
                                   ? a.endsAt.compareTo(b.endsAt)
@@ -717,11 +671,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
   }
 }
 
-/// Unified row used by the bucketed/sorted list. Exactly one of
-/// [booking] or [match] is non-null. We keep them in the same list
-/// so a single ListView can interleave private bookings and open
-/// matches by chronological end-time without merging the two
-/// Firestore collections at the storage layer.
+/// Unified row. Exactly one of [booking] or [match] is non-null.
+/// Letting both shapes share one list keeps private bookings and
+/// open matches interleaved by end-time without merging collections.
 class _Row {
   final DateTime endsAt;
   final bool isUpcomingBucket;

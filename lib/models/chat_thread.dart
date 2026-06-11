@@ -1,21 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// One chat thread document under `threads/{threadId}`.
+/// `threads/{threadId}`. Two shapes:
+///   * [typeDirect] — 1-to-1 chat. `participantIds` has exactly two
+///     uids.
+///   * [typeGroup] — open-match group chat. `participantIds` grows
+///     as players join. Carries extra snapshot fields (`matchId`,
+///     `title`, `imageUrl`, `sportType`, `courtName`) so the threads
+///     list renders without a per-card match lookup.
 ///
-/// Two thread shapes are supported:
-///   * [typeDirect] — 1-to-1 chat between two users. `participantIds`
-///     has exactly two uids. This is the original shape — the
-///     `directThreadId` helper assumes two participants and the
-///     direct UI looks them up by hitting `users/{uid}`.
-///   * [typeGroup] — open-match group thread. `participantIds` can
-///     grow as players join the match. Group threads carry extra
-///     snapshot fields (`matchId`, `title`, `imageUrl`, `sportType`,
-///     `courtName`) so the threads list can render an avatar/title
-///     row without a per-card open-match read.
-///
-/// Backward compatibility: docs written before the group split don't
-/// have a `type` field. They're treated as [typeDirect] so the
-/// existing MessagesPage keeps showing them.
+/// Legacy docs without a `type` field are treated as direct.
 class ChatThread {
   static const String typeDirect = 'direct';
   static const String typeGroup = 'group';
@@ -29,12 +22,10 @@ class ChatThread {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  /// Per-participant "last time this user opened the chat" timestamp.
-  /// Keyed by uid. Used by [isUnreadFor] to decide whether the receiver
-  /// has seen the most recent message. Pending `serverTimestamp()`
-  /// writes resolve to `null` for one round-trip on the writing client,
-  /// which is the same as "never read" — that's intentionally treated
-  /// as unread so the indicator doesn't briefly flash off.
+  /// Per-uid "last time this user opened the chat." A null entry
+  /// (including the brief server-timestamp resolution window) reads
+  /// as "never read", which keeps the unread indicator from
+  /// flashing off.
   final Map<String, DateTime> lastReadAtByUser;
 
   /// Group-only metadata. `null` on direct threads.
@@ -64,12 +55,8 @@ class ChatThread {
   bool get isDirect => type == typeDirect;
   bool get isGroup => type == typeGroup;
 
-  /// Returns the participant uid that is NOT [currentUid], or `null` if
-  /// the thread somehow only contains the current user. Useful for
-  /// resolving "the other person" in 1-to-1 list rendering.
-  ///
-  /// For group threads this is meaningless (there is no single
-  /// "other"); callers should branch on [isGroup] before calling.
+  /// The other participant in a 1-to-1 thread. Meaningless for group
+  /// threads — callers should branch on [isGroup] first.
   String? otherParticipant(String currentUid) {
     for (final id in participantIds) {
       if (id != currentUid) return id;
@@ -77,20 +64,12 @@ class ChatThread {
     return null;
   }
 
-  /// Last time [uid] opened (or sent within) this thread. `null` if the
-  /// user has never opened it.
   DateTime? lastReadAtFor(String uid) => lastReadAtByUser[uid];
 
-  /// A thread is "unread" for [uid] when:
-  ///   1. there is a most recent message at all
-  ///   2. that message was sent by SOMEONE ELSE
-  ///   3. [uid] either has never opened the thread, or last opened it
-  ///      strictly before that message landed.
-  ///
-  /// "Strictly before" matters: a normal open-the-chat flow writes a
-  /// fresh read timestamp at the moment of opening, which is always
-  /// >= the latest message's timestamp, so the thread immediately
-  /// becomes read.
+  /// Unread for [uid] when there's a message, the sender isn't [uid],
+  /// and [uid] hasn't opened the thread since that message landed.
+  /// "Strictly before" matters — opening the chat writes a fresh
+  /// timestamp ≥ the latest message, so the thread flips to read.
   bool isUnreadFor(String uid) {
     final lastAt = lastMessageAt;
     if (lastAt == null) return false;
@@ -105,9 +84,7 @@ class ChatThread {
     final ids =
         (data['participantIds'] as List<dynamic>?)?.cast<String>() ??
         const <String>[];
-    // Missing `type` field on legacy docs → direct. New direct writes
-    // include the type explicitly, but the absence of it must never
-    // route an old direct thread into the groups list.
+    // Legacy docs without a `type` are direct.
     final type = (data['type'] as String?) ?? typeDirect;
     return ChatThread(
       id: doc.id,
@@ -127,10 +104,8 @@ class ChatThread {
     );
   }
 
-  /// Defensive parser — the field is optional (older docs from the
-  /// pre-unread phase don't have it) and we never want a malformed entry
-  /// to crash thread rendering. Anything that isn't a Timestamp under a
-  /// String key is ignored.
+  /// Tolerates missing field (legacy docs) and malformed entries —
+  /// anything that isn't a Timestamp under a String key is ignored.
   static Map<String, DateTime> _parseReadMap(dynamic raw) {
     if (raw is! Map) return const {};
     final result = <String, DateTime>{};

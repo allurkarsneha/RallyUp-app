@@ -21,18 +21,14 @@ class LocationFailure implements Exception {
       'LocationFailure($reason${detail != null ? ': $detail' : ''})';
 }
 
-/// Thin wrapper around `geolocator` + `geocoding` returning a fully-formed
-/// [UserLocation] in one call. Phase 2 only needs an on-demand capture —
-/// no background tracking, no streaming.
+/// One-call GPS capture + reverse geocode → [UserLocation].
 class LocationService {
   Future<UserLocation> captureCurrent() async {
-    // 1. Device-level location services on?
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       throw const LocationFailure(LocationFailureReason.serviceDisabled);
     }
 
-    // 2. App permission state.
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -46,8 +42,7 @@ class LocationService {
       throw const LocationFailure(LocationFailureReason.permissionDenied);
     }
 
-    // 3. Get a single position fix. Medium accuracy is plenty for a city
-    //    label; lower accuracy is much faster and saves battery.
+    // Medium accuracy is plenty for a city label and saves battery.
     final pos = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.medium,
@@ -55,9 +50,7 @@ class LocationService {
       ),
     );
 
-    // 4. Reverse-geocode. Failure here is non-fatal — we still return a
-    //    valid UserLocation with empty city/region so the UI can show
-    //    coordinates or a generic label.
+    // Reverse-geocode is best-effort — offline emulators throw.
     String city = '';
     String region = '';
     String country = '';
@@ -72,9 +65,7 @@ class LocationService {
         region = p.administrativeArea ?? '';
         country = p.country ?? '';
       }
-    } catch (_) {
-      // Reverse-geocoding can fail on some emulators / offline. Continue.
-    }
+    } catch (_) {}
 
     return UserLocation(
       lat: pos.latitude,
@@ -87,24 +78,15 @@ class LocationService {
     );
   }
 
-  /// Resolve a user-picked label (e.g. `"Cupertino, CA"`) into a fully
-  /// populated [UserLocation] with real lat/lng. The legacy
-  /// `UserLocation.manual(label)` constructor stored `(0, 0)` for
-  /// coordinates, which made every haversine distance against real player
-  /// docs read as ~7,900 mi. That constructor remains as a last-resort
-  /// fallback; this method is the supported path for manual picks now.
+  /// Resolve a user-picked label (e.g. "Cupertino, CA") into a
+  /// [UserLocation] with real lat/lng. Forward-geocodes the label,
+  /// reverse-geocodes the coordinates for city/region/country, and
+  /// falls back to parsing the label itself when reverse-geocode
+  /// returns nothing.
   ///
-  /// Pipeline:
-  ///   1. Forward-geocode the label → lat/lng.
-  ///   2. Best-effort reverse-geocode that lat/lng → city/region/country.
-  ///   3. If reverse-geocoding returns nothing useful, fall back to the
-  ///      city/region/country parsed out of the label itself
-  ///      ([UserLocation.manual]) so we still write a readable record.
-  ///
-  /// Throws [LocationFailure(LocationFailureReason.geocodingFailed)] if
-  /// forward-geocoding returns no results, so the caller can show a
-  /// targeted "couldn't set that location" message rather than silently
-  /// persisting `(0, 0)`.
+  /// Throws [LocationFailureReason.geocodingFailed] when the label
+  /// can't be resolved at all, so the caller can show a targeted
+  /// message rather than silently persisting (0, 0).
   Future<UserLocation> resolveManualLocation(String label) async {
     final trimmed = label.trim();
     if (trimmed.isEmpty) {
@@ -145,10 +127,7 @@ class LocationService {
         region = p.administrativeArea ?? '';
         country = p.country ?? '';
       }
-    } catch (_) {
-      // Reverse-geocoding failed (offline emulator, rate-limited service).
-      // Fall through; we'll use the parsed label as a backstop below.
-    }
+    } catch (_) {}
 
     if (city.isEmpty && region.isEmpty && country.isEmpty) {
       final parsed = UserLocation.manual(trimmed);

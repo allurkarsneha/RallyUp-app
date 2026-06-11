@@ -1,19 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// One message inside a thread. Lives under
 /// `threads/{threadId}/messages/{messageId}`.
 ///
-/// Intentionally narrow: sender + text + sentAt. Read receipts, delivery
-/// statuses, media attachments, and reactions are explicitly deferred —
-/// they belong to a later phase that also gates the unread-count UI in
-/// the threads list.
+/// Intentionally narrow: sender + text + sentAt. Read receipts,
+/// delivery status, media, reactions — all deferred.
 ///
-/// [senderName] is an optional snapshot of the sender's display name,
-/// captured at send time. Used by GROUP-chat bubbles so they can label
-/// who said what without a `users/{uid}` lookup per message. Direct
-/// chat doesn't need it — the other user is already resolved at
-/// thread-open time — and older direct messages won't have written
-/// the field, so it's a nullable `String?`.
+/// [senderName] is a send-time snapshot used by group bubbles to
+/// label messages without a per-message `users/{uid}` read. Direct
+/// chats don't need it (the other user is resolved at thread-open
+/// time); older direct messages may not have written it.
 class ChatMessage {
   final String id;
   final String senderUid;
@@ -43,10 +38,8 @@ class ChatMessage {
       senderUid: (data['senderUid'] as String?) ?? '',
       senderName: data['senderName'] as String?,
       text: (data['text'] as String?) ?? '',
-      // `serverTimestamp()` writes haven't resolved yet on the writing
-      // client for the first frame after send — fall back to `now()` so
-      // ordering stays sensible client-side until the server timestamp
-      // round-trips.
+      // Server timestamp is briefly null on the writing client.
+      // Fall back to now() so ordering stays sensible.
       sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

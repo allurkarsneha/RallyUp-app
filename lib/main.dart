@@ -17,16 +17,13 @@ import 'services/user_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/main_bottom_nav.dart';
 
-/// App-wide root navigator key. Used by code that needs to push
-/// routes from outside the widget tree — most notably
-/// `PushNotificationService` when an FCM tap arrives.
+/// Used by non-widget code (e.g. PushNotificationService) to push
+/// routes without a BuildContext.
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'rootNavigatorKey',
 );
 
-/// App-wide messenger key so background-tap routing can show a
-/// SnackBar (e.g. "this match is no longer available") without
-/// reaching for a BuildContext.
+/// Used by non-widget code to show SnackBars without a BuildContext.
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>(debugLabel: 'rootScaffoldMessengerKey');
 
@@ -35,20 +32,8 @@ Future<void> main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Debug-only courts bootstrapping. The `assert(...)` block is
-  // stripped from release builds by Dart's assertion semantics, so
-  // production launches never trigger a seed/repair write.
-  //
-  //   * `seedCourtsIfEmpty()` short-circuits when ANY court already
-  //     exists, so it never duplicates.
-  //   * `repairCourtImagesIfNeeded()` handles the case where the
-  //     collection was seeded by an earlier build whose Cloudinary
-  //     URL helper hadn't been wired up — docs exist but `imageUrls`
-  //     is empty. It walks each known seed id and refills only the
-  //     `imageUrls` field. Idempotent; no-op once images are present.
-  //
-  // Fire-and-forget; the home Courts stream picks up the new/repaired
-  // docs on its next snapshot.
+  // Debug-only courts seed + image-repair. The `assert(...)` block
+  // is stripped from release builds, so production never seeds.
   assert(() {
     final service = CourtService();
     () async {
@@ -84,9 +69,6 @@ class RallyUpApp extends StatelessWidget {
         title: 'RallyUp',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        // Exposed so non-widget code (e.g. PushNotificationService's
-        // notification-tap handler) can push routes onto the root
-        // navigator without a BuildContext.
         navigatorKey: rootNavigatorKey,
         scaffoldMessengerKey: rootScaffoldMessengerKey,
         home: const AuthGate(),
@@ -102,9 +84,8 @@ class RallyUpApp extends StatelessWidget {
 class MainShell extends StatefulWidget {
   final int initialIndex;
 
-  /// A single app-wide key so any widget can switch the bottom-nav tab
-  /// without destroying and recreating the shell (which previously also
-  /// destroyed the AuthGate route, breaking sign-out gating).
+  /// App-wide key so any widget can switch tabs without destroying
+  /// the shell (which would also pop AuthGate off the stack).
   static final GlobalKey<MainShellState> globalKey =
       GlobalKey<MainShellState>();
 
@@ -131,9 +112,7 @@ class MainShellState extends State<MainShell> {
     });
   }
 
-  /// Public entry point for switching the active bottom-nav tab from
-  /// outside MainShell (e.g. the home avatar overlay's "Profile" option,
-  /// or the side drawer's "Home"/"Settings" items).
+  /// Entry point for tab-switching from outside MainShell.
   void switchTo(int index) {
     if (index < 0 || index >= _pages.length) return;
     if (_currentIndex == index) return;
@@ -152,12 +131,9 @@ class MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    // When currentUser drops to null (during the brief window between
-    // signOut/deleteAccount clearing the provider and AuthGate's rebuild
-    // landing on the next frame), don't render the shell at all. Without
-    // this guard the bottom-nav strip and the Scaffold's white body stay
-    // on screen for that frame — which is exactly the "blank page" the
-    // user sees after logout/delete.
+    // During the frame between signOut/delete clearing the provider
+    // and AuthGate's rebuild, render nothing — otherwise the shell's
+    // white Scaffold flashes as a blank page.
     final user = context.watch<AuthProvider>().currentUser;
     if (user == null) return const SizedBox.shrink();
 

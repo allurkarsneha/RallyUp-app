@@ -5,24 +5,17 @@ import '../models/open_match.dart';
 import '../utils/booking_slots.dart';
 import 'schedule_conflict_service.dart';
 
-/// Computes which generated [bookingSlots] are still available for
-/// a given court on a given date, given the current confirmed
-/// private bookings and non-cancelled open matches in Firestore.
+/// Tells `BookCourtSheet` which generated [bookingSlots] are still
+/// bookable on a given court / day, so an already-taken slot never
+/// reaches the picker.
 ///
-/// Used by `BookCourtSheet` to hide occupied slots from the time
-/// grid so a user can't pick a slot another booking/match already
-/// owns. The Courts list card no longer surfaces an "N slots today"
-/// badge — that UI was removed — so we only carry the per-court
-/// slot list method now.
-///
-/// Occupancy rule, per spec:
-///   * Confirmed private booking on that court → blocks the slot.
-///   * Hosted open match on that court → blocks the slot, even
-///     before any players join. Joining an existing open match
-///     does NOT subtract another slot — the host's match is the
-///     only reservation against the court.
-///   * Cancelled bookings/matches do NOT block.
-///   * "Today" hides any slot whose start time has already passed.
+/// Occupancy rules:
+///   * Confirmed private booking on that court → blocked.
+///   * Hosted open match on that court → blocked (joining an
+///     existing open match doesn't subtract another slot; the host's
+///     match was the only reservation against the court).
+///   * Cancelled bookings / matches → not counted.
+///   * Today → slots whose start time has passed are hidden.
 class CourtAvailabilityService {
   final FirebaseFirestore _db;
 
@@ -34,9 +27,8 @@ class CourtAvailabilityService {
   CollectionReference<Map<String, dynamic>> get _matches =>
       _db.collection('open_matches');
 
-  /// Returns the slots from the canonical [bookingSlots] list that
-  /// are still bookable for [courtId] on [date]. Order matches
-  /// [bookingSlots]; consumers should not re-sort.
+  /// Slots from the canonical [bookingSlots] list that are still
+  /// bookable for [courtId] on [date], in their original order.
   Future<List<BookingSlot>> availableSlotsFor({
     required String courtId,
     required DateTime date,
@@ -46,16 +38,12 @@ class CourtAvailabilityService {
     final today = DateTime(now.year, now.month, now.day);
     if (dayOnly.isBefore(today)) return const [];
 
-    // Fetch the per-court active set. Single-field where so no
-    // composite index — small per-court active set is acceptable
-    // client-side scan.
     final occupied = await _occupiedIntervalsForCourt(courtId);
 
     final result = <BookingSlot>[];
     for (final slot in bookingSlots) {
       final slotStart = _combine(dayOnly, slot.start);
       final slotEnd = _combine(dayOnly, slot.end);
-      // Hide already-started slots when looking at today.
       if (dayOnly.isAtSameMomentAs(today) && !slotStart.isAfter(now)) {
         continue;
       }
@@ -73,10 +61,6 @@ class CourtAvailabilityService {
     }
     return result;
   }
-
-  // ─────────────────────────────────────────────────────────────
-  // Internals
-  // ─────────────────────────────────────────────────────────────
 
   Future<List<_OccupiedInterval>> _occupiedIntervalsForCourt(
     String courtId,
@@ -126,8 +110,6 @@ class CourtAvailabilityService {
       a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-/// Small interval record used during availability calculation. Not
-/// exported — the caller never holds these directly.
 class _OccupiedInterval {
   final DateTime date;
   final String startTime;

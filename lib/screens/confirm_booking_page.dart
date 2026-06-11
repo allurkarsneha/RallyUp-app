@@ -18,23 +18,9 @@ import 'booking_confirmed_page.dart';
 import 'main_shell_nav.dart';
 import 'player_details/match_details_page.dart';
 
-/// Review-before-confirm page. Sits between BookCourtSheet (or the
-/// Open Match `PlayersSetupSheet`) and the final
-/// `BookingConfirmedPage`.
-///
-/// Why a separate page exists:
-///   * The user explicitly needs a "review your selection" beat
-///     before money / commitment language fires. We don't want
-///     `BookCourtSheet`'s sport/date/time chips to also double as
-///     the place where Firestore writes happen — that was the cause
-///     of the prior "Tap continue → instant booking" misstep.
-///   * Open Match drafts hit the same review surface but their
-///     Confirm button is a clearly-marked "coming next" placeholder —
-///     no Firestore write, no fake confirmation.
-///
-/// `BookingDraft` is intentionally an in-memory model. Nothing lives
-/// in Firestore until `Confirm Booking` runs `BookingService.createBooking`
-/// (private path only).
+/// Review-before-confirm. Sits between BookCourtSheet /
+/// PlayersSetupSheet and the post-confirm page. Nothing reaches
+/// Firestore until "Confirm" runs the create call.
 class ConfirmBookingPage extends StatefulWidget {
   final BookingDraft draft;
 
@@ -60,8 +46,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
       );
       return;
     }
-    // Capture before the async write — by the time we navigate, the
-    // local context may be on the way out.
+    // Capture before the async gap.
     final rootNavigator = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -84,10 +69,8 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
         ),
       );
     } on StateError catch (e) {
-      // Schedule conflict guards (court-occupied /
-      // schedule-conflict) throw StateError; translate to the
-      // matching SnackBar copy before falling back to the generic
-      // booking-failed message.
+      // Conflict errors translate to specific copy; everything else
+      // falls through to the generic message.
       final text =
           _conflictText(e) ?? "Couldn't confirm this booking. Try again.";
       if (!mounted) {
@@ -114,9 +97,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
     }
   }
 
-  /// Maps schedule-conflict StateError codes to user-facing copy.
-  /// Returns null when the error isn't a conflict so the caller
-  /// can fall through to a generic message.
+  /// Returns null when the error isn't a conflict.
   String? _conflictText(StateError e) {
     switch (e.message) {
       case 'court-occupied':
@@ -128,12 +109,8 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
     }
   }
 
-  /// Open Match path: writes a real `open_matches/{id}` doc via
-  /// [OpenMatchService.createOpenMatch], fires a host notification,
-  /// and routes to [MatchDetailsPage] with the freshly-created match.
-  /// We do NOT write a private `bookings/{id}` doc on this path — open
-  /// matches are tracked separately and the host's "booking" surfaces
-  /// in OpenMatchesPage / MatchDetailsPage rather than MyBookings.
+  /// Writes `open_matches/{id}`, fires the host notification, and
+  /// routes to MatchDetailsPage. No private booking doc is written.
   Future<void> _confirmOpenMatch() async {
     final me = context.read<AuthProvider>().currentUser;
     if (me == null) {
@@ -153,8 +130,7 @@ class _ConfirmBookingPageState extends State<ConfirmBookingPage> {
         host: me,
         draft: widget.draft,
       );
-      // Best-effort host notification — failures swallowed so the
-      // match write isn't rolled back.
+      // Best-effort host notification.
       _notificationService
           .createNotification(
             userId: match.hostUid,

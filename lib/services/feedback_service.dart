@@ -1,30 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Writes feedback + user-report submissions to Firestore.
-///
-/// Layout:
+/// Writes to `feedback/{id}` and `reports/{id}`.
 ///
 /// ```
 /// feedback/{id}
-///   userId:    string?  (null when an anonymous user submits)
-///   userEmail: string?
-///   userName:  string?
-///   category:  string   ("Technical issue", "Bug", "Feedback", ...)
-///   message:   string
-///   createdAt: Timestamp
+///   userId?, userEmail?, userName?  (null for anonymous)
+///   category, message, createdAt
 ///
 /// reports/{id}
-///   reporterId:        string
-///   reporterName:      string
-///   reportedUserId:    string
-///   reportedUserName:  string
-///   reason:            string
-///   createdAt:         Timestamp
-///   status:            "open" | "reviewed" | "dismissed"  (server set)
+///   reporterId, reporterName, reportedUserId, reportedUserName,
+///   reason, status: 'open' | 'reviewed' | 'dismissed', createdAt
 /// ```
 ///
-/// Neither write blocks the UI. Errors propagate so the calling
-/// screen can surface a SnackBar; nothing here swallows.
+/// Errors propagate — the calling screen surfaces a SnackBar.
 class FeedbackService {
   final FirebaseFirestore _db;
 
@@ -37,12 +25,8 @@ class FeedbackService {
   CollectionReference<Map<String, dynamic>> get _reports =>
       _db.collection('reports');
 
-  /// Append a feedback / suggestion / bug-report row.
-  ///
-  /// [message] is required and validated non-empty by the calling
-  /// page; we re-validate here so a misbehaving caller can't push a
-  /// blank row server-side. [category] defaults to the generic
-  /// bucket if the caller didn't pick one.
+  /// Validates non-empty server-side as a backstop against a
+  /// misbehaving caller.
   Future<void> submitFeedback({
     required String message,
     String category = 'Feedback',
@@ -64,12 +48,8 @@ class FeedbackService {
     });
   }
 
-  /// Append a report-another-user row.
-  ///
-  /// Used from a player's profile or the chat header's "Report user"
-  /// menu (no UI today; the service is wired so the menu can land in
-  /// a future cleanup task). Reports start in `status: open` and a
-  /// moderator workflow (out of scope) flips them later.
+  /// New reports start as `status: open`. Moderator review is
+  /// future work.
   Future<void> reportUser({
     required String reporterId,
     required String reporterName,

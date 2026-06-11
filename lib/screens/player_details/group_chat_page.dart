@@ -16,21 +16,10 @@ import '../../widgets/courts/court_network_image.dart';
 import '../../widgets/main_bottom_nav.dart';
 import '../main_shell_nav.dart';
 
-/// Group chat for an open match. Either:
-///   * pushed from MatchDetailsPage / MatchJoinedPage with a real
-///     [OpenMatch] — the page calls
-///     `ChatService.createOrUpdateGroupThreadForMatch` on entry so
-///     a brand-new host who just created the match still lands in
-///     a usable thread; OR
-///   * pushed from GroupMessagesPage with a precomputed
-///     [threadId] — the existing thread is loaded straight from
-///     `ChatService.getThread` and the matching open-match
-///     snapshot is pulled (best-effort) so the header summary card
-///     still renders fresh court/date/time.
-///
-/// Both entry points converge on `_threadId` once the thread is
-/// resolved; the message stream / input bar reuses the same
-/// ChatService send/read APIs as direct messages.
+/// Group chat for an open match. Pushed either with an [OpenMatch]
+/// (from MatchDetails / MatchJoined) or with a precomputed
+/// [threadId] (from GroupMessagesPage). Both paths converge on
+/// `_threadId` and reuse the direct-chat send/read APIs.
 class GroupChatPage extends StatefulWidget {
   final OpenMatch? match;
   final String? threadId;
@@ -57,9 +46,8 @@ class _GroupChatPageState extends State<GroupChatPage> {
   String? _initError;
   bool _sending = false;
 
-  /// Id of the most recent incoming message we've already marked as
-  /// read. Same pattern as MessagePage — prevents per-snapshot
-  /// `markThreadRead` thrashing.
+  /// Last incoming message we've already marked read — prevents
+  /// per-snapshot `markThreadRead` thrashing.
   String? _lastMarkedMessageId;
 
   @override
@@ -70,9 +58,8 @@ class _GroupChatPageState extends State<GroupChatPage> {
 
   Future<void> _initThread() async {
     try {
-      // Path A: opened with a real OpenMatch (host just created, or
-      // a joined player tapped the chat button). Make sure the
-      // group thread exists before we start streaming.
+      // Path A: opened with a real OpenMatch — ensure the thread
+      // exists before streaming.
       if (widget.match != null) {
         await _chatService.createOrUpdateGroupThreadForMatch(widget.match!);
         if (!mounted) return;
@@ -80,15 +67,13 @@ class _GroupChatPageState extends State<GroupChatPage> {
           _match = widget.match;
           _threadId = _chatService.groupThreadIdForMatch(widget.match!.id);
         });
-        // Read the freshly created/merged thread doc so the header
-        // gets the live participant count, lastMessage, etc.
+        // Read it back so the header gets the live data.
         final t = await _chatService.getThread(_threadId!);
         if (!mounted) return;
         if (t != null) setState(() => _thread = t);
       } else {
-        // Path B: opened from GroupMessagesPage with a known thread
-        // id. Load the thread doc, then fetch the open-match
-        // snapshot for header card data.
+        // Path B: opened with a known thread id. Load the thread,
+        // then fetch the open-match snapshot for the header card.
         final id = widget.threadId!;
         final t = await _chatService.getThread(id);
         if (!mounted) return;
@@ -248,10 +233,8 @@ class _GroupChatPageState extends State<GroupChatPage> {
                     if (myUid != null) {
                       _maybeMarkRead(messages, myUid);
                     }
-                    // Summary card always rides at the top of the
-                    // reversed list so it sits visually at the top
-                    // of the chat when the user scrolls to the
-                    // oldest message.
+                    // Summary card rides at the top of the reversed
+                    // list so it sits above the oldest message.
                     final reversed = messages.reversed.toList(growable: false);
                     return ListView.builder(
                       controller: _scrollController,
@@ -265,7 +248,7 @@ class _GroupChatPageState extends State<GroupChatPage> {
                       itemCount: reversed.length + 1,
                       itemBuilder: (context, i) {
                         if (i == reversed.length) {
-                          // The "oldest" slot in a reverse list.
+                          // Oldest slot in a reverse list.
                           return Padding(
                             padding: const EdgeInsets.only(
                               bottom: AppSpacing.lg,
@@ -396,9 +379,8 @@ class _GroupMatchSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = match;
     if (m == null) {
-      // Fallback when we have a thread but not the underlying match
-      // (e.g. the match was deleted). Reuse the thread's snapshot
-      // fields so the card still renders something useful.
+      // Match was deleted — fall back to the thread's snapshot
+      // fields so the card still has content.
       final t = thread;
       final title = t?.title ?? 'Open match';
       final court = t?.courtName ?? '';

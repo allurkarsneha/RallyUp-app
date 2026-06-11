@@ -1,13 +1,8 @@
 import 'court.dart';
 
-/// In-memory bag of the user's booking selections, passed from
-/// `BookCourtSheet` / `PlayersSetupSheet` into `ConfirmBookingPage`.
-///
-/// NOT persisted to Firestore. The actual `bookings/{id}` doc is only
-/// written by `BookingService.createBooking` after the user taps
-/// "Confirm Booking" on the review page. For Open Match drafts, no
-/// Firestore write happens at all in this phase — the review page
-/// just shows a SnackBar.
+/// In-memory selections from `BookCourtSheet` / `PlayersSetupSheet`,
+/// reviewed on `ConfirmBookingPage` and only written to Firestore
+/// when the user confirms.
 class BookingDraft {
   static const String matchTypePrivate = 'private';
   static const String matchTypeOpen = 'open';
@@ -16,15 +11,12 @@ class BookingDraft {
   final String sportType;
   final DateTime date;
 
-  /// 24-hour `HH:mm`, e.g. `'18:00'`.
+  /// 24-hour `HH:mm`.
   final String startTime;
   final String endTime;
-
-  /// One of `BookingDraft.matchTypePrivate` / `matchTypeOpen`.
   final String matchType;
 
-  /// Only meaningful for [matchTypeOpen] drafts. Private drafts may
-  /// leave these null.
+  /// Only meaningful for open-match drafts; null for private.
   final int? playersRequired;
   final int? playersConfirmed;
 
@@ -42,8 +34,7 @@ class BookingDraft {
   bool get isOpenMatch => matchType == matchTypeOpen;
   bool get isPrivateMatch => matchType == matchTypePrivate;
 
-  /// For Open Match only — how many more players the host needs.
-  /// Returns 0 (rather than negative) if the host overshoots.
+  /// Open match only — clamped to non-negative.
   int get playersStillNeeded {
     final req = playersRequired ?? 0;
     final con = playersConfirmed ?? 0;
@@ -51,9 +42,7 @@ class BookingDraft {
     return diff < 0 ? 0 : diff;
   }
 
-  /// Total price for the booking. Slots are 1-hour for now so this is
-  /// just the court's per-hour rate; once variable-length slots ship,
-  /// multiply by hours-in-slot here so every consumer sees the same
-  /// number.
+  /// Slots are 1-hour for now; when variable-length lands, multiply
+  /// by hours-in-slot here.
   double get totalPrice => court.pricePerHour;
 }
