@@ -17,11 +17,8 @@ import 'invite_to_match_page.dart';
 import 'message_page.dart';
 import 'nearby_players_page.dart';
 
-/// Read-only profile view for another player, driven entirely off the
-/// [AppUser] passed in from NearbyPlayersPage. The page used to render
-/// hard-coded values (rating 4.8, "Online", canned availability) — those
-/// have all been removed so the surface only shows fields that exist on
-/// the underlying user document.
+/// Read-only profile view for another player, driven entirely off
+/// the passed [AppUser] — no fake data.
 class PlayerProfilePage extends StatelessWidget {
   final AppUser user;
   final String distance;
@@ -85,17 +82,9 @@ class PlayerProfilePage extends StatelessWidget {
               ),
             ),
             SliverToBoxAdapter(
-              // Stretch so the About / Sports / Availability sections
-              // get full page width and their CrossAxisAlignment.start
-              // can actually take effect. Without `stretch`, the
-              // parent column collapses each child to its natural
-              // width and then centers it — which made the lower
-              // sections read as visually centered cards instead of
-              // normal left-aligned profile content. The top
-              // hero/name/chips/action buttons each center themselves
-              // explicitly (Text textAlign, Wrap WrapAlignment.center,
-              // PlayerProfileActionButtons' own Center wrapper) so
-              // they stay centered under the stretched column.
+              // Stretch so About / Sports / Availability take full
+              // width. The hero / name / chips / action buttons
+              // center themselves explicitly.
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -106,12 +95,8 @@ class PlayerProfilePage extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  // Replaces the old "Sport / Level / Distance / Rating /
-                  // Online" chip row with real fields only. Sports come
-                  // from the user; distance comes from NearbyPlayersPage;
-                  // verification status replaces the dummy rating/online
-                  // badges. There is no skill-level field yet — chip
-                  // omitted intentionally.
+                  // Chips: real sports + distance + verification.
+                  // No skill-level yet.
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.pageHorizontal,
@@ -166,9 +151,8 @@ class PlayerProfilePage extends StatelessWidget {
   }
 }
 
-/// Hero variant that swaps the hard-coded asset avatar for the shared
-/// [UserAvatar] priority chain (photoUrl → avatarId → initials). The
-/// little check-mark "verified" badge has been removed because not every
+/// Hero using the shared [UserAvatar] priority chain (photoUrl →
+/// avatarId → initials). The check-mark badge was removed because not every
 /// player is verified — verification is surfaced via the chip row below
 /// instead, where it can reflect real state from [IdVerification].
 class _PlayerProfileHero extends StatelessWidget {
@@ -361,7 +345,17 @@ Future<void> _showReportPlayerDialog(
       );
     },
   );
-  controller.dispose();
+  // Defer the controller dispose to the next frame. Calling
+  // `controller.dispose()` synchronously immediately after the
+  // `await showDialog` returns races the dialog's exit animation —
+  // the TextField at line 329 is still in the tree (the route's
+  // overlay is fading out) and its `_AnimatedState.didUpdateWidget`
+  // tries to re-subscribe to the controller's listenable on the
+  // next frame, throwing "A TextEditingController was used after
+  // being disposed."
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    controller.dispose();
+  });
   if (reason == null) return;
   try {
     await FeedbackService().reportUser(
@@ -371,15 +365,24 @@ Future<void> _showReportPlayerDialog(
       reportedUserName: target.displayName,
       reason: reason,
     );
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Thanks. Your report has been submitted.')),
-    );
+    // Same race applies to the SnackBar — defer so it doesn't
+    // insert into the tree while the dialog overlay is still
+    // animating out.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Thanks. Your report has been submitted.'),
+        ),
+      );
+    });
   } catch (_) {
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text("Couldn't submit the report. Please try again."),
-      ),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't submit the report. Please try again."),
+        ),
+      );
+    });
   }
 }
 

@@ -56,8 +56,7 @@ class _HomePageState extends State<HomePage> {
   final OpenMatchService _openMatchService = OpenMatchService();
   bool _locationCaptureStarted = false;
 
-  // Maximum entries in the home preview row; "View all" goes to the
-  // full NearbyPlayersPage if the user wants more.
+  // "View all" routes to the full NearbyPlayersPage.
   static const int _homeNearbyPreviewLimit = 6;
 
   @override
@@ -68,9 +67,8 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  /// Fires once per HomePage lifetime, only if the signed-in user has no
-  /// stored location yet. Silent on permission denial — the user can tap
-  /// the location chip in the header to retry.
+  /// Fires once per HomePage lifetime when the user has no location
+  /// yet. Permission denial is silent — they can tap the chip to retry.
   Future<void> _maybeAutoFetchLocation() async {
     if (_locationCaptureStarted) return;
     final auth = context.read<AuthProvider>();
@@ -82,8 +80,8 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       await auth.updateLocation(captured);
     } catch (_) {
-      // Permission denied, service off, or geocoding failed. Keep the
-      // "Set location" fallback; user can retry via the picker.
+      // Permission denied / service off — leave the "Set location"
+      // fallback in place.
     }
   }
 
@@ -100,11 +98,8 @@ class _HomePageState extends State<HomePage> {
     'Swimming',
   ];
 
-  /// Returns the subset of streamed users that should appear in the
-  /// home preview. When a specific sport is selected, players whose
-  /// `sports` list contains that sport surface first; users with a
-  /// matching same-city location come next so the preview matches what
-  /// `NearbyPlayersPage` shows at the top of its list.
+  /// Same ranking as NearbyPlayersPage: selected-sport first, then
+  /// same-city, then nearest. Excludes the current user.
   List<_HomeRankedPlayer> _rankForHome(
     List<AppUser> users,
     UserLocation? myLocation,
@@ -149,10 +144,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Same-city-first / nearest-first ranking applied to the real
-  /// court stream feeding the home "Suggested Courts" rail. Sport
-  /// filter uses `sportTypes.contains(...)` so multi-sport venues
-  /// surface for every supported sport.
+  /// Same-city → nearest ranking for the Suggested Courts rail.
+  /// `sportTypes.contains(...)` so multi-sport venues match every
+  /// supported sport, not just the primary.
   List<_HomeRankedCourt> _rankCourts(
     List<Court> courts,
     UserLocation? myLocation,
@@ -180,13 +174,8 @@ class _HomePageState extends State<HomePage> {
         : ranked;
   }
 
-  /// Filter the real open-matches stream by the selected sport chip
-  /// and drop cancelled/full so the rail only surfaces joinable
-  /// matches. Also hides:
-  ///   * matches hosted by [currentUid] — they belong in MyBookings.
-  ///   * matches [currentUid] has already joined — showing them here
-  ///     let users tap "Join" on a match they were already in.
-  /// Capped to six per spec.
+  /// Hides cancelled, full, past, host's own, and already-joined
+  /// matches. Capped to six.
   List<OpenMatch> _rankOpenMatchesForHome(
     List<OpenMatch> matches,
     String? currentUid,
@@ -195,9 +184,8 @@ class _HomePageState extends State<HomePage> {
     final filtered = matches.where((m) {
       if (m.isCancelled) return false;
       if (m.isFull) return false;
-      // Drop matches that have already ended. Combine `date`
-      // (midnight) with `endTime` ("HH:mm") so a 5–6 PM match
-      // disappears at 6 PM, not at midnight.
+      // Drop already-ended matches. Combine `date` + `endTime` so a
+      // 5–6 PM match disappears at 6 PM, not at midnight.
       final endParts = m.endTime.split(':');
       final endH = int.tryParse(endParts.isNotEmpty ? endParts[0] : '') ?? 0;
       final endMin = int.tryParse(endParts.length > 1 ? endParts[1] : '') ?? 0;
@@ -299,10 +287,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openProfilePage() {
-    // Switch to the existing MainShell's Profile tab instead of pushing a
-    // new MainShell. The old `pushAndRemoveUntil((route) => false)` popped
-    // AuthGate off the stack, which broke sign-out gating and made the UI
-    // lose track of the current user mid-session.
+    // Switch the existing MainShell rather than pushing a new one —
+    // that would pop AuthGate off the stack and break sign-out.
     Navigator.of(context).popUntil((route) => route.isFirst);
     MainShell.globalKey.currentState?.switchTo(2);
   }
@@ -434,10 +420,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Combines `booking.date` (midnight) with `booking.endTime`
-  /// ("HH:mm") so a still-running booking stays in the Home rail up
-  /// to the actual end time, not just up to today's midnight.
-  /// Mirrors MyBookingsPage so the same row leads both lists.
+  /// Combines `date` + `endTime` so a still-running booking stays in
+  /// the rail until its actual end. Matches MyBookingsPage's rule.
   DateTime _bookingEndDateTime(Booking booking) {
     final parts = booking.endTime.split(':');
     final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
@@ -451,8 +435,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Same end-time computation for an [OpenMatch] — `date` + `endTime`
-  /// pairs across both the booking and open-match shapes.
   DateTime _matchEndDateTime(OpenMatch match) {
     final parts = match.endTime.split(':');
     final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
@@ -482,10 +464,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Dispatches Home rail card taps to the right detail page based on
-  /// which side of the row union is populated. Private bookings go
-  /// to BookingConfirmedPage; open matches go to MatchDetailsPage —
-  /// same routing rule MyBookingsPage uses.
+  /// Booking → BookingConfirmedPage; match → MatchDetailsPage.
+  /// Same routing as MyBookings.
   void _openHomeBookingRow(_HomeBookingRow row) {
     final booking = row.booking;
     final match = row.match;
@@ -624,8 +604,8 @@ class _HomePageState extends State<HomePage> {
                           builder: (context, matchSnap) {
                             // Only show the spinner while BOTH streams are
                             // still waiting on their first frame — once
-                            // either side has data the rail can render
-                            // partial results instead of blocking.
+                            // either side has data we render partial
+                            // results instead of blocking.
                             final bothWaiting =
                                 bookingSnap.connectionState ==
                                     ConnectionState.waiting &&
@@ -646,10 +626,8 @@ class _HomePageState extends State<HomePage> {
 
                             final rows = <_HomeBookingRow>[];
 
-                            // Private bookings: same upcoming rule as
-                            // MyBookingsPage — confirmed + endDateTime
-                            // still in the future. Cancelled rows
-                            // drop out of the rail entirely.
+                            // Confirmed + still in the future. Same
+                            // rule as MyBookings.
                             for (final b in bookings) {
                               if (b.isCancelled) continue;
                               if (!b.isConfirmed) continue;
@@ -665,9 +643,8 @@ class _HomePageState extends State<HomePage> {
                               );
                             }
 
-                            // Open matches I host or joined: same
-                            // upcoming rule the MyBookings rail uses.
-                            // Cancelled and past matches are skipped.
+                            // Hosted or joined, not cancelled, still
+                            // in the future.
                             for (final m in matches) {
                               if (m.isCancelled) continue;
                               final isHost = m.hostUid == currentUser.uid;
@@ -687,11 +664,9 @@ class _HomePageState extends State<HomePage> {
                               );
                             }
 
-                            // Sport chip filter is applied after the
-                            // upcoming filter, same way as the prior
-                            // bookings-only path, so switching sports
-                            // doesn't drop unrelated bookings out of
-                            // the "All" view.
+                            // Sport chip filter runs after the
+                            // upcoming filter so the "All" view stays
+                            // complete.
                             final filtered = _selectedSport == 'All'
                                 ? rows
                                 : rows
@@ -701,9 +676,7 @@ class _HomePageState extends State<HomePage> {
                                             _selectedSport.toLowerCase(),
                                       )
                                       .toList();
-                            // Soonest end-time first — matches the
-                            // MyBookingsPage upcoming-tab ordering so
-                            // the same row leads both lists.
+                            // Soonest end-time first.
                             filtered.sort((a, b) {
                               final byEnd = a.endsAt.compareTo(b.endsAt);
                               if (byEnd != 0) return byEnd;
@@ -916,11 +889,9 @@ class _HomePageState extends State<HomePage> {
                           separatorBuilder: (_, _) => const SizedBox(width: 16),
                           itemBuilder: (context, index) {
                             final r = ranked[index];
-                            // Sport label: when a sport is selected
-                            // and supported, show that; otherwise show
-                            // the court's first sport so the rail
-                            // never reads as "Tennis" for a basketball
-                            // court.
+                            // Use the court's first sport when the
+                            // selected one isn't supported so the
+                            // label is never misleading.
                             final sportLabel =
                                 _selectedSport != 'All' &&
                                     r.court.sportTypes.any(
@@ -1037,20 +1008,10 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// Unified Home rail row used by the merged bookings + open-matches
-/// stream. Exactly one of [booking] or [match] is non-null. Letting
-/// both shapes flow through a single ListView keeps private bookings
-/// and open matches interleaved by end time without merging the two
-/// Firestore collections at the storage layer.
-///
-/// The status mapping per spec is:
-///   * private booking → "Confirmed"
-///   * open match where I'm the host → "Hosting"
-///   * open match I joined → "Joined"
-///
-/// The current [BookingPreviewCard] doesn't expose a tag slot, so the
-/// status is conceptual rather than rendered — preserving the
-/// existing Home rail card UI exactly as it was.
+/// Unified Home-rail row. Exactly one of [booking] or [match] is
+/// non-null. Letting both shapes share one list keeps private
+/// bookings and open matches interleaved by end time without
+/// merging the two Firestore collections.
 class _HomeBookingRow {
   final DateTime endsAt;
   final String startTime;
@@ -1121,11 +1082,8 @@ class _ProfileOptionTile extends StatelessWidget {
   }
 }
 
-/// View model that pairs a real [AppUser] with the distance bookkeeping
-/// the home preview needs. Distance + same-city logic is intentionally
-/// duplicated from `nearby_players_page.dart`'s private `_RankedPlayer`
-/// rather than refactored into a shared helper — the spec for this bug
-/// fix said "minimally duplicate safe logic; do not do a large refactor."
+/// AppUser + pre-computed distance bookkeeping for the home preview.
+/// Mirrors NearbyPlayersPage's private `_RankedPlayer`.
 class _HomeRankedPlayer {
   final AppUser user;
   final double? distanceKm;
@@ -1180,9 +1138,7 @@ double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
 }
 
 /// Court-side analogue of [_HomeRankedPlayer]. Carries the
-/// pre-computed distance label so the home preview tile reads the
-/// same as the Courts tab list rather than re-doing haversine math
-/// per render.
+/// pre-computed distance label so we don't redo haversine per render.
 class _HomeRankedCourt {
   final Court court;
   final double? distanceKm;

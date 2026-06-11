@@ -70,11 +70,9 @@ class AuthService {
     return _auth.signInWithCredential(credential);
   }
 
-  /// Sends a password-reset email to [email]. Firebase Auth handles
-  /// the email delivery (default template at the Firebase console).
-  /// Throws [FirebaseAuthException] for invalid email / no-user-found
-  /// / rate-limit cases; the calling UI translates the code into a
-  /// friendly message.
+  /// Throws [FirebaseAuthException] (`invalid-email`, `user-not-found`,
+  /// `too-many-requests`) that the UI translates into a friendly
+  /// message.
   Future<void> sendPasswordResetEmail(String email) {
     return _auth.sendPasswordResetEmail(email: email.trim());
   }

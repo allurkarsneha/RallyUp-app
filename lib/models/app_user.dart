@@ -3,17 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'id_verification.dart';
 import 'user_location.dart';
 
-/// A single per-day availability window. Times are stored as zero-padded
-/// 24-hour `HH:mm` strings (`'18:00'`, `'21:30'`) so they round-trip cleanly
-/// through Firestore and across timezones.
+/// A single per-day availability window. 24-hour `HH:mm` strings so
+/// they round-trip cleanly through Firestore and across timezones.
 class AvailabilitySlot {
   final String start;
   final String end;
 
   const AvailabilitySlot({required this.start, required this.end});
 
-  /// Sensible default window when a user toggles a day on without picking
-  /// a time yet.
+  /// Default when the user toggles a day on without picking a time.
   static const AvailabilitySlot defaultSlot = AvailabilitySlot(
     start: '18:00',
     end: '21:00',
@@ -30,8 +28,7 @@ class AvailabilitySlot {
 }
 
 class AppUser {
-  /// Shared validation constants so onboarding, profile-settings, and any
-  /// future profile editors stay consistent.
+  /// Shared validation constants for every profile editor.
   static const int minNameLength = 2;
   static const int maxNameLength = 30;
   static const int minAge = 13;
@@ -79,9 +76,7 @@ class AppUser {
     required this.updatedAt,
   }) : displayName = displayName ?? buildDisplayName(firstName, lastName);
 
-  /// Builds the display name from first + last. Public so other layers
-  /// (e.g. AuthProvider.updateProfile) can write a consistent value to
-  /// Firestore when names change.
+  /// Public so name-changing call sites write a consistent string.
   static String buildDisplayName(String first, String last) {
     final f = first.trim();
     final l = last.trim();
@@ -181,13 +176,10 @@ class AppUser {
     );
   }
 
-  /// Casts an arbitrary Firestore value to `Map<String, dynamic>` and
-  /// applies [parse] to it. Returns `null` if the value isn't a map OR if
-  /// parsing throws. The try/catch is load-bearing: a malformed nested
-  /// document (e.g. a manually-edited Firestore field with a wrong type)
-  /// must NOT propagate up — that would crash AppUser.fromMap, which in
-  /// turn would trip `_onAuthChange`'s needsOnboarding fallback and the
-  /// subsequent `set()` would wipe the rest of the user's doc.
+  /// Returns null when the value isn't a map OR when [parse] throws.
+  /// The try/catch is load-bearing — a malformed nested field would
+  /// otherwise propagate to `getUser`, flip status to needsOnboarding,
+  /// and the next `set()` would wipe the rest of the user's doc.
   static T? _safeWhenMap<T>(
     dynamic raw,
     T Function(Map<String, dynamic>) parse,
@@ -197,14 +189,6 @@ class AppUser {
     try {
       return parse(raw.map((k, v) => MapEntry(k as String, v)));
     } catch (e) {
-      // If a nested field is malformed (e.g. manually edited in the
-      // Firestore console with a wrong type, or a partial doc from an
-      // older app version), do NOT let the exception propagate up
-      // through getUser and into AuthProvider — that would mark the user
-      // as needsOnboarding, which would then `set()` overwrite their
-      // doc and wipe the rest of their data. Treat the field as null
-      // and keep the user signed in with their other fields intact.
-      // ignore: avoid_print
       assert(() {
         // ignore: avoid_print
         print('AppUser.fromMap: failed to parse "$field": $e');
@@ -222,11 +206,8 @@ class AppUser {
     return null;
   }
 
-  /// Migration-aware availability parser.
-  ///
-  /// Older docs from the prior Phase 1 build stored availability as a flat
-  /// `List<String>` of day codes (`['Mon', 'Tue']`). We keep those users
-  /// working by promoting each listed day to a default time window.
+  /// Tolerates the older flat `List<String>` schema by promoting each
+  /// day to a default window.
   static Map<String, AvailabilitySlot> _parseAvailability(dynamic raw) {
     if (raw == null) return const {};
     if (raw is List) {

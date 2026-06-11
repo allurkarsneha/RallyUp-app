@@ -1,26 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Open match doc — `open_matches/{matchId}`.
+/// `open_matches/{matchId}`.
 ///
-/// Stores a small host snapshot (`hostName / hostInitials /
-/// hostPhotoUrl / hostAvatarId`) so the OpenMatchesPage card can
-/// render the host's avatar without doing a `users/{hostUid}` fetch
-/// per card, and so a later rename of the host's profile doesn't
-/// retroactively rewrite every match they ever hosted.
+/// Carries a small host snapshot so list cards render without a
+/// follow-up `users/{hostUid}` read, and so a later rename of the
+/// host doesn't retroactively rewrite every match they ever hosted.
 ///
-/// Joined-player tracking is intentionally a pair of parallel arrays
-/// (`joinedPlayerIds` + `joinedPlayerNames`) rather than a list of
-/// objects. Arrays of primitives play well with Firestore security
-/// rules + `arrayUnion` updates, and we only need uid + display name
-/// for the participants-strip on MatchDetailsPage. If we later need
-/// per-player metadata (avatarId, photoUrl, joinedAt, payment state),
-/// the cleanest migration is a subcollection — not a list of maps.
+/// Joined players are two parallel string arrays (uid + display
+/// name) rather than a list of maps — arrays of primitives play well
+/// with `arrayUnion` and Firestore rules. Per-player metadata
+/// (avatarId, photoUrl, joinedAt, …) would move to a subcollection.
 ///
-/// "Players already confirmed" support (the count the host enters on
-/// PlayersSetupSheet that exceeds the host themself) is stored via
-/// [confirmedGuestCount]. We don't fabricate fake uids for those
-/// guests — they have no [joinedPlayerIds] entry — but they are
-/// counted toward [effectiveJoinedCount] and [spotsLeft] / [isFull].
+/// [confirmedGuestCount] is the host's offline-confirmed players —
+/// no real uid, but counted toward [effectiveJoinedCount].
 class OpenMatch {
   static const String statusOpen = 'open';
   static const String statusFull = 'full';
@@ -38,14 +30,12 @@ class OpenMatch {
   final String courtName;
   final String courtAddress;
 
-  /// First image — kept for backward compatibility with old docs and
-  /// the list cards / home rail (which only need a single thumbnail).
-  /// Index 0 of [courtImageUrls] when both are present.
+  /// First image — kept for backward compatibility and for list
+  /// cards / the home rail that only need a single thumbnail.
   final String courtImageUrl;
 
-  /// Full carousel set fed into [CourtImageCarousel] on
-  /// MatchDetailsPage. Old docs without this field fall back to
-  /// `[courtImageUrl]` (or `[]` when neither is present).
+  /// Full carousel set. Old docs without this field fall back to
+  /// `[courtImageUrl]`.
   final List<String> courtImageUrls;
 
   final String sportType;
@@ -61,11 +51,9 @@ class OpenMatch {
   final List<String> joinedPlayerIds;
   final List<String> joinedPlayerNames;
 
-  /// Players the host claims are already confirmed but who don't have
-  /// a real RallyUp account / uid in [joinedPlayerIds]. Equals
-  /// `playersConfirmed - 1` at create time (the `-1` strips the host
-  /// out of the count, since the host is always real and lives in
-  /// `joinedPlayerIds[0]`). Defaults to 0 on legacy docs.
+  /// Host-claimed offline players. They have no [joinedPlayerIds]
+  /// entry but count toward capacity. Equals `playersConfirmed - 1`
+  /// at create time (subtracting the host themselves).
   final int confirmedGuestCount;
 
   final String status;
@@ -99,21 +87,16 @@ class OpenMatch {
     required this.updatedAt,
   });
 
-  /// Real users present in `joinedPlayerIds` — host plus anyone who
-  /// tapped Join through MatchDetailsPage. Use this when you need a
-  /// uid-backed identity (DM, profile lookup, dedupe, transactions).
+  /// Real uids. Use for DM, profile lookup, dedupe, transactions.
   int get realJoinedCount => joinedPlayerIds.length;
 
-  /// `realJoinedCount + confirmedGuestCount`. Use this for any
-  /// user-visible "joined" count or capacity check — spots-left
-  /// labels, "Players (5 / 6)" headers, full/open status. It's the
-  /// count the host filled out, not the array length.
+  /// Real users + offline-confirmed guests. Use for any user-facing
+  /// count or capacity check.
   int get effectiveJoinedCount => joinedPlayerIds.length + confirmedGuestCount;
 
-  /// Backward-compat alias: existing card widgets and labels that
-  /// already read `joinedCount` automatically pick up the effective
-  /// number. New code should prefer [effectiveJoinedCount] for
-  /// clarity.
+  /// Alias kept so existing cards and labels pick up the effective
+  /// count without a renaming sweep. Prefer [effectiveJoinedCount]
+  /// in new code.
   int get joinedCount => effectiveJoinedCount;
 
   int get spotsLeft {
@@ -125,9 +108,7 @@ class OpenMatch {
   bool get isFull => status == statusFull;
   bool get isCancelled => status == statusCancelled;
 
-  /// Per-player share. Guard against `playersRequired == 0` so a
-  /// hand-edited doc can't divide by zero — fall back to 1 player so
-  /// the result equals the court total.
+  /// Guards against `playersRequired == 0` from a hand-edited doc.
   double get pricePerPlayer {
     final divisor = playersRequired <= 0 ? 1 : playersRequired;
     return totalPrice / divisor;
@@ -204,9 +185,7 @@ class OpenMatch {
 
   factory OpenMatch.fromMap(Map<String, dynamic> map) {
     final courtImageUrl = (map['courtImageUrl'] as String?) ?? '';
-    // Backward compat: older docs only have `courtImageUrl`. Promote
-    // it into the carousel list so MatchDetailsPage's hero still
-    // shows that image instead of dropping to a placeholder.
+    // Backward compat for old docs that only have the single image.
     final parsedUrls = _parseStringList(map['courtImageUrls']);
     final urls = parsedUrls.isNotEmpty
         ? parsedUrls
@@ -233,11 +212,10 @@ class OpenMatch {
       playersRequired: _parseInt(map['playersRequired']) ?? 0,
       joinedPlayerIds: _parseStringList(map['joinedPlayerIds']),
       joinedPlayerNames: _parseStringList(map['joinedPlayerNames']),
-      // Missing → 0. Old docs without the field behave exactly like
-      // before: only the real uids count.
+      // Missing → 0 so legacy docs read as "only real uids count".
       confirmedGuestCount: _parseInt(map['confirmedGuestCount']) ?? 0,
-      // Missing status → treat as open. Conservative: a half-written
-      // doc shouldn't accidentally read as `full` and hide itself.
+      // Missing status defaults to open — a half-written doc must
+      // not accidentally read as `full` and hide itself.
       status: (map['status'] as String?) ?? OpenMatch.statusOpen,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),

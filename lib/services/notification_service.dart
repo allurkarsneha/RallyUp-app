@@ -2,12 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/app_notification.dart';
 
-/// Reads + writes `notifications/{id}` docs.
-///
-/// All queries are `where('userId', isEqualTo: ...)` only — sorted
-/// client-side. Avoids needing a composite `userId + createdAt`
-/// index. Per-user notification volume stays small for the dataset
-/// scope of this app (tens to low hundreds), so client-sort is fine.
+/// Reads + writes `notifications/{id}`. Every query is single-field
+/// equality on `userId` and sorted client-side, so we don't ship a
+/// composite `userId + createdAt` index. Per-user volume stays small
+/// (tens to low hundreds), so client-sort is cheap.
 class NotificationService {
   final FirebaseFirestore _db;
 
@@ -17,10 +15,9 @@ class NotificationService {
   CollectionReference<Map<String, dynamic>> get _notifications =>
       _db.collection('notifications');
 
-  /// Newest-first stream of every notification belonging to [userId].
-  /// Pending `createdAt` (serverTimestamp) values sort with `null`
-  /// treated as "now" — so a freshly-written notification stays at
-  /// the top until the server confirms its timestamp.
+  /// Newest first. A freshly-written notification's `createdAt` is
+  /// briefly null while the server stamp settles — we treat null as
+  /// "now" so the new row stays at the top until the server confirms.
   Stream<List<AppNotification>> streamNotificationsForUser(String userId) {
     return _notifications.where('userId', isEqualTo: userId).snapshots().map((
       snap,
@@ -37,8 +34,6 @@ class NotificationService {
     });
   }
 
-  /// Live count of unread notifications for [userId]. Pipes into the
-  /// notification bell badge.
   Stream<int> streamUnreadCount(String userId) {
     return _notifications
         .where('userId', isEqualTo: userId)
@@ -48,8 +43,8 @@ class NotificationService {
   }
 
   /// Append one notification. Callers should fire-and-forget through
-  /// try/catch so a Firestore rules / network blip never breaks the
-  /// originating action (booking write, invite send, ...).
+  /// try/catch so a Firestore rules / network blip never blocks the
+  /// originating action (booking, invite, …).
   Future<void> createNotification({
     required String userId,
     required String title,
@@ -74,9 +69,8 @@ class NotificationService {
     await _notifications.doc(notificationId).update({'isRead': true});
   }
 
-  /// Bulk mark-read. Uses a Firestore `WriteBatch` so the unread
-  /// counter on the bell badge drops to zero in a single snapshot
-  /// rather than flickering down one row at a time.
+  /// Bulk mark-read in a single batch so the unread badge drops to
+  /// zero in one snapshot instead of flickering down row by row.
   Future<void> markAllAsRead(String userId) async {
     final unread = await _notifications
         .where('userId', isEqualTo: userId)

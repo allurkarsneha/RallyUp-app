@@ -1,23 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Per-invite Firestore record stored under `invites/{inviteId}`.
+/// `invites/{inviteId}`.
 ///
-/// Pinned snapshots of `fromUser` / `toUser` / court / time / player
-/// counts are written at create time so an invite card can render
-/// the right names, court, and date without doing follow-up reads on
-/// `users/{uid}` or `open_matches/{matchId}`. The match is still the
-/// source of truth for current state (joined count, status) — these
-/// snapshots are only used as backstop copy on already-shipped
-/// invites.
+/// Carries pinned snapshots of both users + court + time so an
+/// invite card renders without extra reads on `users/{uid}` or
+/// `open_matches/{matchId}`. The open match remains the source of
+/// truth for live counts — these snapshots are backstop copy.
 ///
 /// Status lifecycle:
-///   * `pending`   — initial. The invitee can accept or decline.
-///   * `accepted`  — the invitee tapped Accept; the OpenMatch.joinOpenMatch
-///                   transaction added them to `joinedPlayerIds`.
-///   * `declined`  — the invitee tapped Decline.
-///   * `cancelled` — the host cancelled the underlying open match, so
-///                   InviteService.cancelInvitesForMatch swept this
-///                   pending invite away.
+///   * `pending`   — invitee can accept or decline.
+///   * `accepted`  — invitee accepted; joinOpenMatch transaction
+///                   added them to `joinedPlayerIds`.
+///   * `declined`  — invitee declined.
+///   * `cancelled` — host cancelled the underlying match.
 class Invite {
   static const String statusPending = 'pending';
   static const String statusAccepted = 'accepted';
@@ -54,10 +49,8 @@ class Invite {
 
   final int playersRequired;
 
-  /// `OpenMatch.effectiveJoinedCount` at the moment the invite was
-  /// created. Used as backstop copy on cards — the live count comes
-  /// from the open match doc whenever we need the truth (capacity
-  /// checks, accept flow).
+  /// Snapshot of `OpenMatch.effectiveJoinedCount` at create time.
+  /// Backstop only — the live count comes from the match doc.
   final int effectiveJoinedCountAtSend;
 
   final String status;
@@ -184,9 +177,8 @@ class Invite {
       playersRequired: _parseInt(map['playersRequired']) ?? 0,
       effectiveJoinedCountAtSend:
           _parseInt(map['effectiveJoinedCountAtSend']) ?? 0,
-      // Missing status → treat as pending so half-written docs default
-      // to "still actionable" rather than silently slipping into a
-      // terminal state.
+      // Missing status defaults to pending — a half-written doc must
+      // not silently land in a terminal state.
       status: (map['status'] as String?) ?? Invite.statusPending,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),

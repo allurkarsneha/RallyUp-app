@@ -1,20 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// A bookable court / venue. Real Firestore data, replaces the
-/// hard-coded `_allCourts` map list that the Courts tab used to render.
+/// `courts/{id}`.
 ///
-/// Notable shape decisions:
-///
-///   * `sportTypes` is a list — a single venue can support multiple
-///     sports (e.g. Cupertino Sports Center hosts Tennis + Badminton +
-///     Pickleball). The CourtsPage sport filter must use
-///     `sportTypes.contains(selectedSport)`, never an equality check.
-///   * `imageUrls` is a list of fully-built Cloudinary URLs. The
-///     seeder converts Cloudinary public IDs into URLs at write time
-///     via `CourtService._cloudinaryCourtImage`; clients don't need to
-///     know about Cloudinary public IDs.
-///   * `isActive` defaults to `true` for legacy/missing docs so we
-///     never silently hide an entire court because of a partial doc.
+///   * `sportTypes` is a list — a venue can support many sports.
+///     Filter with `sportTypes.contains(...)`, never equality.
+///   * `imageUrls` holds fully-built Cloudinary URLs (the seeder
+///     resolves them from public IDs).
 class Court {
   final String id;
   final String name;
@@ -126,9 +117,8 @@ class Court {
       pricePerHour: _parseDouble(map['pricePerHour']) ?? 0,
       amenities: _parseStringList(map['amenities']),
       description: (map['description'] as String?) ?? '',
-      // Missing `isActive` → treat as visible. A court that's been
-      // partially written (e.g. the seed half-completed) is better
-      // shown than silently dropped.
+      // Missing isActive → visible. A partial write should not
+      // silently hide an entire court.
       isActive: (map['isActive'] as bool?) ?? true,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),

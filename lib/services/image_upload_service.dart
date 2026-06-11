@@ -16,14 +16,11 @@ class ImageUploadException implements Exception {
       '${statusCode != null ? ' (HTTP $statusCode)' : ''}';
 }
 
-/// Thin wrapper around Cloudinary's unsigned upload endpoint.
-///
-/// We use plain `http` instead of the Cloudinary SDK to keep the dependency
-/// footprint small and avoid native plugin issues. The endpoint accepts a
-/// multipart POST with the file plus a preset name; nothing is signed
-/// client-side, which is fine because the preset itself is registered as
-/// `unsigned` in the Cloudinary dashboard and constrained server-side
-/// (allowed formats, max size, etc.).
+/// Wrapper around Cloudinary's unsigned upload endpoint. Uses plain
+/// `http` rather than the Cloudinary SDK to keep the dependency
+/// footprint small. Nothing is signed client-side — the preset
+/// itself is configured as `unsigned` in the Cloudinary dashboard
+/// with the format/size constraints that matter.
 class ImageUploadService {
   final http.Client _client;
 
@@ -88,9 +85,7 @@ class ImageUploadService {
         if (err is Map && err['message'] is String) {
           message = err['message'] as String;
         }
-      } catch (_) {
-        // Body wasn't JSON; keep the generic message.
-      }
+      } catch (_) {}
       throw ImageUploadException(message, statusCode: streamed.statusCode);
     }
 

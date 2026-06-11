@@ -21,9 +21,9 @@ class UserLocation {
     required this.updatedAt,
   });
 
-  /// Build a [UserLocation] from a user-picked label like `"Santa Clara, CA"`.
-  /// Lat/lng are unknown for manual picks — set to 0 — but the city/region
-  /// fields are populated so `displayLabel` round-trips the original string.
+  /// Parses a "City, Region, Country" label. Lat/lng default to 0 —
+  /// the LocationService forward-geocode path is the supported way
+  /// to get real coordinates from a label.
   factory UserLocation.manual(String label) {
     final parts = label
         .split(',')
@@ -44,8 +44,8 @@ class UserLocation {
     );
   }
 
-  /// Human-readable label like "Santa Clara, CA". Falls back gracefully
-  /// when reverse-geocoding only returned partial data.
+  /// "City, Region", with graceful fallback when reverse-geocoding
+  /// only returned partial data.
   String get displayLabel {
     if (city.isNotEmpty && region.isNotEmpty) return '$city, $region';
     if (city.isNotEmpty) return city;

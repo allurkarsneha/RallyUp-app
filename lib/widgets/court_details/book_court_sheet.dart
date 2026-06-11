@@ -10,27 +10,10 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/booking_slots.dart';
 import 'players_setup_sheet.dart';
 
-/// Bottom sheet opened by Court Details → Book Now.
-///
-/// Flow matches the original RallyUp booking UX:
-///   1. Pick sport (only shown for multi-sport courts).
-///   2. Pick date.
-///   3. Pick a 1-hour time slot.
-///   4. Pick Match Type — Private Match or Open Match.
-///   5. Continue.
-///
-/// Branches on Match Type:
-///   * Private Match → `BookingService.createBooking` writes a real
-///     Firestore booking and the user lands on
-///     `BookingConfirmedPage(real Booking)`.
-///   * Open Match → opens `PlayersSetupSheet` so the user can set
-///     "players required" / "players confirmed" via the existing
-///     [NumberPickerSheet] flow. Open Match end-to-end integration
-///     (invites, match doc creation) is handled there.
-///
-/// Slot data comes from the shared [bookingSlots] constant so the
-/// "X slots today" badge on the court card and the time grid here
-/// always agree.
+/// Court Details → Book Now bottom sheet. Picks sport, date, slot,
+/// match type; private routes through ConfirmBookingPage to the
+/// booking write, open routes through PlayersSetupSheet to the
+/// match write.
 class BookCourtSheet extends StatefulWidget {
   final Court court;
   final String initialSport;
@@ -52,11 +35,8 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
   late DateTime _selectedDate;
   final CourtAvailabilityService _availability = CourtAvailabilityService();
 
-  /// We persist the picked slot itself, not its index into
-  /// [bookingSlots]. Reason: once we filter past slots for today, the
-  /// visible grid no longer maps 1:1 onto `bookingSlots`, so an
-  /// index-based selection would silently point at the wrong slot
-  /// after the user changes date.
+  /// Holds the slot itself (not an index) because today's filtered
+  /// grid no longer aligns 1:1 with `bookingSlots`.
   BookingSlot? _selectedSlot;
   _MatchType _matchType = _MatchType.openMatch;
   bool _busy = false;
@@ -86,11 +66,7 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
-        // If the previously selected slot no longer exists on the
-        // new date (e.g. user moved from tomorrow to today and the
-        // slot is now in the past), clear it so the user is forced
-        // to repick. Without this clear, Continue would happily fire
-        // a booking against a slot that's no longer offered.
+        // Clear the selection if the slot vanished on the new date.
         final stillAvailable = _availableSlotsFor(_selectedDate);
         final keep = _selectedSlot;
         if (keep != null &&
@@ -104,25 +80,15 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
     }
   }
 
-  /// Returns the slot list that should be shown to the user for the
-  /// given [date].
-  ///
-  ///   * Today → only slots whose start time is strictly after the
-  ///     current wall clock. A 6 AM slot at 3:45 PM is hidden;
-  ///     5 PM / 6 PM / 7 PM / 8 PM remain.
-  ///   * Any future date → every slot in [bookingSlots].
-  ///   * Any past date (shouldn't happen because the date picker's
-  ///     firstDate is today, but defensive) → empty list.
-  ///
-  /// Per-slot availability against existing bookings is still
-  /// deferred — this is only time-based filtering.
+  /// Time-only filter: today hides already-started slots; future
+  /// dates show all; past dates return empty.
   List<BookingSlot> _availableSlotsFor(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final dayOnly = DateTime(date.year, date.month, date.day);
     if (dayOnly.isBefore(today)) return const [];
     if (dayOnly.isAfter(today)) return bookingSlots;
-    // dayOnly == today → keep slots whose start is after `now`.
+    // Today → only slots whose start is strictly after `now`.
     return bookingSlots
         .where((slot) {
           final parts = slot.start.split(':');
@@ -154,9 +120,8 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
       setState(() => _formError = 'Pick a time slot to continue.');
       return;
     }
-    // Defensive recheck — the user may have left the sheet open
-    // past the slot's start time. Re-validate against the live
-    // availability list before any booking write happens downstream.
+    // Re-validate against the live availability list — the user
+    // may have left the sheet open past the slot's start time.
     final stillAvailable = _availableSlotsFor(
       _selectedDate,
     ).any((s) => s.start == slot.start && s.end == slot.end);
@@ -191,8 +156,7 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
   }
 
   Future<void> _openPrivateReview(BookingSlot slot, DateTime date) async {
-    // Capture before the sheet pops — once unmounted, `context`
-    // can't drive Navigator pushes.
+    // Capture before the sheet pops.
     final rootNavigator = Navigator.of(context, rootNavigator: true);
     final draft = BookingDraft(
       court: widget.court,
@@ -213,9 +177,8 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
   }
 
   Future<void> _openPlayersSetup(BookingSlot slot, DateTime date) async {
-    // PlayersSetupSheet now also routes into ConfirmBookingPage
-    // (Open Match draft). When the user returns here, reset our busy
-    // flag so they can edit & re-continue.
+    // PlayersSetupSheet returns control here when the user backs
+    // out — reset busy so they can edit & re-continue.
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -375,9 +338,8 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
   Widget build(BuildContext context) {
     final court = widget.court;
     final priceText = '\$${court.pricePerHour.toStringAsFixed(0)}/hr';
-    // Recompute every build so a sheet that the user keeps open
-    // across a slot-start boundary (e.g. picks 4–5 PM at 3:55 PM,
-    // sits idle until 4:01) reflects reality on the next rebuild.
+    // Recompute per build so a sheet kept open across a slot-start
+    // boundary reflects reality on rebuild.
     final visibleSlots = _availableSlotsFor(_selectedDate);
 
     return SafeArea(
@@ -499,11 +461,9 @@ class _BookCourtSheetState extends State<BookCourtSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Live availability against occupied bookings/matches.
-              // While the fetch is in flight we still render the
-              // time-only filtered slots so the grid never blanks —
-              // an in-flight tap is also re-validated in
-              // [_continue].
+              // While the live availability fetch is in flight we
+              // still render the time-only filtered slots so the
+              // grid never blanks. `_continue` re-validates.
               FutureBuilder<List<BookingSlot>>(
                 future: _availability.availableSlotsFor(
                   courtId: court.id,

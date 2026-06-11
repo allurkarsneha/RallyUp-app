@@ -10,16 +10,11 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/user_avatar.dart';
 
-/// Admin-only review queue for ID verification submissions.
+/// Admin-only review queue for ID verification.
 ///
-/// Gate: the side drawer only exposes this screen to allow-listed
-/// admin emails (see [AdminService.isAdmin]); we re-check on entry
-/// so a hand-typed route can't bypass the drawer gate.
-///
-/// Each row surfaces the submitter's display name, avatar, document
-/// type, and links to the uploaded images. Tapping Approve / Reject
-/// flips the corresponding user's `idVerification.status` via
-/// [AdminService.setVerificationStatus]. Reviewer notes are optional.
+/// Drawer exposes the entry only for allow-listed admin emails; we
+/// re-check on entry so a hand-typed route can't bypass the gate.
+/// Reviewer notes are optional.
 class IdVerificationReviewsScreen extends StatefulWidget {
   const IdVerificationReviewsScreen({super.key});
 
@@ -49,24 +44,38 @@ class _IdVerificationReviewsScreenState
         reviewerNote: note.isEmpty ? null : note,
       );
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            status == IdVerificationStatus.verified
-                ? '${submitter.displayName} approved.'
-                : '${submitter.displayName} rejected.',
+      // The Firestore stream is about to emit a new list without
+      // this submitter (their status flipped away from "submitted"),
+      // which removes this row from the ListView. Inserting a
+      // SnackBar in the same microtask races that teardown and the
+      // framework throws `_dependents.isEmpty`. Defer to the next
+      // frame so the row removal finishes first.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              status == IdVerificationStatus.verified
+                  ? '${submitter.displayName} approved.'
+                  : '${submitter.displayName} rejected.',
+            ),
           ),
-        ),
-      );
+        );
+      });
     } catch (_) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text("Couldn't update verification. Try again."),
-        ),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't update verification. Try again."),
+          ),
+        );
+      });
     } finally {
-      if (mounted) setState(() => _busyUids.remove(submitter.uid));
+      // Mutate the busy set without `setState`. The stream emission
+      // has already removed the row from the tree, so there's
+      // nothing for the busy flag to gate; forcing another rebuild
+      // here just compounds the same race.
+      _busyUids.remove(submitter.uid);
     }
   }
 
@@ -109,7 +118,13 @@ class _IdVerificationReviewsScreenState
         );
       },
     );
-    controller.dispose();
+    // Defer the controller dispose to the next frame so it doesn't
+    // race the dialog overlay's exit animation. Calling dispose
+    // synchronously while a descendant TextField is still in the
+    // tree triggers the framework `_dependents.isEmpty` assertion.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
     return value;
   }
 

@@ -10,17 +10,10 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/user_avatar.dart';
 
-/// Direct 1-to-1 chat with [otherUser]. Loads the thread id deterministically
-/// from `ChatService.createOrGetDirectThread`, then streams that thread's
-/// messages live from Firestore. Sent messages go through
-/// [ChatService.sendMessage], which also bumps the parent thread's preview
-/// fields so the Messages tab list updates atomically.
-///
-/// Intentionally narrow:
-///   * No quick-reply chips (deleted with the static mock).
-///   * No read receipts / delivery ticks (a later phase — unread counts
-///     and presence are explicitly deferred).
-///   * No bottom nav (this is a pushed route, not a tab).
+/// Direct 1-to-1 chat. Thread id is deterministic, so the page
+/// resolves it in one read and streams messages live. Sends go
+/// through `ChatService.sendMessage`, which bumps the parent
+/// thread's preview atomically.
 class MessagePage extends StatefulWidget {
   final AppUser otherUser;
 
@@ -39,10 +32,8 @@ class _MessagePageState extends State<MessagePage> {
   String? _initError;
   bool _sending = false;
 
-  /// Id of the most recent incoming message we've already marked as
-  /// read. Prevents the per-snapshot `markThreadRead` call from firing
-  /// over and over while the user is sitting in the chat — we only
-  /// write when a NEW message from the other user lands.
+  /// Last incoming message we've already marked read — gate so the
+  /// per-snapshot `markThreadRead` only fires for new messages.
   String? _lastMarkedMessageId;
 
   @override
@@ -64,12 +55,8 @@ class _MessagePageState extends State<MessagePage> {
       );
       if (!mounted) return;
       setState(() => _threadId = id);
-      // Mark the thread as read at the moment of open. This handles the
-      // "I'm opening a chat that already has unread messages from
-      // before" case — the messages stream's later mark-as-read covers
-      // new messages that arrive while the user is sitting in the chat.
-      // Fire-and-forget; failures are non-fatal (the next snapshot will
-      // try again).
+      // Mark read on open so any pre-existing unread message clears
+      // immediately. Fresh messages are handled by `_maybeMarkRead`.
       _chatService.markThreadRead(threadId: id, uid: me.uid).catchError((_) {});
     } catch (e) {
       if (!mounted) return;
@@ -77,11 +64,9 @@ class _MessagePageState extends State<MessagePage> {
     }
   }
 
-  /// Called from inside the messages StreamBuilder after each snapshot.
-  /// If the latest message is from the other user and we haven't
-  /// already marked it, bump our read timestamp. Scheduled in a
-  /// post-frame callback so we don't mutate Firestore from inside a
-  /// build() pass.
+  /// Bumps the read timestamp when a new message from the other
+  /// user lands. Scheduled post-frame so we don't mutate Firestore
+  /// inside a build pass.
   void _maybeMarkRead(List<ChatMessage> messages, String myUid) {
     final id = _threadId;
     if (id == null || messages.isEmpty) return;

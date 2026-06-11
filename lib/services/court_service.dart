@@ -4,12 +4,9 @@ import 'package:flutter/foundation.dart';
 import '../core/cloudinary_config.dart';
 import '../models/court.dart';
 
-/// Reads + seeds `courts` documents.
-///
-/// Active-only listing is filtered client-side rather than via a server
-/// `where('isActive', isEqualTo: true)` so we don't need a composite
-/// index when we later add sort fields; the dataset is small (tens of
-/// venues at most) so this is fine.
+/// Reads + seeds `courts` documents. Filtering by `isActive` and
+/// sorting (city → name) are done client-side; the catalogue is
+/// small (tens of venues) and we don't ship composite indexes.
 class CourtService {
   final FirebaseFirestore _db;
 
@@ -19,9 +16,6 @@ class CourtService {
   CollectionReference<Map<String, dynamic>> get _courts =>
       _db.collection('courts');
 
-  /// Streams every active court. Sorts client-side by city then name
-  /// so the result is stable across re-emits without requiring a
-  /// composite Firestore index.
   Stream<List<Court>> streamActiveCourts() {
     return _courts.snapshots().map((snap) {
       final courts = snap.docs
@@ -43,26 +37,18 @@ class CourtService {
     return Court.fromDoc(snap);
   }
 
-  /// Builds a Cloudinary delivery URL from a public ID we uploaded to
-  /// the `rallyup/courts/...` folder. `f_auto,q_auto` lets Cloudinary
-  /// pick the best format + quality for the requesting client.
-  ///
-  /// Public so widgets in `debug` mode can call it for diagnostics
-  /// (the Image.network error logger uses it to sanity-check that the
-  /// failing URL matches the format the seeder would write).
+  /// Cloudinary delivery URL for a public ID under `rallyup/courts/`.
+  /// `f_auto,q_auto` lets Cloudinary pick the best format + quality
+  /// for the requesting client.
   static String cloudinaryCourtImage(String publicId) {
     return 'https://res.cloudinary.com/${CloudinaryConfig.cloudName}'
         '/image/upload/f_auto,q_auto/$publicId';
   }
 
-  /// First-run seed for the demo dataset. Idempotent:
-  ///   * Single `limit(1)` read up front. If anything exists in the
-  ///     `courts` collection, do nothing — never overwrite.
-  ///   * Uses deterministic doc ids so even a re-run with a partial
-  ///     prior seed merges into the same docs instead of duplicating.
-  ///
-  /// Wrapped in try/catch + `debugPrint` so a Firestore rules failure
-  /// or transient network error during dev never crashes startup.
+  /// Debug-only first-run seed. Idempotent: bails on the first
+  /// `limit(1)` hit, uses deterministic doc ids so a partial prior
+  /// seed merges instead of duplicating. Errors are swallowed —
+  /// seeding must never crash startup.
   Future<void> seedCourtsIfEmpty() async {
     try {
       final existing = await _courts.limit(1).get();
@@ -80,10 +66,7 @@ class CourtService {
       }
       await batch.commit();
       debugPrint('CourtService: seeded ${_seedData.length} courts.');
-      // Log a sample URL so a developer can paste it into a browser
-      // to confirm the cloud name + public ID combination resolves to
-      // a real Cloudinary asset. Cheaper than chasing "why is my
-      // placeholder showing" through six layers of widgets.
+      // Sample URL for manual sanity check against Cloudinary.
       if (_seedData.isNotEmpty && _seedData.first.imagePublicIds.isNotEmpty) {
         debugPrint(
           'CourtService: sample image URL = '
@@ -95,23 +78,10 @@ class CourtService {
     }
   }
 
-  /// Debug-only self-heal. If the courts collection was seeded by an
-  /// earlier build whose Cloudinary URL helper had a bug — or by a
-  /// build before any URL helper existed at all — the docs exist but
-  /// their `imageUrls` arrays are missing/empty, which surfaces in
-  /// the app as "every court shows a placeholder". `seedCourtsIfEmpty`
-  /// won't help here because it short-circuits on the first existing
-  /// doc.
-  ///
-  /// This method walks each known seed-id doc and, if its `imageUrls`
-  /// is null or empty, writes a fresh URL list built from the current
-  /// `imagePublicIds` via [cloudinaryCourtImage]. It is idempotent
-  /// (no-op once every doc has a populated array) and never deletes
-  /// data — it only fills in the missing field. We do NOT touch
-  /// hand-authored docs that aren't part of `_seedData`.
-  ///
-  /// Should only be invoked in debug builds (via `assert(() { … }())`)
-  /// — production launches must not silently rewrite Firestore.
+  /// Debug-only self-heal for courts whose `imageUrls` array is
+  /// missing or empty (an older seed format). Walks the known
+  /// `_seedData` ids and fills in the URLs from `imagePublicIds`.
+  /// Never touches hand-authored docs.
   Future<void> repairCourtImagesIfNeeded() async {
     try {
       int repaired = 0;
@@ -145,8 +115,6 @@ class CourtService {
     }
   }
 
-  /// In-process seed dataset. Public IDs come from the Cloudinary
-  /// uploads under `rallyup/courts/{id}/`.
   static const List<_SeedCourt> _seedData = [
     _SeedCourt(
       id: 'santa_clara_tennis_center',
@@ -358,9 +326,8 @@ class CourtService {
   ];
 }
 
-/// Single-source-of-truth row for the seed dataset. Cloudinary public
-/// IDs are stored here and resolved into full URLs at write time so
-/// only the service layer ever knows about Cloudinary specifics.
+/// Seed row. Cloudinary public IDs are resolved to full URLs at
+/// write time so the rest of the app never sees Cloudinary specifics.
 class _SeedCourt {
   final String id;
   final String name;

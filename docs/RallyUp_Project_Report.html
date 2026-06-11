@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RallyUp — Project Report</title>
+<style>
+  body { font-family: "Calibri", "Helvetica", sans-serif; font-size: 11pt; line-height: 1.45; color: #1f1f1f; max-width: 800px; }
+  h1 { font-size: 26pt; color: #0B6B43; margin-top: 36pt; margin-bottom: 6pt; }
+  h2 { font-size: 18pt; color: #0B6B43; margin-top: 28pt; margin-bottom: 4pt; border-bottom: 2px solid #D8F3DC; padding-bottom: 2pt; }
+  h3 { font-size: 14pt; color: #1f1f1f; margin-top: 18pt; margin-bottom: 4pt; }
+  h4 { font-size: 12pt; color: #1f1f1f; margin-top: 14pt; margin-bottom: 4pt; font-weight: bold; }
+  p { margin: 6pt 0; }
+  ul, ol { margin: 6pt 0 6pt 18pt; padding: 0; }
+  li { margin: 3pt 0; }
+  code, pre { font-family: "Consolas", "Menlo", monospace; font-size: 10pt; }
+  pre { background: #F5F7F9; padding: 10pt; border: 1px solid #E2E8F0; white-space: pre-wrap; }
+  table { border-collapse: collapse; margin: 8pt 0; width: 100%; }
+  th, td { border: 1px solid #BFC9D4; padding: 6pt 9pt; text-align: left; vertical-align: top; font-size: 10.5pt; }
+  th { background: #D8F3DC; }
+  blockquote { border-left: 3px solid #0B6B43; margin: 8pt 0; padding: 4pt 12pt; background: #F5FBF7; color: #2a2a2a; }
+  .cover { text-align: center; margin-top: 80pt; }
+  .cover h1 { font-size: 40pt; margin-bottom: 4pt; }
+  .cover .sub { font-size: 16pt; color: #555; margin-top: 0; }
+  .cover .meta { margin-top: 64pt; font-size: 12pt; color: #555; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ───────────────────────── COVER ───────────────────────── -->
+<div class="cover">
+  <h1>RallyUp</h1>
+  <p class="sub">A Flutter + Firebase community sports app</p>
+  <p class="sub" style="margin-top:32pt;">Project Report</p>
+  <div class="meta">
+    <p>Mobile application — iOS &amp; Android</p>
+    <p>Course: CSEN268 Final Project</p>
+    <p>Submission date: May 2026</p>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ───────────────────────── TOC ───────────────────────── -->
+<h1>Table of Contents</h1>
+<ol>
+  <li>Executive Summary</li>
+  <li>Problem Statement &amp; Goals</li>
+  <li>Feature Overview</li>
+  <li>High-Level Architecture</li>
+  <li>Detailed Architecture &amp; Code Layout</li>
+  <li>Technology Stack</li>
+  <li>Firebase Backend &amp; Data Model</li>
+  <li>Authentication Flow</li>
+  <li>Onboarding Flow</li>
+  <li>Court Booking Flow (Private Match)</li>
+  <li>Open Match Flow</li>
+  <li>Invite Flow</li>
+  <li>Messaging Architecture (Direct + Group)</li>
+  <li>Unread &amp; Read State</li>
+  <li>Notifications (In-App + Push)</li>
+  <li>Schedule Conflict Prevention</li>
+  <li>Court Availability</li>
+  <li>Location &amp; Distance</li>
+  <li>Image Handling (Cloudinary)</li>
+  <li>Admin / Moderation</li>
+  <li>Theme &amp; Design System</li>
+  <li>Notable Engineering Decisions</li>
+  <li>Project Statistics</li>
+  <li>Future Work</li>
+  <li>Setup &amp; Deployment Guide</li>
+  <li>Comparison with Reference Project</li>
+</ol>
+
+<div class="page-break"></div>
+
+<!-- ───────────────────────── 1. EXECUTIVE SUMMARY ───────────────────────── -->
+<h1>1. Executive Summary</h1>
+
+<p><strong>RallyUp</strong> is a Flutter mobile application backed by Firebase that helps amateur sports players discover each other, reserve courts, organise open matches, and chat — all in a single integrated experience. The project ships 30,000+ lines of production-shaped Dart across 143 files, ten live Firestore collections, transactional Firestore writes for concurrency-sensitive operations, real-time direct and group chat, push notifications wired to a Firebase Cloud Function, an in-app admin moderation surface, and shared schedule-conflict prevention that spans bookings, open matches, invites, and joins.</p>
+
+<p>The app exists because existing tools split this work across three places — court-booking apps, generic messaging apps, and sports-pickup apps — none of which share a real schedule or contact graph. RallyUp puts booking, messaging, invites, and notifications inside one consistent Firebase-backed model so a single tap can take a user from "I'd like to play tennis Saturday" to "court reserved, three friends invited, group chat ready."</p>
+
+<!-- ───────────────────────── 2. PROBLEM ───────────────────────── -->
+<h1>2. Problem Statement &amp; Goals</h1>
+
+<h3>Problem</h3>
+<p>Amateur players today rely on a fragmented toolchain: a court-booking app for the venue, WhatsApp groups for organising who shows up, and DMs to invite individual players. These three planes don't share a single source of truth, so:</p>
+<ul>
+  <li>It is easy to double-book yourself across two different courts at the same time.</li>
+  <li>A host's "open match" lives only as a verbal commitment; players who join late have no record.</li>
+  <li>Cancellation propagation is manual — when a host cancels, the venue, the group chat, and the personal invites all need to be touched separately.</li>
+  <li>Trust between strangers is hard to build because no system carries identity, history, or moderation between meetups.</li>
+</ul>
+
+<h3>Goals</h3>
+<ul>
+  <li>One app where booking, hosting, inviting, joining, and chatting all share one data model.</li>
+  <li>Real concurrency safety: no two users can join the last spot of a match.</li>
+  <li>Real schedule safety: a user cannot be in two overlapping sessions even at different courts.</li>
+  <li>A live group chat per open match, automatically populated, automatically cleaned up.</li>
+  <li>Honest notifications: every state change that affects another user surfaces in their bell and (eventually) on their lock screen.</li>
+  <li>Project-appropriate trust signals: profile-level visibility, optional ID verification, "report user" path.</li>
+</ul>
+
+<!-- ───────────────────────── 3. FEATURES ───────────────────────── -->
+<h1>3. Feature Overview</h1>
+
+<h3>3.1 Onboarding &amp; Authentication</h3>
+<ul>
+  <li>Email + password sign-up and sign-in via Firebase Authentication.</li>
+  <li>Multi-step onboarding wizard: name, email/phone, photo, sports preferences, location.</li>
+  <li>Profile photo capture from camera or library, uploaded to Cloudinary.</li>
+  <li>Optional GPS location capture at first run, with manual city picker fallback.</li>
+  <li>Forgot-password flow on the login screen and inside Account Settings → Privacy.</li>
+  <li>Account deletion with the auth-first invariant — Firebase Auth deletes first, local state clears after.</li>
+</ul>
+
+<h3>3.2 Profile</h3>
+<ul>
+  <li>Display name, profile photo (Cloudinary URL, curated avatar id, or initials), bio, age, postal code, sports, weekly availability, location.</li>
+  <li>Profile-visibility toggle that hides the user from discovery surfaces.</li>
+  <li>Editable avatar, sports list, and availability.</li>
+  <li>Optional ID verification submission (document + selfie) reviewed inside the app by an admin.</li>
+</ul>
+
+<h3>3.3 Courts</h3>
+<ul>
+  <li>Streamed list of courts from <code>courts/{id}</code>, debug-only seeded at startup.</li>
+  <li>Per-court details page with an image carousel.</li>
+  <li>Sport, search, and sort filters (default, distance, rating, lowest price).</li>
+  <li>Distance + same-city ranking computed via haversine from the user's stored location.</li>
+  <li>Court images are Cloudinary URLs; null/empty/error states fall back to a placeholder.</li>
+</ul>
+
+<h3>3.4 Private bookings</h3>
+<ul>
+  <li>Book Court sheet picks sport, date, 1-hour slot, and match type.</li>
+  <li>Confirm Booking page reviews the draft and writes the <code>bookings/{id}</code> doc on confirmation.</li>
+  <li>Past-time slots auto-hide; occupied slots disappear via the availability service.</li>
+  <li>My Bookings shows Upcoming / Past tabs with tags: Confirmed / In progress / Completed / Cancelled.</li>
+  <li>Soft-cancel from My Bookings via the 3-dot menu.</li>
+</ul>
+
+<h3>3.5 Open matches</h3>
+<ul>
+  <li>Hosts create an open match through PlayersSetupSheet, setting players required and already-confirmed guests.</li>
+  <li>Two parallel-array player lists (<code>joinedPlayerIds</code>, <code>joinedPlayerNames</code>) plus an integer <code>confirmedGuestCount</code>.</li>
+  <li>Atomic join via Firestore transaction — cancelled, full, host-self-join, and duplicate are all caught.</li>
+  <li>Leave (joined player) and Cancel (host) are both transactional.</li>
+  <li>Host cancel auto-notifies joined players and cancels every pending invite.</li>
+  <li>Public lists hide cancelled, full, past, host's own, and already-joined matches.</li>
+</ul>
+
+<h3>3.6 Invites</h3>
+<ul>
+  <li>Unified Invites page with Sent / Received tabs (initial tab decided at push time).</li>
+  <li>Host opens a player's profile → Invite → picker shows only their hosted matches still actionable for that invitee.</li>
+  <li>Invite docs at <code>invites/{id}</code> carry court, date, time, and pinned avatar/name snapshots for both sides.</li>
+  <li>Live "X / Y joined · N spots left" line on every invite card streams the underlying match.</li>
+  <li>Host cancellation auto-cancels pending invites and fires a "Match cancelled" notification to each invitee.</li>
+</ul>
+
+<h3>3.7 Notifications</h3>
+<ul>
+  <li>Per-user <code>notifications/{id}</code> collection with ten typed events.</li>
+  <li>Notifications bell with unread badge.</li>
+  <li>Tap routing per <code>targetType</code>: booking → BookingConfirmedPage; match → MatchDetailsPage; pending invite → Received tab; resolved invite → MatchDetailsPage.</li>
+  <li>Empty + error states; "Mark all read" action.</li>
+</ul>
+
+<h3>3.8 Messages</h3>
+<ul>
+  <li>Direct 1-to-1 chat with deterministic thread id <code>uidA_uidB</code> (sorted).</li>
+  <li>Group chat per open match with deterministic thread id <code>match_&lt;matchId&gt;</code>.</li>
+  <li>Single <code>threads/{threadId}</code> collection with a <code>type: 'direct' | 'group'</code> discriminator.</li>
+  <li>Three tabs: All (direct only), Unread (direct + group filtered to unread), Groups.</li>
+  <li>Per-user <code>lastReadAtByUser</code> map; opening the chat is the only path that bumps the read marker.</li>
+  <li>Group chat auto-creates on match create; joiners are auto-added via <code>arrayUnion</code>; leavers auto-removed via <code>arrayRemove</code>.</li>
+</ul>
+
+<h3>3.9 Feedback &amp; Moderation</h3>
+<ul>
+  <li>Feedback &amp; Suggestions submits to <code>feedback/{id}</code>.</li>
+  <li>Player profile → ⋮ → Report user writes to <code>reports/{id}</code>.</li>
+  <li>Admin-only ID verification review queue gated by allow-listed admin emails; approve / reject with reviewer note.</li>
+</ul>
+
+<h3>3.10 Legal</h3>
+<ul>
+  <li>Real readable Privacy Policy and Terms of Service pages with eight sections each (last updated May 30, 2026).</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- ───────────────────────── 4. HIGH-LEVEL ARCH ───────────────────────── -->
+<h1>4. High-Level Architecture</h1>
+
+<p>Three independent tiers cooperate through Firebase as the integration plane:</p>
+
+<pre>
+┌───────────────────────────────────────────────────────────────────┐
+│                       Flutter mobile app                           │
+│                                                                    │
+│   ┌────────────┐    ┌──────────────┐    ┌──────────────────┐      │
+│   │   Screens  │ ←─ │  Providers   │ ←─ │      Services     │     │
+│   │  (widgets) │    │  (Provider)  │    │  (Firestore I/O)  │     │
+│   └────────────┘    └──────────────┘    └──────────┬───────┘      │
+│                                                    │              │
+└────────────────────────────────────────────────────┼──────────────┘
+                                                     │
+                ┌────────────────────────────────────┼──────────────┐
+                │                Firebase             │              │
+                │                                     ▼              │
+                │   Authentication ───┐   ┌───── Cloud Firestore ─┐  │
+                │     (email/pw)      │   │  10 collections        │  │
+                │                     │   │  + transactions       │  │
+                │   FCM ──────────────┤   └────────┬──────────────┘  │
+                │                     │            │                  │
+                │   Storage ──────────┘            ▼                  │
+                │                            Cloud Functions          │
+                │                            (Node.js)                │
+                │                            sendPushOnNotificationCreate
+                └────────────────────────────────────┬───────────────┘
+                                                     │
+                                                     ▼
+                                            Cloudinary (image hosting,
+                                            unsigned upload)
+</pre>
+
+<p>The Flutter client never talks to Cloudinary or FCM through a server we own — it speaks directly to managed services and Firebase. The one piece of custom server code is a single Cloud Function that listens on <code>notifications/{id}</code> create events and fans out push messages.</p>
+
+<!-- ───────────────────────── 5. DETAILED ARCH ───────────────────────── -->
+<h1>5. Detailed Architecture &amp; Code Layout</h1>
+
+<pre>
+lib/
+├── main.dart                  ← MaterialApp + global navigator key + MainShell
+├── firebase_options.dart      ← FlutterFire CLI output
+├── core/                      ← cross-cutting config (Cloudinary)
+├── theme/                     ← AppColors, AppSpacing, AppTextStyles, AppTheme
+├── utils/                     ← booking_slots.dart, sport_emoji.dart
+├── models/                    ← 12 immutable data classes
+├── providers/                 ← AuthProvider + SignupFormProvider (ChangeNotifier)
+├── services/                  ← 16 Firestore / external service classes
+├── screens/                   ← page widgets organised by feature
+│   ├── login/                 ← onboarding + sign-in flow
+│   ├── home/
+│   ├── messages/              ← Messages, Unread, Group tabs
+│   ├── player_details/        ← Nearby Players, profile, invites,
+│   │                            match details, group chat, direct chat
+│   ├── profile/               ← profile + settings + legal + feedback
+│   └── admin/                 ← admin-only ID verification review queue
+└── widgets/                   ← reusable presentational widgets
+</pre>
+
+<h3>Service classes</h3>
+<table>
+<tr><th>Service</th><th>Responsibility</th></tr>
+<tr><td>AuthService</td><td>Firebase Auth wrapper: sign in / up, password reset, sign out.</td></tr>
+<tr><td>UserService</td><td>Read / write <code>users/{uid}</code>; client-side visibility filter for streams.</td></tr>
+<tr><td>BookingService</td><td>Create / read / cancel <code>bookings/{id}</code>; pre-flight conflict check.</td></tr>
+<tr><td>OpenMatchService</td><td>Create / join / leave / cancel <code>open_matches/{id}</code>; integrates with group chat and conflict service.</td></tr>
+<tr><td>InviteService</td><td>Create / accept / decline / bulk-cancel invites at <code>invites/{id}</code>; fans out notifications.</td></tr>
+<tr><td>ChatService</td><td>Direct + group thread management at <code>threads/{id}</code>; send / mark-read / participant management.</td></tr>
+<tr><td>NotificationService</td><td>Per-user notification feed at <code>notifications/{id}</code>; mark-read; bulk-read.</td></tr>
+<tr><td>CourtService</td><td>Court catalogue stream; debug-only seed and image-repair.</td></tr>
+<tr><td>CourtAvailabilityService</td><td>Computes which generated slots are bookable for a given court and date.</td></tr>
+<tr><td>ScheduleConflictService</td><td>Shared overlap predicate; per-user and per-court conflict assertions.</td></tr>
+<tr><td>ImageUploadService</td><td>Cloudinary unsigned upload.</td></tr>
+<tr><td>LocationService</td><td>GPS capture and reverse geocoding.</td></tr>
+<tr><td>LocationPickerHandler</td><td>UI for the location picker bottom sheet.</td></tr>
+<tr><td>PushNotificationService</td><td>FCM token capture, foreground banner, cold/warm tap routing.</td></tr>
+<tr><td>FeedbackService</td><td>Feedback + report-user writes.</td></tr>
+<tr><td>AdminService</td><td>Allow-listed admin gating; pending verification stream; verification status flip.</td></tr>
+</table>
+
+<h3>State management</h3>
+<p>The project uses <strong>Provider</strong> with two <code>ChangeNotifier</code>s: <code>AuthProvider</code> (current user, status, profile updates, password reset) and <code>SignupFormProvider</code> (multi-step onboarding form data). All other screens consume Firestore streams directly via <code>StreamBuilder</code>, so state is push-driven by the database rather than held in client-side stores.</p>
+
+<h3>Navigation</h3>
+<p>The shell pattern: a single <code>MaterialApp</code> hosts <code>AuthGate</code> as its <code>home</code>; the gate decides between Onboarding/Login and <code>MainShell</code>. <code>MainShell</code> owns the bottom nav and holds three tabs (Home, Messages, Profile) in an <code>IndexedStack</code> so tab state is preserved across switches. Pushed routes (Courts, Match Details, Profile editors, etc.) live above the shell; they never replace it. A helper <code>switchToMainShellTab(context, index)</code> pops back to the shell and flips its active tab from anywhere in the app without rebuilding it.</p>
+
+<div class="page-break"></div>
+
+<!-- ───────────────────────── 6. TECH STACK ───────────────────────── -->
+<h1>6. Technology Stack</h1>
+
+<h3>Frontend</h3>
+<table>
+<tr><th>Tech</th><th>Why</th></tr>
+<tr><td>Flutter (Dart)</td><td>Single codebase iOS + Android with native-grade UI performance.</td></tr>
+<tr><td>Provider</td><td>Small-surface state management; chosen over Bloc/Riverpod for project simplicity.</td></tr>
+<tr><td>intl</td><td>Locale-aware date and time formatting.</td></tr>
+<tr><td>cached_network_image</td><td>Cloudinary image loading with placeholder + error fallback.</td></tr>
+<tr><td>image_picker + permission_handler</td><td>Camera/library access with permission prompts.</td></tr>
+<tr><td>geolocator + geocoding</td><td>GPS capture and city resolution.</td></tr>
+<tr><td>http</td><td>Cloudinary REST upload.</td></tr>
+<tr><td>path</td><td>Filename helpers.</td></tr>
+</table>
+
+<h3>Backend (Firebase)</h3>
+<table>
+<tr><th>Product</th><th>How it's used</th></tr>
+<tr><td>Firebase Authentication</td><td>Email + password; password reset; account deletion. Phone auth is scaffolded but disabled.</td></tr>
+<tr><td>Cloud Firestore</td><td>Primary data store: 10 collections, real-time streams everywhere, transactional joins and cancels.</td></tr>
+<tr><td>Firebase Cloud Messaging</td><td>Client-side token capture + foreground / background tap routing.</td></tr>
+<tr><td>Firebase Storage</td><td>Declared dependency (some image flows; Cloudinary is the primary).</td></tr>
+<tr><td>Cloud Functions</td><td>Single Node.js function <code>sendPushOnNotificationCreate</code> that fans out FCM messages.</td></tr>
+</table>
+
+<h3>Third-party</h3>
+<table>
+<tr><th>Service</th><th>How it's used</th></tr>
+<tr><td>Cloudinary</td><td>Unsigned upload preset for profile photos, ID verification images, and seeded court images. Configured in <code>lib/core/cloudinary_config.dart</code>.</td></tr>
+</table>
+
+<!-- ───────────────────────── 7. FIREBASE / DATA MODEL ───────────────────────── -->
+<h1>7. Firebase Backend &amp; Data Model</h1>
+
+<p>Ten Cloud Firestore collections (no composite indexes required):</p>
+
+<table>
+<tr><th>Collection</th><th>Purpose</th><th>Key fields</th></tr>
+<tr>
+  <td><code>users/{uid}</code></td>
+  <td>Profile snapshot.</td>
+  <td>email, phone, displayName, firstName, lastName, photoUrl, avatarId, age, postalCode, bio, location, sports, availability, profileVisible, idVerification, fcmTokens, createdAt, updatedAt.</td>
+</tr>
+<tr>
+  <td><code>courts/{id}</code></td>
+  <td>Court catalogue.</td>
+  <td>name, address, city, lat, lng, sportTypes, pricePerHour, rating, imageUrls, isActive.</td>
+</tr>
+<tr>
+  <td><code>bookings/{id}</code></td>
+  <td>Confirmed private court reservations.</td>
+  <td>userId, courtId, court snapshot, sportType, date, startTime, endTime, pricePerHour, totalPrice, status, createdAt, updatedAt.</td>
+</tr>
+<tr>
+  <td><code>open_matches/{id}</code></td>
+  <td>Open matches hosted by a user.</td>
+  <td>hostUid, host snapshot, court snapshot, sportType, date, startTime, endTime, playersRequired, joinedPlayerIds, joinedPlayerNames, confirmedGuestCount, status.</td>
+</tr>
+<tr>
+  <td><code>invites/{id}</code></td>
+  <td>Invite from one host to one player for one match.</td>
+  <td>matchId, fromUserId/Name/Initials/PhotoUrl/AvatarId, toUserId/Name/Initials/PhotoUrl/AvatarId, court snapshot, date, startTime, endTime, playersRequired, effectiveJoinedCountAtSend, status.</td>
+</tr>
+<tr>
+  <td><code>threads/{id}</code></td>
+  <td>Direct AND group chat threads.</td>
+  <td>type ('direct' | 'group'), participantIds, lastMessage, lastMessageAt, lastSenderId, lastReadAtByUser, group-only: matchId, title, imageUrl, sportType, courtName.</td>
+</tr>
+<tr>
+  <td><code>threads/{id}/messages/{messageId}</code></td>
+  <td>Individual chat messages.</td>
+  <td>senderUid, senderName (group only), text, sentAt.</td>
+</tr>
+<tr>
+  <td><code>notifications/{id}</code></td>
+  <td>Per-user notification feed.</td>
+  <td>userId, title, body, type, targetType, targetId, isRead, createdAt.</td>
+</tr>
+<tr>
+  <td><code>feedback/{id}</code></td>
+  <td>User feedback / bug reports.</td>
+  <td>userId, userEmail, userName, category, message, createdAt.</td>
+</tr>
+<tr>
+  <td><code>reports/{id}</code></td>
+  <td>"Report another user" submissions.</td>
+  <td>reporterId, reporterName, reportedUserId, reportedUserName, reason, status, createdAt.</td>
+</tr>
+</table>
+
+<h3>Query patterns</h3>
+<p>All queries are intentionally single-field equality (<code>where('userId', isEqualTo: …)</code>, <code>where('hostUid', isEqualTo: …)</code>, etc.) or <code>arrayContains</code>; client-side sorting + filtering finishes the job. This avoids composite indexes at the current scale and keeps the project deployable from a clean Firebase project with no manual index setup.</p>
+
+<div class="page-break"></div>
+
+<!-- ───────────────────────── 8. AUTH FLOW ───────────────────────── -->
+<h1>8. Authentication Flow</h1>
+
+<pre>
+First-time sign up                            Returning user
+────────────────────                           ─────────────
+SplashScreen                                   SplashScreen
+    │                                              │
+    ▼                                              ▼
+SignupScreen ── "Sign up with email" ──┐       LoginScreen
+                                       │           │
+                                       ▼           ▼
+                                EmailSignupScreen  signInWithEmail
+                                       │           │
+                                       ▼           ▼
+                                NameScreen      AuthProvider
+                                       │       _onAuthChange
+                                       ▼           │
+                                PhoneScreen        │ (loads profile)
+                                       │           │
+                                       ▼           ▼
+                                PhotoScreen     MainShell
+                                       │           │
+                                       ▼           ▼
+                          SportsPreferencesScreen  HomePage
+                                       │
+                                       ▼
+                                  AuthGate
+                                       │
+                                       ▼
+                                  MainShell
+</pre>
+
+<h3>Key invariants</h3>
+<ul>
+  <li><strong>AuthGate</strong> is the only widget allowed to swap between authenticated and unauthenticated branches. Pushed routes never replace it; logout / delete clears local state and AuthGate repaints to SignupScreen on the next frame.</li>
+  <li><strong>Auth-first delete</strong>: <code>fbUser.delete()</code> must observably succeed before <code>_currentUser</code> is set to null. If Firebase Auth deletion throws (e.g. <code>requires-recent-login</code>), the user stays signed in with their old profile and gets a SnackBar to retry.</li>
+  <li><strong>Password reset</strong>: <code>FirebaseAuth.sendPasswordResetEmail</code> is reachable from both the login screen and Account Settings. To avoid leaking which emails are registered, "user-not-found" returns the same generic success message as a real send.</li>
+</ul>
+
+<!-- ───────────────────────── 9. ONBOARDING FLOW ───────────────────────── -->
+<h1>9. Onboarding Flow</h1>
+
+<ol>
+  <li><strong>SplashScreen</strong> → <strong>SignupScreen</strong>: choose "Sign up with email."</li>
+  <li><strong>EmailSignupScreen</strong>: email + password, validates against a basic regex, creates the FirebaseAuth user.</li>
+  <li><strong>NameScreen</strong>: first name + last name.</li>
+  <li><strong>PhoneScreen</strong>: shows a friendly placeholder because phone auth is intentionally not configured; user can skip.</li>
+  <li><strong>PhotoScreen</strong>: take a photo or pick from library; uploaded to Cloudinary; user can skip and a curated avatar is assigned.</li>
+  <li><strong>SportsPreferencesScreen</strong>: multi-select sports chips.</li>
+  <li><strong>Location capture</strong>: GPS prompt on first MainShell render; manual picker as fallback.</li>
+  <li>Final user doc is written to <code>users/{uid}</code> via <code>UserService.createUser</code>.</li>
+</ol>
+
+<!-- ───────────────────────── 10. PRIVATE BOOKING ───────────────────────── -->
+<h1>10. Court Booking Flow (Private Match)</h1>
+
+<pre>
+CourtsPage  ──▶  CourtDetailsPage  ──▶  BookCourtSheet
+                                            │
+                                            ▼
+                                  Pick sport / date / slot
+                                  ── filter past slots
+                                  ── filter occupied slots via
+                                     CourtAvailabilityService
+                                            │
+                                            ▼
+                                     Pick "Private Match"
+                                            │
+                                            ▼
+                                  ConfirmBookingPage
+                                  (in-memory BookingDraft;
+                                   no Firestore write yet)
+                                            │
+                                            ▼
+                              Tap "Confirm Booking"
+                                            │
+                                            ▼
+                           BookingService.createBooking
+                            1) ScheduleConflictService check:
+                               court-occupied? user-conflict?
+                            2) Write bookings/{id}
+                            3) Fire booking_confirmed notification
+                                            │
+                                            ▼
+                                BookingConfirmedPage
+</pre>
+
+<p>Confirmed bookings appear immediately in <strong>MyBookings</strong> via <code>streamBookingsForUser</code>. Past slots and slots overlapping any existing reservation are removed from the picker grid; the same conflict check runs again before write so an in-flight stale snapshot can't slip through.</p>
+
+<!-- ───────────────────────── 11. OPEN MATCH ───────────────────────── -->
+<h1>11. Open Match Flow</h1>
+
+<h3>Host creates an open match</h3>
+<pre>
+BookCourtSheet  ── "Open Match" ──▶  PlayersSetupSheet
+                                          │
+                                          ▼
+                       Pick players required + already-confirmed count
+                                          │
+                                          ▼
+                                ConfirmBookingPage
+                                          │
+                                          ▼
+                       OpenMatchService.createOpenMatch
+                       1) ScheduleConflictService check
+                       2) Write open_matches/{id} with
+                          joinedPlayerIds=[hostUid],
+                          joinedPlayerNames=[hostDisplayName],
+                          confirmedGuestCount=playersConfirmed-1,
+                          status=open (or full if effective ≥ required)
+                       3) ChatService.createOrUpdateGroupThreadForMatch
+                                          │
+                                          ▼
+                                  MatchDetailsPage
+</pre>
+
+<h3>Another user joins</h3>
+<pre>
+OpenMatchesPage  ── tap card ──▶  MatchDetailsPage
+                                       │
+                                       ▼
+                            "Join Match" → confirm dialog
+                                       │
+                                       ▼
+                       OpenMatchService.joinOpenMatch
+                       1) ScheduleConflictService.assertNoUserConflict
+                       2) Firestore transaction:
+                          - read open_matches/{id}
+                          - assert not cancelled, not full, not host,
+                            not already joined
+                          - append uid + name to parallel arrays
+                          - recompute status (open vs full)
+                       3) ChatService.addUserToGroupThread (arrayUnion)
+                       4) Best-effort host notification: match_joined
+                                       │
+                                       ▼
+                                MatchJoinedPage
+</pre>
+
+<h3>Player leaves / Host cancels</h3>
+<p>Leave is also transactional: it finds the user's index, removes from both parallel arrays in lock-step, recomputes status (full → open if a spot frees up), notifies host and (best-effort) other joined players, and removes the user from the group chat thread. Host cancel sets <code>status = cancelled</code>, fans out cancellation notifications to every joined player, and triggers <code>InviteService.cancelInvitesForMatch</code> from the UI handler to flip every pending invite for that match to cancelled with its own notification fanout.</p>
+
+<!-- ───────────────────────── 12. INVITE ───────────────────────── -->
+<h1>12. Invite Flow</h1>
+
+<pre>
+NearbyPlayersPage  ──▶  PlayerProfilePage  ──▶  InviteToMatchPage
+                                                      │
+                                                      ▼
+                              streamMatchesForUser(host.uid)
+                              filtered to: not cancelled, not full,
+                              end time in future, invitee not joined,
+                              no existing pending/accepted invite
+                                                      │
+                                                      ▼
+                                       Tap one of the cards
+                                                      │
+                                                      ▼
+                              InviteService.createInvite
+                              1) Pre-check existing pending/accepted
+                              2) Firestore transaction on open_matches/{id}:
+                                 - assert host, not cancelled, not full,
+                                   invitee not joined, invitee not host
+                                 - write invites/{id} with full snapshot
+                              3) Best-effort invitee notification:
+                                 type=invite_received
+                                                      │
+                                                      ▼
+                                              InviteSentPage
+</pre>
+
+<h3>Invitee acts</h3>
+<p>The receiver opens InvitesPage (via the notification or the menu) and taps Accept or Decline.</p>
+<ul>
+  <li><strong>Accept</strong> → re-reads invite, asserts pending + invitee identity, then delegates to <code>OpenMatchService.joinOpenMatch</code>. Capacity / duplicate / cancelled guards run inside that transaction. Invite status flips to <code>accepted</code>. Group chat membership added. Host receives an <code>invite_accepted</code> notification. UI routes to <code>MatchJoinedPage</code>.</li>
+  <li><strong>Decline</strong> → status flips to <code>declined</code>; host receives an <code>invite_declined</code> notification. The match doc is not touched.</li>
+</ul>
+
+<h3>Sent-invite live count</h3>
+<p>Each row in the Sent tab subscribes to <code>streamOpenMatch(matchId)</code> so the "X / Y joined · N spots left" line is always honest. If the match gets cancelled, the row reads "Match cancelled"; if the match is deleted server-side, it reads "Match no longer available."</p>
+
+<div class="page-break"></div>
+
+<!-- ───────────────────────── 13. MESSAGING ───────────────────────── -->
+<h1>13. Messaging Architecture</h1>
+
+<h3>Direct (1-to-1)</h3>
+<ul>
+  <li>Thread id is deterministic: sort the two uids alphabetically and join with <code>_</code>. Finding "the thread between A and B" is a single doc read by id; no <code>where('participantIds', arrayContains: …)</code> query needed; duplicate threads for the same pair are structurally impossible.</li>
+  <li><code>ChatService.createOrGetDirectThread</code> is idempotent — <code>set(merge: true)</code> with a payload that only fills missing fields the first time.</li>
+</ul>
+
+<h3>Group (per open match)</h3>
+<ul>
+  <li>Thread id is <code>match_&lt;matchId&gt;</code>. Cannot collide with a direct id (uids never contain underscores, and the prefix is the load-bearing guarantee).</li>
+  <li>Thread auto-created on match create. Joiners are added via <code>arrayUnion</code>; leavers removed via <code>arrayRemove</code>. The shared <code>createOrUpdateGroupThreadForMatch</code> method uses union semantics on already-existing threads so a stale local snapshot cannot silently drop late joiners.</li>
+  <li>Group bubbles carry an optional <code>senderName</code> snapshot so the chat can label each message without a per-message <code>users/{uid}</code> read.</li>
+</ul>
+
+<h3>Single threads collection with a type discriminator</h3>
+<pre>
+threads/{threadId}
+  type: 'direct' | 'group'    (missing on legacy → 'direct')
+  participantIds: [uid, uid, ...]
+  lastMessage, lastMessageAt, lastSenderId, createdAt, updatedAt
+  lastReadAtByUser: { uid: Timestamp, ... }
+  // group-only:
+  matchId, title, imageUrl, sportType, courtName
+
+threads/{threadId}/messages/{messageId}
+  senderUid, senderName?, text, sentAt
+</pre>
+
+<h3>Streams</h3>
+<table>
+<tr><th>Stream</th><th>What it returns</th></tr>
+<tr><td><code>streamThreadsForUser(uid)</code></td><td>Direct threads where the user is a participant.</td></tr>
+<tr><td><code>streamGroupThreadsForUser(uid)</code></td><td>Group threads where the user is a participant.</td></tr>
+<tr><td><code>streamMessages(threadId)</code></td><td>All messages in a thread, oldest-first.</td></tr>
+</table>
+
+<!-- ───────────────────────── 14. UNREAD ───────────────────────── -->
+<h1>14. Unread &amp; Read State</h1>
+
+<h3>Rule (<code>ChatThread.isUnreadFor(uid)</code>)</h3>
+<ol>
+  <li>If <code>lastMessageAt == null</code>, not unread.</li>
+  <li>If <code>lastSenderId == uid</code>, not unread (the sender doesn't see their own message as unread).</li>
+  <li>If <code>lastReadAtByUser[uid] == null</code>, unread (user has never opened it).</li>
+  <li>If <code>lastReadAtByUser[uid].isBefore(lastMessageAt)</code>, unread.</li>
+  <li>Otherwise, read.</li>
+</ol>
+
+<h3>Where reads are bumped</h3>
+<p><code>ChatService.markThreadRead({threadId, uid})</code> is the only path that bumps a non-sender's read timestamp. It is called from exactly two places:</p>
+<ul>
+  <li><strong>MessagePage</strong> — once at thread-open time, then on every snapshot via <code>_maybeMarkRead</code> (gated by <code>_lastMarkedMessageId</code> so per-frame snapshot deltas don't cause repeated Firestore writes).</li>
+  <li><strong>GroupChatPage</strong> — same two call sites.</li>
+</ul>
+<p>Visiting MessagesPage / GroupMessagesPage / UnreadMessagesPage does <em>not</em> clear unread state.</p>
+
+<h3>Write path on send</h3>
+<p><code>ChatService.sendMessage</code> writes the new message under <code>threads/{id}/messages</code> and updates the parent thread's <code>lastMessage</code>, <code>lastMessageAt</code>, <code>lastSenderId</code>, and the sender's own <code>lastReadAtByUser[senderUid]</code> in the same batched write. Firestore deep-merges the nested map, so other participants' read timestamps are preserved.</p>
+
+<!-- ───────────────────────── 15. NOTIFICATIONS ───────────────────────── -->
+<h1>15. Notifications (In-App + Push)</h1>
+
+<h3>Notification types</h3>
+<table>
+<tr><th>Type</th><th>Fired when</th><th>Target</th></tr>
+<tr><td>booking_confirmed</td><td>Booking write succeeds.</td><td>booking</td></tr>
+<tr><td>booking_cancelled</td><td>Booking soft-cancelled.</td><td>booking</td></tr>
+<tr><td>invite_received</td><td>Host creates an invite.</td><td>invite</td></tr>
+<tr><td>invite_accepted</td><td>Invitee accepts.</td><td>match</td></tr>
+<tr><td>invite_declined</td><td>Invitee declines.</td><td>invite</td></tr>
+<tr><td>open_match_created</td><td>Host creates the match.</td><td>match</td></tr>
+<tr><td>match_joined</td><td>A player joins.</td><td>match</td></tr>
+<tr><td>match_left</td><td>A player leaves.</td><td>match</td></tr>
+<tr><td>open_match_cancelled</td><td>Host cancels; pending invitees also receive this on bulk cancel.</td><td>match</td></tr>
+<tr><td>system</td><td>Reserved for future broadcast.</td><td>—</td></tr>
+</table>
+
+<h3>In-app delivery</h3>
+<p>Every notification write creates a row in <code>notifications/{id}</code>. The notification bell streams unread count; NotificationsPage streams the full list and routes taps based on <code>targetType</code> + <code>targetId</code>.</p>
+
+<h3>Push delivery (two parts)</h3>
+
+<p><strong>Client</strong> (PushNotificationService in this Flutter app):</p>
+<ul>
+  <li>Requests notification permission on first sign-in (iOS prompt; Android 13+ runtime permission).</li>
+  <li>Reads the FCM token and stores it under <code>users/{uid}.fcmTokens</code> via <code>arrayUnion</code>, supporting multi-device.</li>
+  <li>Listens on <code>onTokenRefresh</code> and re-writes after FCM rotates the token.</li>
+  <li>Foreground messages render an in-app SnackBar with a "View" action.</li>
+  <li>Cold-launch tap (<code>getInitialMessage</code>) and warm-launch tap (<code>onMessageOpenedApp</code>) routes to the right page using the same target convention.</li>
+</ul>
+
+<p><strong>Server</strong> (<code>functions/index.js</code>):</p>
+<ul>
+  <li>Firestore-triggered Cloud Function on <code>notifications/{id}.onCreate</code>.</li>
+  <li>Loads the recipient's <code>fcmTokens</code> array.</li>
+  <li>Calls <code>messaging.sendEachForMulticast</code> with <code>notification.title</code> / <code>notification.body</code> + <code>data.targetType</code> / <code>data.targetId</code>.</li>
+  <li>Prunes dead tokens (<code>NotRegistered</code>, <code>InvalidArgument</code>) from the user's array.</li>
+</ul>
+
+<!-- ───────────────────────── 16. CONFLICT ───────────────────────── -->
+<h1>16. Schedule Conflict Prevention</h1>
+
+<p>Two distinct conflicts are enforced before every write that creates or joins a session.</p>
+
+<h3>Court occupancy</h3>
+<p>A physical court cannot host two overlapping reservations. Sources counted as active:</p>
+<ul>
+  <li>Confirmed private bookings on the same court.</li>
+  <li>Non-cancelled open matches on the same court.</li>
+</ul>
+
+<h3>User schedule</h3>
+<p>A user cannot be in two overlapping active sessions, even at different courts. Sources counted as active:</p>
+<ul>
+  <li>Confirmed bookings owned by that user.</li>
+  <li>Matches where the user is the host.</li>
+  <li>Matches where the user is in <code>joinedPlayerIds</code>.</li>
+</ul>
+
+<h3>Overlap predicate</h3>
+<p>The canonical interval test, not exact-string equality:</p>
+<pre>existingStart &lt; newEnd  &amp;&amp;  newStart &lt; existingEnd</pre>
+<p>This correctly rejects 6:30–7:30 PM when 6–7 PM already exists, and correctly allows 7–8 PM after 6–7 PM (endpoint touch is not overlap).</p>
+
+<h3>Insertion points</h3>
+<table>
+<tr><th>Path</th><th>Guard</th></tr>
+<tr><td>BookingService.createBooking</td><td>assertNoConflictForNewReservation (court + user)</td></tr>
+<tr><td>OpenMatchService.createOpenMatch</td><td>assertNoConflictForNewReservation (court + user)</td></tr>
+<tr><td>OpenMatchService.joinOpenMatch</td><td>assertNoUserConflict (user only; court is already booked by the host's match)</td></tr>
+<tr><td>InviteService.acceptInvite</td><td>Delegates to joinOpenMatch, inheriting the user-conflict check.</td></tr>
+</table>
+
+<h3>Surfaced messages</h3>
+<ul>
+  <li>"This court is already booked for the selected time."</li>
+  <li>"You already have another booking or match during this time."</li>
+</ul>
+
+<!-- ───────────────────────── 17. AVAILABILITY ───────────────────────── -->
+<h1>17. Court Availability</h1>
+
+<p><code>CourtAvailabilityService.availableSlotsFor(courtId, date)</code> computes which slots from the canonical <code>bookingSlots</code> list are still bookable for that court and date:</p>
+<ol>
+  <li>If the date is in the past, return empty.</li>
+  <li>Load the per-court active set: confirmed bookings + non-cancelled open matches with <code>where('courtId', isEqualTo: …)</code>.</li>
+  <li>For each generated slot, skip if it overlaps any occupied interval (same overlap predicate as the conflict service) or if it's the current day and the slot has already started.</li>
+  <li>Return the kept slots in canonical order.</li>
+</ol>
+
+<p>BookCourtSheet feeds this list straight into its time grid via a <code>FutureBuilder</code>. The result: a user cannot tap a slot that is already booked or hosted by someone else.</p>
+
+<!-- ───────────────────────── 18. LOCATION ───────────────────────── -->
+<h1>18. Location &amp; Distance</h1>
+
+<ul>
+  <li>One-time GPS capture at first MainShell render via <code>LocationService.captureCurrent()</code> (geolocator → geocoding).</li>
+  <li>Persisted to <code>users/{uid}.location</code> as <code>{ lat, lng, city, displayLabel }</code>.</li>
+  <li>Manual override via the location picker bottom sheet (Courts, Nearby Players, Home top header).</li>
+  <li>Distance for ranking: haversine in kilometres, displayed in miles.</li>
+  <li>Permissions denied → silent fallback; the user can still set a city manually.</li>
+</ul>
+
+<!-- ───────────────────────── 19. IMAGE ───────────────────────── -->
+<h1>19. Image Handling (Cloudinary)</h1>
+
+<p><code>ImageUploadService</code> uploads to Cloudinary via an unsigned preset (<code>POST</code> to <code>api.cloudinary.com/v1_1/{cloudName}/image/upload</code>). Configured once in <code>lib/core/cloudinary_config.dart</code>:</p>
+
+<pre>
+class CloudinaryConfig {
+  // Create at https://cloudinary.com.
+  static const String cloudName = '...';
+  static const String uploadPreset = '...';
+  // Upload URL is composed from cloudName at runtime.
+}
+</pre>
+
+<p><strong>Used by</strong>: profile photo (EditAvatarScreen), ID verification document + selfie (IdVerificationScreen).</p>
+<p><strong>Court images</strong>: Cloudinary URLs seeded into <code>courts/{id}.imageUrls</code> by the debug-only bootstrap (<code>seedCourtsIfEmpty</code>).</p>
+<p><strong>Render</strong>: shared <code>CourtNetworkImage</code> widget handles null / empty / network-error and renders a clean placeholder.</p>
+
+<!-- ───────────────────────── 20. ADMIN ───────────────────────── -->
+<h1>20. Admin / Moderation</h1>
+
+<h3>Admin gating</h3>
+<p>Hardcoded allow-list of admin emails in <code>AdminService._adminEmails</code>. The side drawer renders an "ID Verification Reviews" entry only for them; the admin screen re-checks on every build so a deep-linked route cannot bypass the drawer gate.</p>
+
+<h3>ID Verification review queue</h3>
+<ul>
+  <li>Streams all users with <code>idVerification.status == 'submitted'</code>.</li>
+  <li>Each row shows the submitter's avatar, name, email, document type, legal name, ID last 4, expiry, issuing state, plus tappable chips for Document (front), Document (back), and Selfie images.</li>
+  <li>Approve or Reject opens an optional reviewer-note dialog and writes back to the user's <code>idVerification.status</code>, <code>reviewedAt</code>, and <code>reviewerNote</code>.</li>
+  <li>The stream auto-empties as the admin works through the queue.</li>
+</ul>
+
+<h3>Report user</h3>
+<p>From any player profile, ⋮ → Report user opens a free-text reason dialog and writes to <code>reports/{id}</code> with <code>status: open</code>. Moderator review workflow is deferred.</p>
+
+<h3>Feedback / suggestions</h3>
+<p>Profile → Feedback &amp; Suggestions writes to <code>feedback/{id}</code> with category, message, and signed-in user snapshot. Shows a "Thank you. Your feedback has been submitted." SnackBar and clears the form on success.</p>
+
+<!-- ───────────────────────── 21. THEME ───────────────────────── -->
+<h1>21. Theme &amp; Design System</h1>
+
+<ul>
+  <li>Single <code>AppTheme.lightTheme</code> referenced from <code>MaterialApp</code>.</li>
+  <li><strong>AppColors</strong>: primary green, brightGreen, darkGreen, lightGreen, surface, border, textPrimary, textSecondary, muted, warning, white, black, primaryLight, plus specific hex callouts for individual surfaces.</li>
+  <li><strong>AppSpacing</strong>: xs, sm, md, lg, xl, xxl, pageHorizontal, cardRadius.</li>
+  <li><strong>AppTextStyles</strong>: pageTitle, sectionTitle, bodyMedium, body, caption, action.</li>
+  <li>Consistent rounded-card pattern: 18–22pt corners, soft shadow <code>rgba(0,0,0,0.06–0.09)</code>, blurRadius 12–18.</li>
+  <li>Reusable widgets respecting the system: UserAvatar (photoUrl → avatarId → initials priority chain), CourtNetworkImage, MainBottomNav, RallyHeader, PlayerDetailsChip, PrimaryButton, etc.</li>
+</ul>
+
+<!-- ───────────────────────── 22. DECISIONS ───────────────────────── -->
+<h1>22. Notable Engineering Decisions</h1>
+
+<ul>
+  <li><strong>Deterministic thread ids</strong> over <code>where()</code> lookups for both direct and group chats. One doc read by id beats a query; structurally prevents duplicate threads.</li>
+  <li><strong>Snapshot fields baked into create-time writes.</strong> Host name, court image URL, sport type, etc. are written into each booking / match / invite at create time, so list cards don't need follow-up reads and historical events don't get retroactively rewritten by a profile rename.</li>
+  <li><strong>Parallel arrays with index-aware rebuilds.</strong> <code>joinedPlayerIds</code> and <code>joinedPlayerNames</code> are kept in lock-step. Leave finds the index, removes from both in the same transaction. Never <code>arrayRemove</code> on a primitive list (it would desync).</li>
+  <li><strong>Transactional concurrency.</strong> Join, leave, host-cancel, invite-accept all wrap their reads + writes in a single Firestore <code>runTransaction</code>; capacity / cancelled / duplicate are all asserted inside the same atomic read-write.</li>
+  <li><strong>Best-effort side-effects with structured fallbacks.</strong> Notification writes, group-thread updates, and FCM token writes all <code>catchError</code> so a Firestore rules blip never rolls back a successful primary mutation.</li>
+  <li><strong><code>effectiveJoinedCount</code></strong> = <code>joinedPlayerIds.length + confirmedGuestCount</code> is the single source of truth for capacity. <code>spotsLeft</code>, <code>isFull</code>, and the "+N others" placeholder all derive from it.</li>
+  <li><strong>Host-cancel fanout split into two services.</strong> <code>OpenMatchService.cancelOpenMatch</code> notifies host + accepted players; <code>InviteService.cancelInvitesForMatch</code> notifies pending invitees. No overlap, so no double-notify. Cross-service circular imports are avoided by calling the invite cancellation from the UI handler after the match cancel succeeds.</li>
+  <li><strong>Group thread participant union semantics.</strong> <code>createOrUpdateGroupThreadForMatch</code> uses <code>arrayUnion</code> on existing threads. Earlier code wrote a literal array under <code>merge: true</code>, which silently dropped late joiners — fixed by union semantics.</li>
+  <li><strong>Auth-first delete.</strong> Account deletion only clears local UI state once Firebase Auth deletion has observably succeeded; otherwise the user remains signed in with their old profile.</li>
+  <li><strong>Pre-flight conflict check, documented soft spot.</strong> Schedule conflict checks happen as a Firestore read pre-flight, not inside the same transaction. Documented in the Future Work section as a known soft spot for future hardening.</li>
+  <li><strong>Root <code>navigatorKey</code> + <code>scaffoldMessengerKey</code></strong> in <code>main.dart</code> so the push handler can route + toast without a <code>BuildContext</code>.</li>
+</ul>
+
+<!-- ───────────────────────── 23. STATS ───────────────────────── -->
+<h1>23. Project Statistics</h1>
+
+<table>
+<tr><th>Metric</th><th>Value</th></tr>
+<tr><td>Languages</td><td>Dart (Flutter), JavaScript (Cloud Function)</td></tr>
+<tr><td>Lines of Dart under lib/</td><td>30,119</td></tr>
+<tr><td>Total Dart files</td><td>143</td></tr>
+<tr><td>Models</td><td>12</td></tr>
+<tr><td>Services</td><td>16</td></tr>
+<tr><td>Providers</td><td>2</td></tr>
+<tr><td>Screen files</td><td>48</td></tr>
+<tr><td>Widget files</td><td>58</td></tr>
+<tr><td>Firestore collections</td><td>10</td></tr>
+<tr><td>Firebase products used</td><td>Auth, Firestore, Storage, Cloud Messaging, Cloud Functions</td></tr>
+<tr><td>Notification types</td><td>10</td></tr>
+</table>
+
+<!-- ───────────────────────── 24. FUTURE WORK ───────────────────────── -->
+<h1>24. Future Work</h1>
+
+<p>The following were scoped out for this submission and are documented as opportunities for follow-up work:</p>
+
+<ul>
+  <li><strong>Skill-level / rating system.</strong> Player cards still show a hardcoded 4.8 placeholder rating; a real peer-rating feature would replace this. Player level (Beginner / Intermediate / Advanced) is also future work.</li>
+  <li><strong>Monetization.</strong> The Subscription screen is a UI mock; real subscriptions need a payment gateway (Stripe / RevenueCat / Apple+Google IAP).</li>
+  <li><strong>Optional message on an invite.</strong> The current invite carries snapshots but no free-text message from the host.</li>
+  <li><strong>Group chat participant controls.</strong> No leave-group action from inside the chat, no mute, no kick (only the host can cancel the entire match).</li>
+  <li><strong>Variable-length bookings.</strong> Currently every slot is 1 hour; <code>totalPrice</code> is always <code>pricePerHour</code>. A multi-hour selector would multiply by hours.</li>
+  <li><strong>Schedule conflict hardening.</strong> Move the conflict check into the same Firestore transaction as the write, or back it with a "court-day-slot" lock document, to close the small TOCTOU window.</li>
+  <li><strong>Geo-bounded user query.</strong> <code>streamAllUsers</code> is an unfiltered collection scan, sorted client-side; suitable for a class project, not for scale.</li>
+  <li><strong>Court seeding promotion.</strong> Currently a debug-only <code>assert(...)</code> block — should move to a one-shot CLI / Cloud Function for production.</li>
+  <li><strong>Profile fields not displayed.</strong> <code>age</code> and <code>postalCode</code> are persisted but never displayed.</li>
+  <li><strong>Notification archive.</strong> Only mark-as-read exists; no delete / archive.</li>
+  <li><strong>APNs auth key for production iOS push.</strong> Set up in the Firebase console before iOS push can deliver outside the simulator.</li>
+  <li><strong>Server-side authoritative moderation.</strong> Reports are persisted but the moderator workflow (review, suspend, ban) is out of scope. Same for <code>idVerification</code> rejections.</li>
+</ul>
+
+<!-- ───────────────────────── 25. SETUP ───────────────────────── -->
+<h1>25. Setup &amp; Deployment Guide</h1>
+
+<h3>Prerequisites</h3>
+<ul>
+  <li>Flutter SDK installed.</li>
+  <li>Firebase CLI: <code>npm install -g firebase-tools</code>.</li>
+  <li>FlutterFire CLI: <code>dart pub global activate flutterfire_cli</code>.</li>
+  <li>A Firebase project; an Apple developer account if shipping to iOS.</li>
+  <li>A Cloudinary account (free tier is enough).</li>
+</ul>
+
+<h3>One-time setup</h3>
+<pre>
+# Wire FlutterFire into the project (regenerates firebase_options.dart)
+flutterfire configure
+
+# Configure Cloudinary
+# Edit lib/core/cloudinary_config.dart with your cloudName + uploadPreset.
+
+# Install Flutter dependencies
+flutter pub get
+</pre>
+
+<h3>Run on a simulator / device</h3>
+<pre>
+flutter run
+</pre>
+
+<h3>Deploy the Cloud Function (push sender)</h3>
+<pre>
+cd functions
+npm install
+firebase login
+firebase use --add        # pick the RallyUp project
+firebase deploy --only functions
+</pre>
+
+<p>After this deploy, any new doc written to <code>notifications/{id}</code> triggers the function and the recipient's devices receive a push.</p>
+
+<h3>Optional</h3>
+<ul>
+  <li><strong>iOS push</strong>: upload an APNs auth key in the Firebase console (Project Settings → Cloud Messaging).</li>
+  <li><strong>Android push</strong>: <code>google-services.json</code> in <code>android/app/</code> is enough.</li>
+  <li><strong>Admin email</strong>: edit the allow-list in <code>lib/services/admin_service.dart</code>.</li>
+</ul>
+
+<!-- ───────────────────────── 26. COMPARISON ───────────────────────── -->
+<h1>26. Comparison with the Reference Project</h1>
+
+<p>The CSEN268 reference project (<em>santa-clara</em>) is a course-template scaffold with 37 commits and a README that mostly explains how to wire FlutterFire. Its documentation index lists ten short docs covering App Structure, Theme, GoRouter, Bottom Navigation, Authentication Bloc, Firebase UI Auth, Firestore, Authentication Repository.</p>
+
+<p><strong>RallyUp's submission is a fully implemented product on the same stack:</strong></p>
+<ul>
+  <li>30,000+ lines of production-shaped Dart.</li>
+  <li>10 live Firestore collections.</li>
+  <li>Transactional Firestore writes for join, leave, accept, cancel.</li>
+  <li>Real-time direct and group chat with deterministic ids and unread tracking.</li>
+  <li>Push notifications wired to a Firebase Cloud Function.</li>
+  <li>An in-app admin moderation surface for ID verification.</li>
+  <li>Cross-cutting schedule-conflict prevention that spans bookings, matches, invites, and joins.</li>
+</ul>
+
+<p>The biggest qualitative difference is that RallyUp's primitives (booking, match, invite, chat, notification) all share one consistent data model with one set of conflict and concurrency invariants. The reference scaffold is a starting point; RallyUp is the destination.</p>
+
+<p style="margin-top: 36pt; text-align: center; color: #666; font-size: 10pt;">— End of report —</p>
+
+</body>
+</html>
